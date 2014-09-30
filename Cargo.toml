@@ -1,0 +1,6 @@
+[package]
+
+name = "rust-net"
+version = "0.0.1"
+authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
+          , "John Ericson <Ericson2314@Yahoo.com>" ]
