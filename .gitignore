@@ -1,2 +1,7 @@
+reference
+data
 /target
 /Cargo.lock
+
+# vim tempfiles
+*.swp
