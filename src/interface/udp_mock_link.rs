@@ -14,9 +14,6 @@ use std::task::spawn;
 
 static RECV_BUF_SIZE: uint = 2*2*2*2*2*2*2*2;
 
-pub static IPV4_WILDCARD: IpAddr = Ipv4Addr(0, 0, 0, 0);
-pub static IPV6_WILDCARD: IpAddr = Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0);
-
 type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr,
                                            super::Handler>>>;
 
@@ -31,7 +28,7 @@ impl Listener {
     pub fn new(listen_port: net::ip::Port) -> IoResult<Listener>
     {
         let socket = try!(UdpSocket::bind(
-            SocketAddr { ip: IPV4_WILDCARD, port: listen_port }));
+            SocketAddr { ip:  Ipv4Addr(0, 0, 0, 0), port: listen_port }));
 
         let handlers: SharedHandlerMap
             = Arc::new(RWLock::new(HashMap::new()));

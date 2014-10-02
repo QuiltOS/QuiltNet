@@ -1,5 +1,7 @@
+pub mod ipv4;
+pub mod ipv6;
+
 pub mod interface;
-pub mod headers;
 
 #[test]
 fn it_works() {
