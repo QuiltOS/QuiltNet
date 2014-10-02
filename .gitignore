@@ -5,3 +5,11 @@ data
 
 # vim tempfiles
 *.swp
+
+# emacs tempfiles
+\#*
+\#*\#
+
+# misc
+*~
+.#*
