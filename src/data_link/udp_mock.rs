@@ -10,12 +10,11 @@ use std::sync::RWLock;
 
 use std::task::spawn;
 
-
+use interface::{Handler, Interface};
 
 static RECV_BUF_SIZE: uint = 64 * 1024;
 
-type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr,
-                                           super::Handler>>>;
+type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr, Handler>>>;
 
 /// The backing listening socket / read loop for a bunch of UDP-backed mock link interfaces
 pub struct Listener {
@@ -92,7 +91,7 @@ impl LinkInterface {
 
     pub fn new(listener:    &Listener,
                remote_addr: SocketAddr,
-               on_recv:     super::Handler) -> LinkInterface
+               on_recv:     Handler) -> LinkInterface
     {
         listener.handlers.write().deref_mut().insert(remote_addr, on_recv);
 
@@ -103,14 +102,14 @@ impl LinkInterface {
     }
 }
 
-impl super::Interface for LinkInterface {
+impl Interface for LinkInterface {
 
     fn send(&mut self, packet: Box<[u8]>) -> IoResult<()> {
         try!(self.listener.socket.send_to(packet.as_slice(), self.remote_addr));
         Ok(())
     }
 
-    fn update_recv_handler(&mut self, on_recv: super::Handler) {
+    fn update_recv_handler(&mut self, on_recv: Handler) {
         self.listener
             .handlers
             .write()

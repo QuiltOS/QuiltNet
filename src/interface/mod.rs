@@ -1,7 +1,5 @@
 use std::io::IoResult;
 
-pub mod udp_mock_link;
-
 // TODO: use Box<[u8]> instead of Vec<u8>
 pub type Handler = fn (&[Vec<u8>]) -> ();
 

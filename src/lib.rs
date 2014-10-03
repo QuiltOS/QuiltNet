@@ -1,7 +1,8 @@
-pub mod ipv4;
-pub mod ipv6;
-
 pub mod interface;
+
+pub mod data_link;
+pub mod network;
+
 
 #[test]
 fn it_works() {
