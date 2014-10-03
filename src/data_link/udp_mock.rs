@@ -118,4 +118,16 @@ impl Interface for LinkInterface {
                     on_recv);
     }
 
+    fn enable(&mut self) {
+
+    }
+
+    fn disable(&mut self) {
+
+    }
+
+}
+
+#[test]
+fn it_works() {
 }

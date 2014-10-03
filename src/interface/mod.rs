@@ -18,4 +18,7 @@ pub trait Interface {
     //fn stock(&mut Self, bufs: Box<[Box<[u8]>]>);
 
     //fn kill(&Self);
+
+    fn enable(&mut self);
+    fn disable(&mut self);
 }
