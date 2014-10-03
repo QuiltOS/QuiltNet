@@ -3,7 +3,7 @@ use std::collections::hashmap::HashMap;
 use std::io::IoResult;
 use std::io::net;
 use std::io::net::udp::UdpSocket;
-use std::io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr, Port};
+use std::io::net::ip::{SocketAddr, Ipv4Addr, Port};
 
 use std::sync::Arc;
 use std::sync::RWLock;
@@ -12,7 +12,7 @@ use std::task::spawn;
 
 
 
-static RECV_BUF_SIZE: uint = 2*2*2*2*2*2*2*2;
+static RECV_BUF_SIZE: uint = 64 * 1024;
 
 type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr,
                                            super::Handler>>>;
@@ -30,8 +30,7 @@ impl Listener {
         let socket = try!(UdpSocket::bind(
             SocketAddr { ip:  Ipv4Addr(0, 0, 0, 0), port: listen_port }));
 
-        let handlers: SharedHandlerMap
-            = Arc::new(RWLock::new(HashMap::new()));
+        let handlers: SharedHandlerMap = Arc::new(RWLock::new(HashMap::new()));
 
         spawn({
             let mut socket   = socket.clone();
