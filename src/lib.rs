@@ -1,3 +1,5 @@
+extern crate core;
+
 pub mod interface;
 
 pub mod data_link;

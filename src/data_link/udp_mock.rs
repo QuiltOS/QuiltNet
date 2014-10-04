@@ -11,9 +11,11 @@ use std::sync::RWLock;
 use std::task::spawn;
 
 use interface::{Handler, Interface};
+use super::DataLinkInterface;
 
 static RECV_BUF_SIZE: uint = 64 * 1024;
 
+// Closure has mutable environment, therefore need to lock each one
 type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr, Handler>>>;
 
 /// The backing listening socket / read loop for a bunch of UDP-backed mock link interfaces
@@ -51,9 +53,7 @@ impl Listener {
                         Ok((len, src_addr)) => match handlers.read().deref().find(&src_addr) {
                             None          => continue, // drop that packet!
                             Some(on_recv) => {
-                                // real network card may consolidate multiple packets per interrupt
-                                let bufs: [Vec<u8>, ..1] = [buf[..len].to_vec()];
-                                (*on_recv)(bufs.as_slice());
+//                                (&**on_recv).call(buf[..len].to_vec());
                             },
                         }
                     };
@@ -81,29 +81,28 @@ impl Clone for Listener {
 
 
 /// A mock link layer interface made from UDP
-pub struct LinkInterface {
+pub struct UdpMockDataLinkInterface {
     listener:    Listener,
     remote_addr: SocketAddr,
 }
 
 
-impl LinkInterface {
+impl UdpMockDataLinkInterface {
 
     pub fn new(listener:    &Listener,
                remote_addr: SocketAddr,
-               on_recv:     Handler) -> LinkInterface
+               on_recv:     Handler) -> UdpMockDataLinkInterface
     {
         listener.handlers.write().deref_mut().insert(remote_addr, on_recv);
 
-        LinkInterface {
+        UdpMockDataLinkInterface {
             listener:    listener.clone(),
             remote_addr: remote_addr,
         }
     }
 }
 
-impl Interface for LinkInterface {
-
+impl Interface for UdpMockDataLinkInterface {
     fn send(&mut self, packet: Box<[u8]>) -> IoResult<()> {
         try!(self.listener.socket.send_to(packet.as_slice(), self.remote_addr));
         Ok(())
@@ -117,6 +116,9 @@ impl Interface for LinkInterface {
             .insert(self.remote_addr,
                     on_recv);
     }
+}
+
+impl DataLinkInterface for UdpMockDataLinkInterface {
 
     fn enable(&mut self) {
 

@@ -17,3 +17,5 @@ pub type RoutingTable = HashMap<IPAddr, RoutingRow>;
 // value:  which one of our IPs we put as the src address
 //         which interface we send the packet with
 pub type InterfaceTable = HashMap<IPAddr, (IPAddr, Box<Interface+'static>)>;
+
+pub struct IPState(RoutingTable, InterfaceTable);
