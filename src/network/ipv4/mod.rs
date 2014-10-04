@@ -7,10 +7,9 @@ use interface::Interface;
 pub mod headers;
 pub mod send;
 pub mod receive;
-pub mod protocol;
 
 pub struct RoutingRow {
-    pub cost:      u8,             // How many hops
+    pub cost:      u8,     // How many hops
     pub next_hop:  IPAddr, // which link-layer interface to use
 }
 
@@ -23,7 +22,7 @@ pub type RoutingTable = HashMap<IPAddr, RoutingRow>;
 pub type InterfaceTable = HashMap<IPAddr, (IPAddr, Box<Interface+'static>)>;
 
 pub struct IPState {
-    routes: RWLock<RoutingTable>,
+    routes:     RWLock<RoutingTable>,
     interfaces: InterfaceTable,
 }
 
