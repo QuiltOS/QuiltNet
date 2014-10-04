@@ -1,8 +1,9 @@
 use std::collections::hashmap::HashMap;
 use std::sync::RWLock;
 
-use self::headers::IPAddr;
-use interface::Interface;
+use self::headers::{IPAddr, IPHeader};
+use interface::{Interface, Handler};
+
 
 pub mod headers;
 pub mod send;
@@ -34,4 +35,86 @@ impl IPState {
             interfaces: interfaces,
         }
     }
+}
+
+pub trait IpModule {
+    pub fn send(&self, vip : IPAddr, proto : u8, data : [u8]);
+    pub fn with_interfaces(&self, fun : |&InterfaceTable|);
+    pub fn with_routes(&self, fun : |&RoutingTable|);
+    pub fn recv(&self, data : [u8]);
+    pub fn up(&self, interface : int);
+    pub fn down(&self, interface : int);
+}
+
+pub struct IpModuleReal {
+    routes : RoutingTable,
+    interfaces : InterfaceTable,
+    protocol_handlers : HashMap<u8, Vec<Sender<IpPacket>>>
+}
+
+
+pub trait IpModule {
+    
+    /// Registers the handler for the given protocol
+    /// This handler will be sent every packet that arrives with the given protocol
+    pub fn register_handler(&self, protocol : u8, handler : IIpHandler){
+        self.protocol_handlers.insert_or_update_with(protocol, vec!(handler.tx), 
+                                                |k, v| v.push(handler.tx));
+    }
+
+    /// Forwards this packet to all registered handlers
+    pub fn recv(&self, data : [u8]) -> (){
+
+        // Parse packet from bytes
+        match self.parse_packet(data) {
+            Some(packet) => {
+
+                // Lookup handlers for this protocol
+                match self.protocol_handlers.find(packet.header.protocol) {
+                    Some(handlers) => {
+
+                        // Send packet to each of our handler tasks
+                        for handler in handlers.iter() {
+                            handler.send(packet);
+                        }
+                    }
+                    None => () // no handlers for this packet's protocol
+                }
+            },
+            None => () // drop malformed packet
+        }
+    }
+
+    /// Sends data to the given VIP on the given protocol
+    pub fn send(&self, vip : IPAddr, proto : u8, data : [u8]) -> (){
+        match self.routes.find(vip) {
+            Some(next_hop) => {
+                match self.interfaces.find(next_hop) {
+                    Some(interface) => {
+                        let packet = self.make_packet(vip, proto, data);
+                        interface.send(packet.to_bytes());
+                    },
+                    None => () // no interface for this hop TODO: check if possible
+                }
+            },
+            None => () // drop, since requested VIP is unreachable
+        }
+    }
+
+    ///TODO: need index on interfaces by int?
+    pub fn up(&self, interface : int){
+        
+    }
+
+    ///TODO: need index on interfaces by int?
+    pub fn down(&self, interface : int){
+
+    }
+}   
+
+/// Applications that run in the IP layer
+/// e.g. RIP, IP Forwarding, the IP CLI
+pub trait IPProtocolHandler {
+    pub fn get_chan(&self) -> Sender<IpPacket>;
+    pub fn run(&self, proto : u8, ip : IpModule);
 }
