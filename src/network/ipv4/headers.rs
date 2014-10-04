@@ -1,3 +1,10 @@
+/// this is an unboxed IP Packet, you can cast a &[u8] to it
+// TODO: this will be gone once Anson's changes are merged
+pub type IPPacket = Vec<u8>;
+
+#[deriving(PartialEq)]
+#[deriving(Eq)]
+#[deriving(Hash)]
 pub struct IPAddr(u8, u8, u8, u8);
 
 pub struct IPHeader {

@@ -8,7 +8,7 @@ use std::io::IoResult;
 
 
 // TODO: use Box<[u8]> instead of Vec<u8>
-// TODO: real network card may consolidate multiple packets per interrup.
+// TODO: real network card may consolidate multiple packets per interrupt.
 pub type Handler = Box<Fn<(Vec<u8>), ()> + Send + 'static>;
 
 pub trait Interface {

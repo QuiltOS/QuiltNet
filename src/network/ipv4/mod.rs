@@ -1,9 +1,13 @@
 use std::collections::hashmap::HashMap;
+use std::sync::RWLock;
 
 use self::headers::IPAddr;
 use interface::Interface;
 
 pub mod headers;
+pub mod send;
+pub mod receive;
+pub mod protocol;
 
 pub struct RoutingRow {
     pub cost:      u8,             // How many hops
@@ -18,4 +22,16 @@ pub type RoutingTable = HashMap<IPAddr, RoutingRow>;
 //         which interface we send the packet with
 pub type InterfaceTable = HashMap<IPAddr, (IPAddr, Box<Interface+'static>)>;
 
-pub struct IPState(RoutingTable, InterfaceTable);
+pub struct IPState {
+    routes: RWLock<RoutingTable>,
+    interfaces: InterfaceTable,
+}
+
+impl IPState {
+    pub fn new(interfaces: InterfaceTable) -> IPState {
+        IPState {
+            routes:     RWLock::new(HashMap::new()),
+            interfaces: interfaces,
+        }
+    }
+}

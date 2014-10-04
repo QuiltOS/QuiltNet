@@ -50,9 +50,9 @@ impl Listener {
                             // maybe it will work next time...
                             println!("something bad happened");
                         },
-                        Ok((len, src_addr)) => match handlers.read().deref().find(&src_addr) {
+                        Ok((_len, src_addr)) => match handlers.read().deref().find(&src_addr) {
                             None          => continue, // drop that packet!
-                            Some(on_recv) => {
+                            Some(_on_recv) => {
 //                                (&**on_recv).call(buf[..len].to_vec());
                             },
                         }
