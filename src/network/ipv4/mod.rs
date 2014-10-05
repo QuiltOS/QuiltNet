@@ -1,11 +1,12 @@
-use std::collections::hashmap::HashMap;
+use std::collections::hashmap::{HashMap, HashSet};
 use std::sync::RWLock;
 
-use self::headers::{IPAddr, IPHeader};
+use self::packet::{IPAddr, IPHeader, IPPacket};
+use self::protocol::IPProtocolHandler;
 use interface::{Interface, Handler};
 
 
-pub mod headers;
+pub mod packet;
 pub mod send;
 pub mod receive;
 pub mod protocol;
@@ -26,6 +27,8 @@ pub type InterfaceTable = HashMap<IPAddr, (IPAddr, Box<Interface+'static>)>;
 pub struct IPState {
     routes: RWLock<RoutingTable>,
     interfaces: InterfaceTable,
+    local_vips: HashSet<IPAddr>,
+    protocol_handlers: HashMap<u8, Vec<IPProtocolHandler>>,
 }
 
 impl IPState {
@@ -37,6 +40,7 @@ impl IPState {
     }
 }
 
+/*
 pub trait IpModule {
     pub fn send(&self, vip : IPAddr, proto : u8, data : [u8]);
     pub fn with_interfaces(&self, fun : |&InterfaceTable|);
@@ -110,11 +114,5 @@ pub trait IpModule {
     pub fn down(&self, interface : int){
 
     }
-}   
-
-/// Applications that run in the IP layer
-/// e.g. RIP, IP Forwarding, the IP CLI
-pub trait IPProtocolHandler {
-    pub fn get_chan(&self) -> Sender<IpPacket>;
-    pub fn run(&self, proto : u8, ip : IpModule);
-}
+} 
+*/
