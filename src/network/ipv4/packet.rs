@@ -1,32 +1,55 @@
+use std::mem::transmute;
+
+#[deriving(Eq)]
+#[deriving(PartialEq)]
+#[deriving(Hash)]
 pub struct IPAddr(u8, u8, u8, u8);
 
+#[repr(packed)]
 pub struct IPPacket {
-    header : IPHeader,
-    data   : &[u8] //TODO: work out lifetime stuff
+    header: IPHeader,
+    data:   [u8] //TODO: work out lifetime stuff
 }
 
-pub impl IPPacket {
-   
-    pub fn new(dest: IPAddr, protocol: u8, data: [u8]) -> IPPacket{
+impl IPPacket {
 
+    /// Constructs a new packet by building new packet
+    /// The packet is safe to cast to a `Box<[u8]>`
+    pub fn new(dest: IPAddr, protocol: u8, data: &[u8]) -> Box<IPPacket> {
+        
     }
 
+    // TODO: implement Clone trait instead
+    pub fn clone_box(&self) -> Box<IPPacket> {
+
+    }
+    
+    
+    /// Useful to assert that packet is correct
+    /// e.g. `try!(verify_packet(&packet));`
+    pub fn verify_packet(&self) -> Result<(), ()> {
+        Ok(())
+    }
+    
+    
     /// Constructs a new IPPacket from a byte slice
     ///  -> Some(IPPacket) if data is a valid packet
     ///  -> None if data forms invalid packet
     ///
     /// TODO: figure out lifetime stuff of bytes
-    pub fn from_bytes(buf : &[u8]) -> Option<IPPacket> {
+    pub fn from_bytes<'a> (buf : &'a [u8]) -> Option<&'a IPPacket> {
         
     }
 
-    /// Writes the packet into byte array 
+    /// Cast the (owned) packet to a byte array
     /// TODO: figure out lifetime stuff of bytes
-    pub fn to_bytes(&self) -> Box<[u8]> {
-
+    pub fn to_bytes(self: Box<IPPacket>) -> Vec<u8> {
+        let buf: Box<[u8]> = unsafe { transmute(self) };
+        buf.to_vec() //TODO(jcericso) Make sure that doesn't copy
     }
 }
 
+#[repr(packed)]
 pub struct IPHeader {
     pub version_ihl:           u8,                  // IP version (= 4)
     ////////////////////////////////////////////////// Internet header length
