@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use interface::Handler;
+use data_link::DLHandler;
 
 use network::ipv4::IPState;
 use network::ipv4::headers::IPPacket;
@@ -22,7 +22,7 @@ pub fn register_protocol(proto_table: &mut ProtocolTable, proto_number: u8, hand
     proto_table.insert(proto_number, handler);
 }
 
-pub fn make_receive_callback(_state: Arc<IPState>) -> Handler {
+pub fn make_receive_callback(_state: Arc<IPState>) -> DLHandler {
     box |&: _packet: IPPacket| -> () {
 
     }

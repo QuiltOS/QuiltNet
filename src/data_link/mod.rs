@@ -1,8 +1,21 @@
-use interface::Interface;
+use std::io::IoResult;
+
+use interface::{Handler, Interface};
 
 pub mod udp_mock;
 
-pub trait DataLinkInterface: Interface {
+// TODO: use Box<[u8]> instead of Vec<u8>
+pub type DLPacket = Vec<u8>;
+
+pub type DLHandler = Handler<DLPacket>;
+
+pub trait DLInterface: Interface {
+
+    /// Send packet with specified body
+    fn send(&mut self, packet: DLPacket) -> IoResult<()>;
+
+    /// Update the function called on an arriving packet
+    fn update_recv_handler(&mut self, on_recv: DLHandler);
 
     //type Err;
 

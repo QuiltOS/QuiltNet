@@ -2,25 +2,18 @@
 //use core::ops::FnMut;
 
 use std::comm::Sender;
-use std::io::IoResult;
 use std::sync::Mutex;
 
 
 
-// TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt.
-pub type Handler = Box<Fn<(Vec<u8>,), ()> + Send + 'static>;
+pub type Handler<Packet> = Box<Fn<(Packet,), ()> + Send + 'static>;
 
 pub trait Interface {
-
-    /// Send packet with specified body
-    fn send(&mut self, packet: Box<[u8]>) -> IoResult<()>;
-
-    /// Update the function called on an arriving packet
-    fn update_recv_handler(&mut self, on_recv: Handler);
+    // need associated types to be better
 }
 
-// won't work, see rust-lang #17779
+// might not work, see rust-lang #17779
 
 pub struct LockedClosure<F> {
     closure: Mutex<F>
