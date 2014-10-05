@@ -2,7 +2,7 @@ use std::collections::hashmap::{HashMap, HashSet};
 use std::sync::RWLock;
 
 use self::packet::{IPAddr, IPHeader, IPPacket};
-use self::protocol::IPProtocolHandler;
+use self::receive::IPProtocolHandler;
 use interface::{Interface, Handler};
 
 

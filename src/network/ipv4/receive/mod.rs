@@ -58,16 +58,17 @@ fn fix_headers(packet : IPPacket) -> Option<IPPacket> {
     // decrement TTL
     // recompute checksum
     // TODO: etc
+}
 
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt.
 // TODO: Make some Sender type
-pub type IPHandler = Box<Fn<(Arc<IPState>, Box<IPPacket>), ()> + Send + 'static>;
+pub type IPProtocolHandler = Box<Fn<(Arc<IPState>, Box<IPPacket>), ()> + Send + 'static>;
 
-pub type ProtocolTable = HashMap<u8, IPHandler>;
+pub type ProtocolTable = HashMap<u8, IPProtocolHandler>;
 
 
-pub fn register_protocol(proto_table: &mut ProtocolTable, proto_number: u8, handler: IPHandler) {
+pub fn register_protocol(proto_table: &mut ProtocolTable, proto_number: u8, handler: IPProtocolHandler) {
     proto_table.insert(proto_number, handler);
 }
 
