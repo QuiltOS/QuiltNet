@@ -9,10 +9,9 @@ use interface::{Interface, Handler};
 pub mod packet;
 pub mod send;
 pub mod receive;
-pub mod protocol;
 
 pub struct RoutingRow {
-    pub cost:      u8,             // How many hops
+    pub cost:      u8,     // How many hops
     pub next_hop:  IPAddr, // which link-layer interface to use
 }
 
@@ -25,7 +24,7 @@ pub type RoutingTable = HashMap<IPAddr, RoutingRow>;
 pub type InterfaceTable = HashMap<IPAddr, (IPAddr, Box<Interface+'static>)>;
 
 pub struct IPState {
-    routes: RWLock<RoutingTable>,
+    routes:     RWLock<RoutingTable>,
     interfaces: InterfaceTable,
     local_vips: HashSet<IPAddr>,
     protocol_handlers: HashMap<u8, Vec<IPProtocolHandler>>,
