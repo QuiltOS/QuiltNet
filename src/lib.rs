@@ -6,6 +6,7 @@
 #![feature(globs)]
 
 extern crate core;
+extern crate packet;
 
 pub mod interface;
 

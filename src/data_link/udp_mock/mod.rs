@@ -114,11 +114,12 @@ impl Interface for UdpMockDLInterface {
 impl DLInterface for UdpMockDLInterface {
 
 
-    fn send(&mut self, packet: DLPacket) -> IoResult<()> {
-        self.listener.socket.send_to(packet.as_slice(), self.remote_addr)
+    fn send(&self, packet: DLPacket) -> IoResult<()> {
+        let mut socket = self.listener.socket.clone();
+        socket.send_to(packet.as_slice(), self.remote_addr)
     }
 
-    fn update_recv_handler(&mut self, on_recv: DLHandler) {
+    fn update_recv_handler(&self, on_recv: DLHandler) {
         self.listener
             .handlers
             .write()
@@ -127,11 +128,11 @@ impl DLInterface for UdpMockDLInterface {
                     on_recv);
     }
 
-    fn enable(&mut self) {
+    fn enable(&self) {
 
     }
 
-    fn disable(&mut self) {
+    fn disable(&self) {
 
     }
 
