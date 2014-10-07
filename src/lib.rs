@@ -1,5 +1,6 @@
 #![feature(associated_types)]
 #![feature(unboxed_closures)]
+#![feature(unboxed_closure_sugar)]
 
 #![cfg(test)]
 #![feature(globs)]

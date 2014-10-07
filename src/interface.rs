@@ -7,7 +7,7 @@ use std::sync::Mutex;
 
 
 // TODO: real network card may consolidate multiple packets per interrupt.
-pub type Handler<Packet> = Box<Fn<(Packet,), ()> + Send + 'static>;
+pub type Handler<Packet> = Box<|&: Packet|:Send -> ()>;
 
 pub trait Interface {
     // need associated types to be better

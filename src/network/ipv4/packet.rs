@@ -7,8 +7,8 @@ pub struct IPAddr(u8, u8, u8, u8);
 
 #[repr(packed)]
 pub struct IPPacket {
-    header: IPHeader,
-    data:   [u8] //TODO: work out lifetime stuff
+    pub header: IPHeader,
+    pub data:   [u8],
 }
 
 impl IPPacket {

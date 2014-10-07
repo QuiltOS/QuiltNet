@@ -57,8 +57,8 @@ impl Listener {
                         Ok((len, src_addr)) => match handlers.read().deref().find(&src_addr) {
                             None          => continue, // drop that packet!
                             Some(on_recv) => {
-                                let args = (buf[..len].to_vec(),);
-                                (&**on_recv).call(args);
+                                let args = buf[..len].to_vec();
+                                (**on_recv).call((args,));
                             },
                         }
                     };

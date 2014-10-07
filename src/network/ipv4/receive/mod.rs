@@ -22,7 +22,7 @@ pub fn receive(state: &IPState, packet: Box<IPPacket>) {
             // Handler also given IPState for
             //  - inspection (CLI)
             //  - modification (RIP)
-            (*handler)(state, packet.clone_box());
+            (**handler).call((state, packet.clone_box()));
         }
     } else {
         forward(state, packet);
@@ -39,7 +39,7 @@ fn forward(state: &IPState, packet: Box<IPPacket>) -> Result<(), ()> {
 /// Determine whether packet is destined for this node
 fn is_packet_dst_local(state: &IPState, packet: &IPPacket) -> bool {
     state.interfaces.contains_key(&packet.header.destination_address)
-}       
+}
 
 /// Fix packet headers in place
 ///
@@ -53,9 +53,9 @@ fn fix_headers(packet: &mut IPPacket) -> Result<(), ()> {
 
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt
-// TODO: lifetime for IPState probably needs fixing 
+// TODO: use higher rank lifetime instead of *const
 // TODO: Make some Sender type
-pub type IPProtocolHandler = <'a> | &'a IPState, Box<IPPacket> |:Send -> ();
+pub type IPProtocolHandler = Box<|&: *const IPState, Box<IPPacket> |:Send -> ()>;
 
 
 pub type ProtocolTable = Vec<Vec<IPProtocolHandler>>;
