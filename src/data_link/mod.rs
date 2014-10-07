@@ -5,7 +5,7 @@ use interface::{Handler, Interface};
 pub mod udp_mock;
 
 // TODO: use Box<[u8]> instead of Vec<u8>
-pub type DLPacket = Vec<u8>;
+pub type DLPacket = Box<[u8]>;
 
 pub type DLHandler = Handler<DLPacket>;
 

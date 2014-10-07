@@ -1,14 +1,17 @@
+use std::io::net::ip::IpAddr;
+
 use network::ipv4::{IPState, RoutingRow};
-use network::ipv4::packet::{IPAddr, IPPacket};
+//use network::ipv4::packet::{IpAddr, IPPacket};
+use network::ipv4::packet::IPPacket;
 
 //TODO: visibility?
-pub fn send_data(state: &IPState, vip: IPAddr, protocol: u8, data: &[u8]){
+pub fn send_data<'b>(state: &IPState, vip: IpAddr, protocol: u8, data: &'b [u8]){
     send(state, IPPacket::new(vip, protocol, data));
 }
 
 //TODO: visibility?
-pub fn send(state: &IPState, packet: Box<IPPacket>) -> () {
-    match state.routes.read().find(&packet.header.destination_address) {
+pub fn send<'b>(state: &IPState, packet: Box<IPPacket>) -> () {
+    match state.routes.read().find(&packet.get_destination_address()) {
         None => (), // drop, no route to destination
 
         // Send packet to next hop towards destination
@@ -19,7 +22,7 @@ pub fn send(state: &IPState, packet: Box<IPPacket>) -> () {
 
                 // Tell interface to send packet bytes
                 Some(&(_addr, interface)) => {
-                    (*interface).send(packet.to_bytes());
+                    (*interface).send(*packet.to_bytes());
                 }
             }
         }

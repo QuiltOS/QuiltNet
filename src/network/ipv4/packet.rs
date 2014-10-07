@@ -1,29 +1,37 @@
 use std::mem::transmute;
-
+use std::io::net::ip::{IpAddr,Ipv4Addr};
+/*
 #[deriving(Eq)]
 #[deriving(PartialEq)]
 #[deriving(Hash)]
-pub struct IPAddr(u8, u8, u8, u8);
+pub struct IpAddr(u8, u8, u8, u8);
+*/
 
 #[repr(packed)]
-pub struct IPPacket {
-    header: IPHeader,
-    data:   [u8] //TODO: work out lifetime stuff
+pub struct IPPacket<'a> {
+//    pub header: IPHeader,
+    pub data: Box<&'a[u8]>
 }
 
-impl IPPacket {
+impl<'a> IPPacket<'a> {
 
     /// Constructs a new packet by building new packet
     /// The packet is safe to cast to a `Box<[u8]>`
-    pub fn new(dest: IPAddr, protocol: u8, data: &[u8]) -> Box<IPPacket> {
-        
+    pub fn new<'a>(dest: IpAddr, protocol: u8, data: &'a [u8]) -> Box<IPPacket<'a>> {
+        //TODO: implement packing
+        // allocate buf of header + len(data) bytes
+        // write header, write data into buf
+        let buf : Box<Vec<u8>> = make_header(dest, protocol, data);
+        buf.append(data); // 5 32-bit words in header = 40 bytes
+        box IPPacket {
+            data: box buf.as_slice()
+        }
     }
 
     // TODO: implement Clone trait instead
     pub fn clone_box(&self) -> Box<IPPacket> {
-
+       box *self.clone() 
     }
-    
     
     /// Useful to assert that packet is correct
     /// e.g. `try!(verify_packet(&packet));`
@@ -37,17 +45,59 @@ impl IPPacket {
     ///  -> None if data forms invalid packet
     ///
     /// TODO: figure out lifetime stuff of bytes
-    pub fn from_bytes<'a> (buf : &'a [u8]) -> Option<&'a IPPacket> {
-        
+    pub fn from_bytes<'a> (buf : &'a [u8]) -> Option<Box<IPPacket>> {
+        //TODO: actually implement
+        None    
     }
 
     /// Cast the (owned) packet to a byte array
     /// TODO: figure out lifetime stuff of bytes
-    pub fn to_bytes(self: Box<IPPacket>) -> Vec<u8> {
-        let buf: Box<[u8]> = unsafe { transmute(self) };
+    pub fn to_bytes<'a>(&'a self) -> Box<&'a [u8]> {
+        self.data
+        //unsafe { transmute(self) }
+        /*
+         * let buf: Box<[u8]> = unsafe { transmute(self) };
         buf.to_vec() //TODO(jcericso) Make sure that doesn't copy
+        */
     }
+
+    /// TODO:
+    pub fn get_header_checksum(&self) -> uint {
+        0
+    }
+
+    /// TODO:
+    pub fn set_header_checksum(&self, checksum: u8) {
+        println!("Setting header checksum {}", checksum);
+    }
+
+    /// TODO:
+    pub fn get_time_to_live(&self) -> u8 {
+        0
+    }
+
+    /// TODO:
+    pub fn set_time_to_live(&self, ttl: u8){
+        println!("Setting TTL {}", ttl);
+    }
+
+    /// TODO:
+    pub fn get_protocol(&self) -> u8 {
+        0
+    }
+
+    /// TODO:
+    pub fn get_destination_address(&self) -> IpAddr {
+        Ipv4Addr(127, 0, 0, 0)
+    }
+
 }
+
+//TODO: actually write bytes into header
+fn make_header(dst: IpAddr, protocol: u8, data: &[u8]) -> Box<Vec<u8>> {
+    return box vec!()
+}
+
 
 #[repr(packed)]
 pub struct IPHeader {
@@ -61,11 +111,34 @@ pub struct IPHeader {
     pub time_to_live:          u8,                  // Time To Live
     pub protocol:              u8,                  // Protocol
     pub header_checksum:       u16,                 // Checksum
-    pub source_address:        IPAddr,              // Source Address
-    pub destination_address:   IPAddr,              // Destination Address
+    pub source_address:        IpAddr,              // Source Address
+    pub destination_address:   IpAddr,              // Destination Address
 
     //TODO: make IPOptions struct?
     // options: IPOptions // Options - variable length, padded
+}
+
+impl IPHeader {
+    pub fn new(destination: IpAddr, protocol: u8, data: Vec<u8>) -> IPHeader {
+        let header = IPHeader {
+            version_ihl: 0b0100_0101,                                              // Version = 4, IHL = 5 (since we omit the Options+Padding word)
+            type_of_service: make_type_of_service(Routine, LowDelay),              // NOTE: Choose TOS somewhat arbitrarily
+            total_length: 0,                                                       // TODO: calculate as sizeof(IPHeader) + sizeof(data)
+            identification: 0,                                                     // TODO: incremented counter in IPState
+            flags_fragment_offset: make_flags_fragment_offset(DontFragment, 0u16), // NOTE: default to DontFragment, 0 fragment offset
+            time_to_live: DEFAULT_TTL,
+            protocol: protocol,
+            header_checksum: 0,                                                    // placeholder for checksum
+            source_address: Ipv4Addr(0,0,0,0),                                       // TODO: state.get_src(destination)
+            destination_address: destination, 
+        };
+        header.add_checksum();
+        header
+    }
+
+    pub fn add_checksum(&self) {
+        //TODO: compute checksum
+    }
 }
 
 #[repr(u8)]
@@ -137,7 +210,7 @@ pub fn unmake_flags_fragment_offset(ffo: FlagsFragmentOffset) -> (IPFlags, u16) 
 }
 
 
-pub static WILDCARD_ADDR: IPAddr = IPAddr(0, 0, 0, 0);
+pub static WILDCARD_ADDR: IpAddr = Ipv4Addr(0, 0, 0, 0);
 
 // IP Parameters (from /usr/include/netinet/ip.h)
 pub static MAX_TTL:       u8     = 255;    // maximum time to live
