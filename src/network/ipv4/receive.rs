@@ -76,7 +76,7 @@ fn add_checksum(packet: &mut Ip) {
 // TODO: real network card may consolidate multiple packets per interrupt
 // TODO: lifetime for IPState probably needs fixing 
 // TODO: Make some Sender type
-pub type IPProtocolHandler = Box<|&: *const IPState, Ip |:Send -> ()>;
+pub type IPProtocolHandler = Box<Fn<(*const IPState, Ip), ()> + Send + 'static>;
 
 
 pub type ProtocolTable = Vec<Vec<IPProtocolHandler>>;
