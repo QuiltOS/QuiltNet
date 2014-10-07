@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io::IoResult;
 use std::sync::Arc;
 
-use packet::parser::Ip;
+use packet::ipv4::V as Ip;
 
 use data_link::{DLPacket, DLHandler};
 
@@ -16,7 +16,7 @@ use network::ipv4::IPState;
 pub fn receive(state: &IPState, packet: Ip) -> IoResult<()> {
     if is_packet_dst_local(state, &packet) {
         // local handling
-        let handlers = &state.protocol_handlers[packet.protocol() as uint];
+        let handlers = &state.protocol_handlers[packet.borrow().get_protocol() as uint];
         // If there are no handlers (vector is empty), the packet is just dropped
         // TODO: copy packet only if there are multiple handlers
         for handler in handlers.iter() {
@@ -47,8 +47,8 @@ fn forward(state: &IPState, mut packet: Ip) -> IoResult<()> {
 
 /// Determine whether packet is destined for this node
 fn is_packet_dst_local(state: &IPState, packet: &Ip) -> bool {
-    state.interfaces.contains_key(&packet.dest())
-}       
+    state.interfaces.contains_key(&packet.borrow().dest())
+}
 
 /// Fix packet headers in place
 ///
@@ -66,7 +66,7 @@ fn fix_headers(packet: &mut Ip) -> Result<(), ()> {
     Ok(())
 }
 
-/// Decrement packet's Time To Live field in place 
+/// Decrement packet's Time To Live field in place
 fn decrement_ttl(_packet: &mut Ip) {
     // TTL_DEC
     //packet.set_time_to_live(packet.get_time_to_live() - 1);
@@ -81,7 +81,7 @@ fn add_checksum(_packet: &mut Ip) {
 
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt
-// TODO: lifetime for IPState probably needs fixing 
+// TODO: lifetime for IPState probably needs fixing
 // TODO: Make some Sender type
 pub type IPProtocolHandler = Box<Fn<(*const IPState, Ip), ()> + Send + 'static>;
 
@@ -95,6 +95,6 @@ pub fn register_protocol(proto_table: &mut ProtocolTable, proto_number: u8, hand
 
 pub fn make_receive_callback(_state: Arc<IPState>) -> DLHandler {
     box |&: _packet: DLPacket| -> () {
-        
+
     }
 }

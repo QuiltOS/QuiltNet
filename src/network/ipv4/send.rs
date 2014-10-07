@@ -1,7 +1,7 @@
 use std::io::IoResult;
 use std::io::net::ip::IpAddr;
 
-use packet::parser::Ip;
+use packet::ipv4::V as Ip;
 
 use network::ipv4::{IPState, RoutingRow};
 //use network::ipv4::packet::{IpAddr, IPPacket};
@@ -14,7 +14,7 @@ pub fn send_data(_state: &IPState, _vip: IpAddr, _protocol: u8, data: &[u8]) {
 
 //TODO: visibility?
 pub fn send<'b>(state: &IPState, packet: Ip) -> IoResult<()> {
-    match state.routes.read().find(&packet.dest()) {
+    match state.routes.read().find(&packet.borrow().dest()) {
         None => (), // drop, no route to destination
 
         // Send packet to next hop towards destination
