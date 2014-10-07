@@ -83,7 +83,7 @@ pub type ProtocolTable = Vec<Vec<IPProtocolHandler>>;
 
 
 pub fn register_protocol(proto_table: &mut ProtocolTable, proto_number: u8, handler: IPProtocolHandler) {
-    ::std::ops::IndexMut::index_mut(*proto_table, proto_number as uint).push(handler);
+    (*proto_table).get_mut(proto_number as uint).push(handler);
 }
 
 pub fn make_receive_callback(_state: Arc<IPState>) -> DLHandler {
