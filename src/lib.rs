@@ -1,5 +1,8 @@
 #![feature(unboxed_closures)]
 
+// This warning is really unimportant and annoying
+#![allow(unused_imports)]
+
 #![cfg(test)]
 #![feature(globs)]
 

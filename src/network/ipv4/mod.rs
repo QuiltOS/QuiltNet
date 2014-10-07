@@ -1,4 +1,4 @@
-use std::collections::hashmap::{HashMap, HashSet};
+use std::collections::hashmap::HashMap;
 use std::io::net::ip::IpAddr;
 use std::mem::size_of;
 use std::sync::RWLock;
@@ -56,11 +56,7 @@ impl IPState {
 
     /// Returns DLInterface struct for the requested interface
     pub fn get_interface<'a> (&'a self, interface_ix: uint) -> Option<&'a (IpAddr, IpAddr, Box<DLInterface>)> {
-        if interface_ix < self.interface_vec.len() {
-            Some(self.interface_vec.get(interface_ix))
-        } else {
-            None
-        }
+        self.interface_vec.as_slice().get(interface_ix)
     }
 }
 

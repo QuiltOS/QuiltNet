@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::IoResult;
 use std::sync::Arc;
 
 use packet::parser::Ip;
@@ -12,7 +13,7 @@ use network::ipv4::IPState;
 /// Called upon receipt of an IP packet:
 /// If packet is destined for this node, deliver it to appropriate handlers
 /// If packet is destined elsewhere, fix packet headers and forward
-pub fn receive(state: &IPState, packet: Ip) {
+pub fn receive(state: &IPState, packet: Ip) -> IoResult<()> {
     if is_packet_dst_local(state, &packet) {
         // local handling
         let handlers = &state.protocol_handlers[packet.protocol() as uint];
@@ -26,15 +27,21 @@ pub fn receive(state: &IPState, packet: Ip) {
             (&**handler).call((state, packet.clone()));
         }
     } else {
-        forward(state, packet);
+        try!(forward(state, packet));
     }
+    Ok(())
 }
 
 /// Forwards a packet back into the network after rewriting its headers
 /// Result status is whether packet was able to be forwarded
-fn forward(state: &IPState, mut packet: Ip) -> Result<(), ()> {
-    try!(fix_headers(&mut packet));
-    send::send(state, packet);
+fn forward(state: &IPState, mut packet: Ip) -> IoResult<()> {
+    // map Error because Fix_headers does not return IoError
+    try!(fix_headers(&mut packet).map_err(|_| ::std::io::IoError {
+        kind:   ::std::io::InvalidInput,
+        desc:   "Packet had invalid headers",
+        detail: None,
+    }));
+    try!(send::send(state, packet));
     Ok(())
 }
 
@@ -60,14 +67,14 @@ fn fix_headers(packet: &mut Ip) -> Result<(), ()> {
 }
 
 /// Decrement packet's Time To Live field in place 
-fn decrement_ttl(packet: &mut Ip) {
+fn decrement_ttl(_packet: &mut Ip) {
     // TTL_DEC
     //packet.set_time_to_live(packet.get_time_to_live() - 1);
 }
 
 /// Recompute checksum and add to header in place
 /// TODO: actually compute IPv4 checksum
-fn add_checksum(packet: &mut Ip) {
+fn add_checksum(_packet: &mut Ip) {
     // TODO: STUB
     //packet.set_header_checksum(0);
 }
