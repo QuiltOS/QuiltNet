@@ -67,4 +67,8 @@ impl IPState {
         };
         Some(())
     }
+
+    pub fn register_protocol_handler(&mut self, proto_number: u8, handler: IPProtocolHandler) {
+        (self.protocol_handlers).get_mut(proto_number as uint).push(handler);
+    }
 }
