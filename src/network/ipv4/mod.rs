@@ -12,6 +12,8 @@ use data_link::DLInterface;
 use self::receive::{IPProtocolHandler, ProtocolTable};
 
 
+pub mod control;
+pub mod state;
 pub mod send;
 pub mod receive;
 
@@ -67,3 +69,13 @@ impl IPState {
 //         table.insert(local_vip, (nbr_vip, interface));
 //     }
 // }
+    ///TODO: need index on interfaces by int?
+    pub fn up(&self, interface : int){
+        
+    }
+
+    ///TODO: need index on interfaces by int?
+    pub fn down(&self, interface : int){
+
+    }
+} 

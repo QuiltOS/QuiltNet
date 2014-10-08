@@ -11,8 +11,5 @@ extern crate packet;
 
 pub mod interface;
 pub mod drivers;
-pub mod iface;
-
->>>>>>> Stashed changes
 pub mod data_link;
 pub mod network;

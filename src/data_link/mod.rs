@@ -1,9 +1,6 @@
-use std::io::IoResult;
-
-use interface::{Handler, Interface};
-
 pub mod udp_mock;
 
+<<<<<<< Updated upstream
 // TODO: use Box<[u8]> instead of Vec<u8>
 pub type DLPacket = Vec<u8>;
 
@@ -28,3 +25,5 @@ pub trait DLInterface: Interface {
     fn enable(&self);
     fn disable(&self);
 }
+=======
+>>>>>>> Stashed changes
