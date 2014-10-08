@@ -1,16 +1,3 @@
-<<<<<<< Updated upstream
-use std::io::IoResult;
-use std::io::net::ip::IpAddr;
-
-use packet::ipv4::V as Ip;
-
-use network::ipv4::{IPState, RoutingRow};
-//use network::ipv4::packet::{IpAddr, IPPacket};
-=======
-<<<<<<< Updated upstream
-use network::ipv4::{IPState, RoutingRow};
-use network::ipv4::packet::{IPAddr, IPPacket};
-=======
 extern crate packet;
 
 use std::io::IoResult;
@@ -20,8 +7,6 @@ use self::packet::ipv4::V as Ip;
 
 use network::ipv4::state::{IPState, RoutingRow};
 //use network::ipv4::packet::{IpAddr, IPPacket};
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
 //TODO: visibility?
 pub fn send_data(_state: &IPState, _vip: IpAddr, _protocol: u8, data: &[u8]) {

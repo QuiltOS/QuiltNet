@@ -1,15 +1,6 @@
 use network::ipv4::state::IPState;
 
 /// Enables the given interface
-pub fn _interface_up(state: IPState, interface_ix: uint){
-    state.get_interface(interface_ix).enable();
-}
-
-/// Disables the given interface
-pub fn _interface_down(state: IPState, interface_ix: uint){
-    state.get_interface(interface_ix).disable();
-
-    /// Enables the given interface
 pub fn up(state: &IPState, interface_ix: uint){
     match state.get_interface(interface_ix) {
         Some(&(_,_, ref interface)) => interface.enable(),

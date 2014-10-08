@@ -4,10 +4,10 @@ use std::sync::Arc;
 
 use packet::ipv4::V as Ip;
 
-use data_link::{DLPacket, DLHandler};
+use interface::{DLPacket, DLHandler};
 
 use network::ipv4::send;
-use network::ipv4::IPState;
+use network::ipv4::state::IPState;
 
 
 /// Called upon receipt of an IP packet:
