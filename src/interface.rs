@@ -17,7 +17,7 @@ pub trait Interface {
 // might not work, see rust-lang #17779
 
 pub struct LockedClosure<F> {
-    closure: Mutex<F>
+    pub closure: Mutex<F>
 }
 
 impl<F, Args, Result> Fn<Args, Result> for LockedClosure<F>
@@ -30,7 +30,7 @@ impl<F, Args, Result> Fn<Args, Result> for LockedClosure<F>
 }
 
 pub struct SenderClosure<T> {
-    sender: Sender<T>
+    pub sender: Sender<T>
 }
 
 impl<T> Fn<T, ()> for SenderClosure<T>

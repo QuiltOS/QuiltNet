@@ -5,8 +5,9 @@ use std::io::net::udp::UdpSocket;
 use std::sync::{Arc, Barrier};
 use std::string::String;
 
+use interface::SenderClosure;
 
-use data_link::{DLHandler, DLInterface};
+use data_link::{DLPacket, DLHandler, DLInterface};
 
 use super::*;
 
@@ -16,9 +17,42 @@ use super::*;
 //}
 
 #[test]
-fn echo() {
-    println!("hello tester!");
+fn talk_to_self_channel() {
+    use std::comm;
+
+    fn inner() -> IoResult<()> {
+        let barrier = Arc::new(Barrier::new(3));
+
+        let (l1, a1) = try!(mk_listener());
+        let (l2, a2) = try!(mk_listener());
+
+        let (tx1, rx1) = channel::<(DLPacket,)>();
+        let (tx2, rx2) = channel::<(DLPacket,)>();
+
+        static M1: &'static str = "Hey Josh!";
+        static M2: &'static str = "Hey Cody!";
+
+        let interface1 = UdpMockDLInterface::new(&l1, a2, box SenderClosure { sender: tx1 });
+        let interface2 = UdpMockDLInterface::new(&l2, a1, box SenderClosure { sender: tx2 });
+
+        try!(interface1.send(String::from_str(M2).into_bytes()));
+        try!(interface2.send(String::from_str(M1).into_bytes()));
+
+        let (packet_1,) = rx1.recv();
+        let (packet_2,) = rx2.recv();
+
+        assert_eq!(packet_1.as_slice(), M1.as_bytes());
+        assert_eq!(packet_2.as_slice(), M2.as_bytes());
+
+        barrier.wait();
+
+        Ok(())
+    }
+
+    inner().ok().unwrap();
+
 }
+
 
 fn mk_listener() -> IoResult<(Listener, SocketAddr)> {
     // port 0 is dynamically assign
@@ -30,7 +64,7 @@ fn mk_listener() -> IoResult<(Listener, SocketAddr)> {
 }
 
 #[test]
-fn talk_to_self() {
+fn talk_to_self_callback() {
     fn inner() -> IoResult<()> {
         let barrier = Arc::new(Barrier::new(3));
 
@@ -40,25 +74,12 @@ fn talk_to_self() {
         let mk_callback = | msg: String | -> DLHandler {
             let barrier = barrier.clone();
             let msg     = msg.into_bytes();
-            box |&: packet: Vec<u8> | {
+            box |&: packet: Vec<u8> | -> () {
                 println!("got packet: {}", packet);
                 assert_eq!(packet, msg);
                 barrier.wait();
             }
         };
-
-        // avoid ICE
-        struct TempClosure {
-            expect:  u8,
-            barrier: Arc<Barrier>,
-        }
-
-        impl Fn<(Vec<u8>,), ()> for TempClosure {
-            #[rust_call_abi_hack]
-            fn call(&self, packet: (Vec<u8>,)) {
-
-            }
-        }
 
         static M1: &'static str = "Hey Josh!";
         static M2: &'static str = "Hey Cody!";
@@ -66,7 +87,7 @@ fn talk_to_self() {
         let interface1 = UdpMockDLInterface::new(&l1, a2, mk_callback(String::from_str(M1)));
         let interface2 = UdpMockDLInterface::new(&l2, a1, mk_callback(String::from_str(M2)));
 
-        try!(interface1.send(String::from_str(M1).into_bytes()));
+        try!(interface1.send(String::from_str(M2).into_bytes()));
         try!(interface2.send(String::from_str(M1).into_bytes()));
 
         barrier.wait();

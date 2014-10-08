@@ -3,9 +3,6 @@ use std::io::net::ip::IpAddr;
 use std::mem::size_of;
 use std::sync::RWLock;
 
-
-use packet::parser;
-
 use data_link::{DLInterface, DLHandler};
 
 use super::receive::{IPProtocolHandler, ProtocolTable};
@@ -54,21 +51,20 @@ impl IPState {
         self.interface_vec.as_slice().get(interface_ix)
     }
 
-
-// //// Fill interface table
-// fn make_interface_table(interface_vec: Vec<(IpAddr, IpAddr, Box<DLInterface>)>,
-//                         table: InterfaceTable) {
-//     for &(local_vip, nbr_vip, ref interface) in interface_vec.iter() {
-//         table.insert(local_vip, (nbr_vip, interface));
-//     }
-// }
-    ///TODO: need index on interfaces by int?
-    pub fn up(&self, interface : int){
-        
+    pub fn up(&self, interface: uint) -> Option<()> {
+        // no UFCS to make this concise
+        match self.get_interface(interface) {
+            None            => return None,
+            Some(&(_, _, ref i)) => (*i).enable()
+        };
+        Some(())
     }
 
-    ///TODO: need index on interfaces by int?
-    pub fn down(&self, interface : int){
-
+    pub fn down(&self, interface: uint) -> Option<()> {
+        match self.get_interface(interface) {
+            None            => return None,
+            Some(&(_, _, ref i)) => (*i).disable()
+        };
+        Some(())
     }
-} 
+}
