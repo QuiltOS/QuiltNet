@@ -3,6 +3,7 @@ use std::io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Port};
 use std::io::net::udp::UdpSocket;
 
 use std::sync::{Arc, Barrier};
+use std::str::from_utf8;
 use std::string::String;
 
 use interface::SenderClosure;
@@ -63,6 +64,15 @@ fn talk_to_self_channel_parallel() {
     talk_to_self_channel_helper(4);
 }
 
+fn mk_callback(barrier: Arc<Barrier>, msg: &str) -> DLHandler {
+    let msg = String::from_str(msg).into_bytes();
+    box |&: packet: Vec<u8> | -> () {
+        println!("got packet: {}", from_utf8(packet.as_slice()));
+        println!("matching against: {}", from_utf8(msg.as_slice()));
+        assert_eq!(packet, msg);
+        barrier.wait();
+    }
+}
 
 fn talk_to_self_callback_helper(num_threads: uint) {
     fn inner(num_threads: uint) -> IoResult<()> {
@@ -71,21 +81,11 @@ fn talk_to_self_callback_helper(num_threads: uint) {
         let (l1, a1) = try!(mk_listener(num_threads));
         let (l2, a2) = try!(mk_listener(num_threads));
 
-        let mk_callback = | msg: String | -> DLHandler {
-            let barrier = barrier.clone();
-            let msg     = msg.into_bytes();
-            box |&: packet: Vec<u8> | -> () {
-                println!("got packet: {}", packet);
-                assert_eq!(packet, msg);
-                barrier.wait();
-            }
-        };
-
         static M1: &'static str = "Hey Josh!";
         static M2: &'static str = "Hey Cody!";
 
-        let interface1 = UdpMockDLInterface::new(&l1, a2, mk_callback(String::from_str(M1)));
-        let interface2 = UdpMockDLInterface::new(&l2, a1, mk_callback(String::from_str(M2)));
+        let interface1 = UdpMockDLInterface::new(&l1, a2, mk_callback(barrier.clone(), M1));
+        let interface2 = UdpMockDLInterface::new(&l2, a1, mk_callback(barrier.clone(), M2));
 
         try!(interface1.send(String::from_str(M2).into_bytes()));
         try!(interface2.send(String::from_str(M1).into_bytes()));
