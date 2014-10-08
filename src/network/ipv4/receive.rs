@@ -88,11 +88,6 @@ pub type IPProtocolHandler = Box<Fn<(*const IPState, Ip), ()> + Send + 'static>;
 
 pub type ProtocolTable = Vec<Vec<IPProtocolHandler>>;
 
-
-pub fn register_protocol(proto_table: &mut ProtocolTable, proto_number: u8, handler: IPProtocolHandler) {
-    (*proto_table).get_mut(proto_number as uint).push(handler);
-}
-
 pub fn make_receive_callback(_state: Arc<IPState>) -> DLHandler {
     box |&: _packet: DLPacket| -> () {
 

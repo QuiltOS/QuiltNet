@@ -63,12 +63,17 @@ impl IPState {
 //     }
 // }
     ///TODO: need index on interfaces by int?
-    pub fn up(&self, interface : int){
+    pub fn up(&self, _interface : int){
         
     }
 
     ///TODO: need index on interfaces by int?
-    pub fn down(&self, interface : int){
+    pub fn down(&self, _interface : int){
 
     }
+
+    pub fn register_protocol_handler(&mut self, proto_number: u8, handler: IPProtocolHandler) {
+        (self.protocol_handlers).get_mut(proto_number as uint).push(handler);
+    }
+
 } 

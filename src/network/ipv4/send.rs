@@ -9,9 +9,11 @@ use network::ipv4::state::{IPState, RoutingRow};
 //use network::ipv4::packet::{IpAddr, IPPacket};
 
 //TODO: visibility?
-pub fn send_data(_state: &IPState, _vip: IpAddr, _protocol: u8, data: &[u8]) {
+pub fn send_data(_state: &IPState, vip: IpAddr, protocol: u8, data: &[u8]) {
     //TODO: make from for header in newly allocated vec, set fields
+    println!("send:: sending {} {} {}", vip, protocol, data);
     let _p = Ip::new(data.to_vec());
+    //send(state, p);
 }
 
 //TODO: visibility?
@@ -21,6 +23,7 @@ pub fn send<'b>(state: &IPState, packet: Ip) -> IoResult<()> {
 
         // Send packet to next hop towards destination
         // TODO: include loopback address in routing table
+        // TODO: include broadcast interface w/ overloaded send fn
         Some(&RoutingRow { cost: _cost, next_hop: next_hop }) => {
             match state.interfaces.find(&next_hop) {
                 None => (), // drop, next hop isn't in our interface map
