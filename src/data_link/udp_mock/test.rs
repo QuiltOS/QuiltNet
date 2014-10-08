@@ -11,22 +11,21 @@ use data_link::{DLPacket, DLHandler, DLInterface};
 
 use super::*;
 
-fn mk_listener() -> IoResult<(Listener, SocketAddr)> {
+fn mk_listener(num_threads: uint) -> IoResult<(Listener, SocketAddr)> {
     // port 0 is dynamically assign
-    let mut listener = try!(Listener::new(0));
+    let mut listener = try!(Listener::new(0, num_threads));
     let mut addr     = try!(listener.socket.socket_name());
     addr.ip = Ipv4Addr(127, 0, 0, 1);
     println!("made listener with addr: {}", addr);
     Ok((listener, addr))
 }
 
-#[test]
-fn talk_to_self_channel() {
+fn talk_to_self_channel_helper(num_threads: uint) {
     use std::comm;
 
-    fn inner() -> IoResult<()> {
-        let (l1, a1) = try!(mk_listener());
-        let (l2, a2) = try!(mk_listener());
+    fn inner(num_threads: uint) -> IoResult<()> {
+        let (l1, a1) = try!(mk_listener(num_threads));
+        let (l2, a2) = try!(mk_listener(num_threads));
 
         let (tx1, rx1) = channel::<(DLPacket,)>();
         let (tx2, rx2) = channel::<(DLPacket,)>();
@@ -51,17 +50,26 @@ fn talk_to_self_channel() {
         Ok(())
     }
 
-    inner().ok().unwrap();
+    inner(num_threads).unwrap();
 
 }
 
-//#[test]
-fn talk_to_self_callback() {
-    fn inner() -> IoResult<()> {
+#[test]
+fn talk_to_self_channel() {
+    talk_to_self_channel_helper(1);
+}
+#[test]
+fn talk_to_self_channel_parallel() {
+    talk_to_self_channel_helper(4);
+}
+
+
+fn talk_to_self_callback_helper(num_threads: uint) {
+    fn inner(num_threads: uint) -> IoResult<()> {
         let barrier = Arc::new(Barrier::new(3));
 
-        let (l1, a1) = try!(mk_listener());
-        let (l2, a2) = try!(mk_listener());
+        let (l1, a1) = try!(mk_listener(num_threads));
+        let (l2, a2) = try!(mk_listener(num_threads));
 
         let mk_callback = | msg: String | -> DLHandler {
             let barrier = barrier.clone();
@@ -87,6 +95,16 @@ fn talk_to_self_callback() {
         Ok(())
     }
 
-    inner().ok().unwrap();
+    inner(num_threads).unwrap();
 
+}
+#[ignore]
+#[test]
+fn talk_to_self_callback() {
+    talk_to_self_callback_helper(1);
+}
+#[ignore]
+#[test]
+fn talk_to_self_callback_parallel() {
+    talk_to_self_callback_helper(4);
 }

@@ -31,17 +31,21 @@ pub struct Listener {
 
 impl Listener {
 
-    pub fn new(listen_port: net::ip::Port) -> IoResult<Listener>
+    pub fn new(listen_port: net::ip::Port, num_threads: uint) -> IoResult<Listener>
     {
+
+        assert!(num_threads > 0);
+
         let socket = try!(UdpSocket::bind(
             SocketAddr { ip:  Ipv4Addr(0, 0, 0, 0), port: listen_port }));
 
         let handlers: SharedHandlerMap = Arc::new(RWLock::new(HashMap::new()));
 
-        spawn({
+
+        for _ in range(0, num_threads) {
             let mut socket   = socket.clone();
             let     handlers = handlers.clone();
-            proc() {
+            spawn(proc() {
                 // TODO: shouldn't need to initialize this
                 let mut buf: [u8, ..RECV_BUF_SIZE] = [0, ..RECV_BUF_SIZE];
                 loop {
@@ -65,8 +69,8 @@ impl Listener {
                     };
                     // )
                 }
-            }
-        });
+            });
+        }
 
         Ok(Listener {
             socket:   socket,
