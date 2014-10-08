@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use packet::ipv4::V as Ip;
 
-use interface::{DLPacket, DLHandler};
+use data_link::{DLPacket, DLHandler};
 
 use network::ipv4::send;
 use network::ipv4::state::IPState;

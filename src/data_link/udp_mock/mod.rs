@@ -10,7 +10,9 @@ use std::sync::RWLock;
 
 use std::task::spawn;
 
-use interface::{Interface, DLPacket, DLHandler, DLInterface};
+use interface::Interface;
+
+use data_link::{DLPacket, DLHandler, DLInterface};
 
 #[cfg(test)]
 mod test;

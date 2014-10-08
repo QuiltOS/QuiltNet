@@ -6,8 +6,7 @@ use std::sync::RWLock;
 
 use packet::parser;
 
-use interface::DLInterface;
-//use data_link::{DLInterface, DLHandler};
+use data_link::{DLInterface, DLHandler};
 
 use super::receive::{IPProtocolHandler, ProtocolTable};
 

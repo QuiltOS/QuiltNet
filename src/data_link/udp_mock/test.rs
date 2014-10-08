@@ -1,10 +1,12 @@
 use std::io::IoResult;
-use std::io::net::ip::{SocketAddr, Ipv4Addr, Port};
+use std::io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Port};
+use std::io::net::udp::UdpSocket;
 
 use std::sync::{Arc, Barrier};
+use std::string::String;
 
 
-use data_link::DLInterface;
+use data_link::{DLHandler, DLInterface};
 
 use super::*;
 
@@ -18,27 +20,32 @@ fn echo() {
     println!("hello tester!");
 }
 
+fn mk_listener() -> IoResult<(Listener, SocketAddr)> {
+    // port 0 is dynamically assign
+    let mut listener = try!(Listener::new(0));
+    let mut addr     = try!(listener.socket.socket_name());
+    addr.ip = Ipv4Addr(127, 0, 0, 1);
+    println!("made listern with addr: {}", addr);
+    Ok((listener, addr))
+}
+
 #[test]
 fn talk_to_self() {
     fn inner() -> IoResult<()> {
         let barrier = Arc::new(Barrier::new(3));
 
-        // port 0 is dynamically assign
-        let mut listener1 = try!(Listener::new(0));
-        let addr1         = {
-            let mut addr = try!(listener1.socket.socket_name());
-            addr.ip = Ipv4Addr(127, 0, 0, 1);
-            addr
-        };
-        println!("addr1: {}", addr1);
+        let (l1, a1) = try!(mk_listener());
+        let (l2, a2) = try!(mk_listener());
 
-        let mut listener2 = try!(Listener::new(0));
-        let addr2         = {
-            let mut addr = try!(listener1.socket.socket_name());
-            addr.ip = Ipv4Addr(127, 0, 0, 1);
-            addr
+        let mk_callback = | msg: String | -> DLHandler {
+            let barrier = barrier.clone();
+            let msg     = msg.into_bytes();
+            box |&: packet: Vec<u8> | {
+                println!("got packet: {}", packet);
+                assert_eq!(packet, msg);
+                barrier.wait();
+            }
         };
-        println!("addr2: {}", addr2);
 
         // avoid ICE
         struct TempClosure {
@@ -49,23 +56,18 @@ fn talk_to_self() {
         impl Fn<(Vec<u8>,), ()> for TempClosure {
             #[rust_call_abi_hack]
             fn call(&self, packet: (Vec<u8>,)) {
-                match packet {
-                    (packet,) => {
-                        println!("got packet: {}", packet);
-                        assert_eq!(packet[0], self.expect);
-                        self.barrier.wait();
-                    }
-                }
+
             }
         }
 
-        let mut interface1 = UdpMockDLInterface::new(
-            &listener1, addr2, box TempClosure{ expect: 1, barrier: barrier.clone() });
-        let mut interface2 = UdpMockDLInterface::new(
-            &listener2, addr1, box TempClosure{ expect: 0, barrier: barrier.clone() });
+        static M1: &'static str = "Hey Josh!";
+        static M2: &'static str = "Hey Cody!";
 
-        try!(interface1.send(vec!(0)));
-        try!(interface2.send(vec!(1)));
+        let interface1 = UdpMockDLInterface::new(&l1, a2, mk_callback(String::from_str(M1)));
+        let interface2 = UdpMockDLInterface::new(&l2, a1, mk_callback(String::from_str(M2)));
+
+        try!(interface1.send(String::from_str(M1).into_bytes()));
+        try!(interface2.send(String::from_str(M1).into_bytes()));
 
         barrier.wait();
 
