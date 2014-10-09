@@ -9,15 +9,16 @@ use network::ipv4::state::{IPState, RoutingRow};
 //use network::ipv4::packet::{IpAddr, IPPacket};
 
 //TODO: visibility?
-pub fn send_data(_state: &IPState, vip: IpAddr, protocol: u8, data: &[u8]) {
+pub fn send_data(state: &IPState, vip: IpAddr, protocol: u8, data: &[u8]) -> IoResult<()> {
     //TODO: make from for header in newly allocated vec, set fields
     println!("send:: sending {} {} {}", vip, protocol, data);
-    let _p = Ip::new(data.to_vec());
-    //send(state, p);
+    let p = Ip::new(data.to_vec());
+    try!(send(state, p));
+    Ok(())
 }
 
 //TODO: visibility?
-pub fn send<'b>(state: &IPState, packet: Ip) -> IoResult<()> {
+pub fn send(state: &IPState, packet: Ip) -> IoResult<()> {
     match state.routes.read().find(&packet.borrow().dest()) {
         None => (), // drop, no route to destination
 
@@ -37,4 +38,11 @@ pub fn send<'b>(state: &IPState, packet: Ip) -> IoResult<()> {
         }
     }
     Ok(())
+}
+
+/// Broadcast data to all known nodes
+pub fn broadcast(state: &IPState, protocol: u8, data: Vec<u8>) {
+    for dst in state.routes.read().keys() {
+        send_data(state, *dst, protocol, data.as_slice());
+    }
 }
