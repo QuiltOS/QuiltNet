@@ -31,13 +31,12 @@ pub struct Listener {
 
 impl Listener {
 
-    pub fn new(listen_port: net::ip::Port, num_threads: uint) -> IoResult<Listener>
+    pub fn new(listen_addr: SocketAddr, num_threads: uint) -> IoResult<Listener>
     {
 
         assert!(num_threads > 0);
 
-        let socket = try!(UdpSocket::bind(
-            SocketAddr { ip:  Ipv4Addr(0, 0, 0, 0), port: listen_port }));
+        let socket = try!(UdpSocket::bind(listen_addr));
 
         let handlers: SharedHandlerMap = Arc::new(RWLock::new(HashMap::new()));
 
