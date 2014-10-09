@@ -81,8 +81,8 @@ fn add_checksum(_packet: &mut Ip) {
     //packet.set_header_checksum(0);
 }
 
-pub fn make_receive_callback(_state: Arc<IPState>) -> DLHandler {
-    box |&: _packet: DLPacket| -> () {
-
+pub fn make_receive_callback(state: Arc<IPState>) -> DLHandler {
+    box |&: packet: DLPacket| -> () {
+        receive(&*state, Ip::new(packet));
     }
 }
