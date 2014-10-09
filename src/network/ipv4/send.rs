@@ -33,7 +33,7 @@ pub fn send(state: &IPState, packet: Ip) -> IoResult<()> {
                 // Tell interface to send packet bytes
                 Some(index) => {
                     let (_, _, ref interface) = state.interface_vec[*index];
-                    try!(interface.send(packet.as_vec()));
+                    try!(interface.write().send(packet.as_vec()));
                 }
             }
         }

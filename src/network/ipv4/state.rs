@@ -2,11 +2,13 @@ use std::collections::hashmap::HashMap;
 use std::io::net::ip::IpAddr;
 use std::iter::FromIterator;
 use std::mem::size_of;
-use std::sync::RWLock;
+use std::sync::{Arc, RWLock};
+
+use interface::Handler;
+
+use packet::ipv4::V as Ip;
 
 use data_link::{DLInterface, DLHandler};
-
-use super::receive::{IPProtocolHandler, ProtocolTable};
 
 pub struct RoutingRow {
     pub cost:      u8,          // How many hops
@@ -23,7 +25,16 @@ pub type RoutingTable = HashMap<IpAddr, RoutingRow>;
 //pub type InterfaceTable = HashMap<IpAddr, (IpAddr, Box<DLInterface+'static>)>;
 pub type InterfaceTable = HashMap<IpAddr, uint>;
 
-pub type InterfaceRow = (IpAddr, IpAddr, Box<DLInterface + 'static>);
+pub type InterfaceRow = (IpAddr, IpAddr, RWLock<Box<DLInterface + Send + Sync + 'static>>);
+
+// TODO: use Box<[u8]> instead of Vec<u8>
+// TODO: real network card may consolidate multiple packets per interrupt
+// TODO: lifetime for IPState probably needs fixing
+// TODO: Make some Sender type
+pub type IPProtocolHandler = //Handler<Ip>;
+    Box<Fn<(Ip,), ()> + Send + Sync + 'static>;
+
+pub type ProtocolTable = Vec<Vec<IPProtocolHandler>>;
 
 pub struct IPState {
     pub routes:            RWLock<RoutingTable>,
@@ -31,13 +42,13 @@ pub struct IPState {
     pub interface_vec:     Vec<InterfaceRow>,
     // JOHN: local_vips is the same as .keys() on interfaces
     // quicker to just index vector
-    pub protocol_handlers: ProtocolTable,
+    pub protocol_handlers: RWLock<ProtocolTable>,
     // Identification counter? increased with each packet sent out,
     // used in Identification header for fragmentation purposes
 }
 
 impl IPState {
-    pub fn new(interfaces_vec: Vec<InterfaceRow>) -> IPState
+    pub fn new(interfaces_vec: Vec<InterfaceRow>) -> Arc<IPState>
     {
         use std::iter::count;
         let interfaces = {
@@ -47,23 +58,17 @@ impl IPState {
             FromIterator::from_iter(interfaces_iter)
         };
 
-        IPState {
+        Arc::new(IPState {
             routes:            RWLock::new(HashMap::new()),
             interfaces:        interfaces,
             interface_vec:     interfaces_vec,
-            protocol_handlers: Vec::with_capacity(size_of::<u8>()),
-        }
-
+            protocol_handlers: RWLock::new(Vec::with_capacity(size_of::<u8>())),
+        })
     }
 
     /// Returns DLInterface struct for the requested interface
     pub fn get_interface<'a> (&'a self, interface_ix: uint) -> Option<&'a InterfaceRow> {
         self.interface_vec.as_slice().get(interface_ix)
     }
-
-    /// Returns DLInterface struct for the requested interface
-    pub fn get_interface_mut<'a> (&'a mut self, interface_ix: uint) -> Option<&'a mut InterfaceRow> {
-        self.interface_vec.as_mut_slice().get_mut(interface_ix)
-    }
-
 }
+ 

@@ -1,6 +1,3 @@
-//use core::ops::Fn;
-//use core::ops::FnMut;
-
 use std::comm::Sender;
 use std::sync::Mutex;
 use std::io::IoResult;
