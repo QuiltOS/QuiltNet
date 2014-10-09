@@ -64,17 +64,18 @@ fn talk_to_self_channel_parallel() {
     talk_to_self_channel_helper(4);
 }
 
-fn mk_callback(barrier: Arc<Barrier>, msg: &str) -> DLHandler {
-    let msg = String::from_str(msg).into_bytes();
-    box |&: packet: Vec<u8> | -> () {
-        println!("got packet: {}", from_utf8(packet.as_slice()));
-        println!("matching against: {}", from_utf8(msg.as_slice()));
-        assert_eq!(packet, msg);
-        barrier.wait();
-    }
-}
-
 fn talk_to_self_callback_helper(num_threads: uint) {
+
+    fn mk_callback(barrier: Arc<Barrier>, msg: &str) -> DLHandler {
+        let msg = String::from_str(msg).into_bytes();
+        box |&: packet: Vec<u8> | -> () {
+            println!("got packet: {}", from_utf8(packet.as_slice()));
+            println!("matching against: {}", from_utf8(msg.as_slice()));
+            assert_eq!(packet, msg);
+            barrier.wait();
+        }
+    }
+
     fn inner(num_threads: uint) -> IoResult<()> {
         let barrier = Arc::new(Barrier::new(3));
 
@@ -107,4 +108,25 @@ fn talk_to_self_callback() {
 #[test]
 fn talk_to_self_callback_parallel() {
     talk_to_self_callback_helper(4);
+}
+
+#[test]
+fn disable_then_cant_send() {
+
+    fn inner() -> IoResult<()> {
+
+        let nop = box |&: _packet: Vec<u8>| { };
+
+        let (l, a) = try!(mk_listener(1));
+        let mut i = UdpMockDLInterface::new(&l, a, nop);
+
+        i.disable();
+
+        assert_eq!(i.send(Vec::new()).unwrap_err(),
+                   // TODO: Report bug: shouldn't need prefix with `use super::*;` above
+                   super::disabled_interface_error);
+
+        Ok(())
+    }
+    inner().unwrap();
 }

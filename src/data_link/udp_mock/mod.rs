@@ -118,17 +118,19 @@ impl Interface for UdpMockDLInterface {
 
 }
 
+static disabled_interface_error: IoError = IoError {
+    kind: IoUnavailable,
+    desc: "This link-layer interface (a UdpMockDLInterface) has been disabled",
+    detail: None,
+};
+
 impl DLInterface for UdpMockDLInterface {
 
 
     fn send(&self, packet: DLPacket) -> IoResult<()> {
 
         if self.cached_status == false {
-            return Err(IoError {
-                kind: IoUnavailable,
-                desc: "This link-layer interface (a UdpMockDLInterface) has been disabled",
-                detail: None,
-            })
+            return Err(disabled_interface_error.clone())
         }
 
         let mut socket = self.listener.socket.clone();
