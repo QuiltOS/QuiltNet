@@ -55,10 +55,7 @@ impl IPState {
 
     /// Returns DLInterface struct for the requested interface
     pub fn get_interface_mut<'a> (&'a mut self, interface_ix: uint) -> Option<&'a mut InterfaceRow> {
-        let vec: &'a mut Vec<InterfaceRow> = &mut self.interface_vec;
-        let slice: &'a mut [InterfaceRow] = vec.as_mut_slice();
-        let ind_ref: Option<&'a mut InterfaceRow> = slice.get_mut(interface_ix);
-        ind_ref
+        self.interface_vec.as_mut_slice().get_mut(interface_ix)
     }
 
 }
