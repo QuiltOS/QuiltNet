@@ -1,4 +1,4 @@
-use std::collections::hashmap::HashMap;
+use std::collections::hashmap::{HashMap, Occupied, Vacant};
 
 use std::io::IoResult;
 use std::io::net;
@@ -20,8 +20,7 @@ mod test;
 
 static RECV_BUF_SIZE: uint = 64 * 1024;
 
-// Closure has mutable environment, therefore need to lock each one
-type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr, DLHandler>>>;
+type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr, ( bool, DLHandler)>>>;
 
 /// The backing listening socket / read loop for a bunch of UDP-backed mock link interfaces
 pub struct Listener {
@@ -61,9 +60,11 @@ impl Listener {
                         },
                         Ok((len, src_addr)) => match handlers.read().deref().find(&src_addr) {
                             None          => continue, // drop that packet!
-                            Some(on_recv) => {
-                                let args = buf[..len].to_vec();
-                                (**on_recv).call((args,));
+                            Some(&(is_enabled, ref on_recv)) => {
+                                if is_enabled {
+                                    let args = buf[..len].to_vec();
+                                    (**on_recv).call((args,));
+                                }
                             },
                         }
                     };
@@ -94,6 +95,7 @@ impl Clone for Listener {
 pub struct UdpMockDLInterface {
     listener:    Listener,
     remote_addr: SocketAddr,
+    cached_status: bool,
 }
 
 
@@ -103,11 +105,12 @@ impl UdpMockDLInterface {
                remote_addr: SocketAddr,
                on_recv:     DLHandler) -> UdpMockDLInterface
     {
-        listener.handlers.write().deref_mut().insert(remote_addr, on_recv);
+        listener.handlers.write().deref_mut().insert(remote_addr, (true, on_recv));
 
         UdpMockDLInterface {
-            listener:    listener.clone(),
-            remote_addr: remote_addr,
+            listener:      listener.clone(),
+            remote_addr:   remote_addr,
+            cached_status: true,
         }
     }
 }
@@ -125,20 +128,32 @@ impl DLInterface for UdpMockDLInterface {
     }
 
     fn update_recv_handler(&self, on_recv: DLHandler) {
-        self.listener
-            .handlers
-            .write()
-            .deref_mut()
-            .insert(self.remote_addr,
-                    on_recv);
+        self.listener.handlers.write().deref_mut()
+            .insert(self.remote_addr, (true, on_recv));
     }
 
-    fn enable(&self) {
-
+    fn enable(&mut self) {
+        let mut map = self.listener.handlers.write();
+        self.cached_status = true;
+        match map.deref_mut().entry(self.remote_addr) {
+            Vacant(entry) => fail!("udp mock interface should already have entry in table"),
+            Occupied(mut entry) => {
+                let &(ref mut status, _) = entry.get_mut();
+                *status = true;
+            },
+        }
     }
 
-    fn disable(&self) {
-
+    fn disable(&mut self) {
+        let mut map = self.listener.handlers.write();
+        self.cached_status = false;
+        match map.deref_mut().entry(self.remote_addr) {
+            Vacant(entry) => fail!("udp mock interface should already have entry in table"),
+            Occupied(mut entry) => {
+                let &(ref mut status, _) = entry.get_mut();
+                *status = false;
+            },
+        }
     }
 
 }

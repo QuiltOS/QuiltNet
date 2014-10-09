@@ -21,10 +21,12 @@ pub type RoutingTable = HashMap<IpAddr, RoutingRow>;
 //pub type InterfaceTable = HashMap<IpAddr, (IpAddr, Box<DLInterface+'static>)>;
 pub type InterfaceTable = HashMap<IpAddr, uint>;
 
+pub type InterfaceRow = (IpAddr, IpAddr, Box<DLInterface + 'static>);
+
 pub struct IPState {
     pub routes:            RWLock<RoutingTable>,
     pub interfaces:        InterfaceTable,
-    pub interface_vec:     Vec<(IpAddr, IpAddr, Box<DLInterface+'static>)>,
+    pub interface_vec:     Vec<InterfaceRow>,
     // JOHN: local_vips is the same as .keys() on interfaces
     // quicker to just index vector
     pub protocol_handlers: ProtocolTable,
@@ -47,28 +49,17 @@ impl IPState {
     }
 
     /// Returns DLInterface struct for the requested interface
-    pub fn get_interface<'a> (&'a self, interface_ix: uint) -> Option<&'a (IpAddr, IpAddr, Box<DLInterface>)> {
+    pub fn get_interface<'a> (&'a self, interface_ix: uint) -> Option<&'a InterfaceRow> {
         self.interface_vec.as_slice().get(interface_ix)
     }
 
-    pub fn up(&self, interface: uint) -> Option<()> {
-        // no UFCS to make this concise
-        match self.get_interface(interface) {
-            None            => return None,
-            Some(&(_, _, ref i)) => (*i).enable()
-        };
-        Some(())
+    /// Returns DLInterface struct for the requested interface
+    pub fn get_interface_mut<'a> (&'a mut self, interface_ix: uint) -> Option<&'a mut InterfaceRow> {
+        let vec: &'a mut Vec<InterfaceRow> = &mut self.interface_vec;
+        let slice: &'a mut [InterfaceRow] = vec.as_mut_slice();
+        let ind_ref: Option<&'a mut InterfaceRow> = slice.get_mut(interface_ix);
+        ind_ref
     }
 
-    pub fn down(&self, interface: uint) -> Option<()> {
-        match self.get_interface(interface) {
-            None            => return None,
-            Some(&(_, _, ref i)) => (*i).disable()
-        };
-        Some(())
-    }
-
-    pub fn register_protocol_handler(&mut self, proto_number: u8, handler: IPProtocolHandler) {
-        (self.protocol_handlers).get_mut(proto_number as uint).push(handler);
-    }
 }
+

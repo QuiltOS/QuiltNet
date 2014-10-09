@@ -25,6 +25,6 @@ pub trait DLInterface: Interface {
 
     //fn kill(&Self);
 
-    fn enable(&self);
-    fn disable(&self);
+    fn enable(&mut self);
+    fn disable(&mut self);
 }
