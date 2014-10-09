@@ -33,6 +33,12 @@ pub struct SenderClosure<T> {
     pub sender: Sender<T>
 }
 
+impl<T> SenderClosure<T> {
+    pub fn new(sender: Sender<T>) -> SenderClosure<T> {
+        SenderClosure { sender: sender }
+    }
+}
+
 impl<T> Fn<T, ()> for SenderClosure<T>
     where T: Send
 {

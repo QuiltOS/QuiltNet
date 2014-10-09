@@ -34,8 +34,8 @@ fn talk_to_self_channel_helper(num_threads: uint) {
         static M1: &'static str = "Hey Josh!";
         static M2: &'static str = "Hey Cody!";
 
-        let interface1 = UdpMockDLInterface::new(&l1, a2, box SenderClosure { sender: tx1 });
-        let interface2 = UdpMockDLInterface::new(&l2, a1, box SenderClosure { sender: tx2 });
+        let interface1 = UdpMockDLInterface::new(&l1, a2, box SenderClosure::new(tx1));
+        let interface2 = UdpMockDLInterface::new(&l2, a1, box SenderClosure::new(tx2));
 
         try!(interface1.send(String::from_str(M2).into_bytes()));
         try!(interface2.send(String::from_str(M1).into_bytes()));
