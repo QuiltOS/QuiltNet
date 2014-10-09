@@ -8,8 +8,9 @@ use data_link::{DLInterface, DLHandler};
 use super::receive::{IPProtocolHandler, ProtocolTable};
 
 pub struct RoutingRow {
-    pub cost:      u8,     // How many hops
-    pub next_hop:  IpAddr, // which link-layer interface to use
+    pub cost:      u8,          // How many hops
+    pub next_hop:  IpAddr,      // Which link-layer interface to use
+    pub learned_from: IpAddr,   // Who we learned this route from (used in split-horizon)
 }
 
 // key: IP we want to reach

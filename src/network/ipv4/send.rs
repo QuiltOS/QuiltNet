@@ -12,7 +12,8 @@ use network::ipv4::state::{IPState, RoutingRow};
 pub fn send_data(state: &IPState, vip: IpAddr, protocol: u8, data: &[u8]) -> IoResult<()> {
     //TODO: make from for header in newly allocated vec, set fields
     println!("send:: sending {} {} {}", vip, protocol, data);
-    let p = Ip::new(data.to_vec());
+    let p = Ip::from_body(vip, protocol, data);
+    println!("build packet {}", p);
     try!(send(state, p));
     Ok(())
 }
@@ -25,7 +26,7 @@ pub fn send(state: &IPState, packet: Ip) -> IoResult<()> {
         // Send packet to next hop towards destination
         // TODO: include loopback address in routing table
         // TODO: include broadcast interface w/ overloaded send fn
-        Some(&RoutingRow { cost: _cost, next_hop: next_hop }) => {
+        Some(&RoutingRow { cost: _cost, next_hop: next_hop, learned_from: _learned_from}) => {
             match state.interfaces.find(&next_hop) {
                 None => (), // drop, next hop isn't in our interface map
 
@@ -40,9 +41,9 @@ pub fn send(state: &IPState, packet: Ip) -> IoResult<()> {
     Ok(())
 }
 
-/// Broadcast data to all known nodes
+/// Broadcast data to all interfaces
 pub fn broadcast(state: &IPState, protocol: u8, data: Vec<u8>) {
-    for dst in state.routes.read().keys() {
+    for dst in state.interfaces.keys() {
         send_data(state, *dst, protocol, data.as_slice());
     }
 }
