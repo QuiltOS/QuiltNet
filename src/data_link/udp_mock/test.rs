@@ -14,7 +14,8 @@ use super::*;
 
 fn mk_listener(num_threads: uint) -> IoResult<(Listener, SocketAddr)> {
     // port 0 is dynamically assign
-    let mut listener = try!(Listener::new(SocketAddr { ip: Ipv4Addr(0,0,0,0), port: 0}, num_threads));
+    let mut listener = try!(Listener::new(SocketAddr { ip: Ipv4Addr(0,0,0,0), port: 0 },
+                                          num_threads));
     let mut addr     = try!(listener.socket.socket_name());
     addr.ip = Ipv4Addr(127, 0, 0, 1);
     println!("made listener with addr: {}", addr);
@@ -34,8 +35,8 @@ fn talk_to_self_channel_helper(num_threads: uint) {
         static M1: &'static str = "Hey Josh!";
         static M2: &'static str = "Hey Cody!";
 
-        let interface1 = UdpMockDLInterface::new(&l1, a2, box SenderClosure::new(tx1));
-        let interface2 = UdpMockDLInterface::new(&l2, a1, box SenderClosure::new(tx2));
+        let interface1 = Interface::new(&l1, a2, box SenderClosure::new(tx1));
+        let interface2 = Interface::new(&l2, a1, box SenderClosure::new(tx2));
 
         try!(interface1.send(String::from_str(M2).into_bytes()));
         try!(interface2.send(String::from_str(M1).into_bytes()));
@@ -85,8 +86,8 @@ fn talk_to_self_callback_helper(num_threads: uint) {
         static M1: &'static str = "Hey Josh!";
         static M2: &'static str = "Hey Cody!";
 
-        let interface1 = UdpMockDLInterface::new(&l1, a2, mk_callback(barrier.clone(), M1));
-        let interface2 = UdpMockDLInterface::new(&l2, a1, mk_callback(barrier.clone(), M2));
+        let interface1 = Interface::new(&l1, a2, mk_callback(barrier.clone(), M1));
+        let interface2 = Interface::new(&l2, a1, mk_callback(barrier.clone(), M2));
 
         try!(interface1.send(String::from_str(M2).into_bytes()));
         try!(interface2.send(String::from_str(M1).into_bytes()));
@@ -118,13 +119,13 @@ fn disable_then_cant_send() {
         let nop = box |&: _packet: Vec<u8>| { };
 
         let (l, a) = try!(mk_listener(1));
-        let mut i = UdpMockDLInterface::new(&l, a, nop);
+        let mut i = Interface::new(&l, a, nop);
 
         i.disable();
 
         assert_eq!(i.send(Vec::new()).unwrap_err(),
                    // TODO: Report bug: shouldn't need prefix with `use super::*;` above
-                   super::disabled_interface_error);
+                   super::DISABLED_INTERFACE_ERROR);
 
         Ok(())
     }

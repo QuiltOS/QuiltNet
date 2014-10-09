@@ -1,5 +1,6 @@
 use std::collections::hashmap::HashMap;
 use std::io::net::ip::IpAddr;
+use std::iter::FromIterator;
 use std::mem::size_of;
 use std::sync::RWLock;
 
@@ -35,14 +36,20 @@ pub struct IPState {
 }
 
 impl IPState {
-    pub fn new(interface_vec:   Vec<(IpAddr, IpAddr, Box<DLInterface + 'static>)>,
-               interface_table: InterfaceTable)
-               -> IPState
+    pub fn new(interfaces_vec: Vec<InterfaceRow>) -> IPState
     {
+        use std::iter::count;
+        let interfaces = {
+            let interfaces_iter = interfaces_vec.iter()
+                .zip(count(0, 1))
+                .map(|(&(ref src, _, _), ix)| (src.clone(), ix));
+            FromIterator::from_iter(interfaces_iter)
+        };
+
         IPState {
             routes:            RWLock::new(HashMap::new()),
-            interfaces:        interface_table,
-            interface_vec:     interface_vec,
+            interfaces:        interfaces,
+            interface_vec:     interfaces_vec,
             protocol_handlers: Vec::with_capacity(size_of::<u8>()),
         }
 
@@ -59,4 +66,3 @@ impl IPState {
     }
 
 }
-

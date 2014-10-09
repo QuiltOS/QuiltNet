@@ -10,7 +10,7 @@ use std::sync::RWLock;
 
 use std::task::spawn;
 
-use interface::Interface;
+use interface::Interface as Interface_T;
 
 use data_link::{DLPacket, DLHandler, DLInterface};
 
@@ -91,22 +91,22 @@ impl Clone for Listener {
 
 
 /// A mock link layer interface made from UDP
-pub struct UdpMockDLInterface {
+pub struct Interface {
     listener:    Listener,
     remote_addr: SocketAddr,
     cached_status: bool,
 }
 
 
-impl UdpMockDLInterface {
+impl Interface {
 
     pub fn new(listener:    &Listener,
                remote_addr: SocketAddr,
-               on_recv:     DLHandler) -> UdpMockDLInterface
+               on_recv:     DLHandler) -> Interface
     {
         listener.handlers.write().deref_mut().insert(remote_addr, (true, on_recv));
 
-        UdpMockDLInterface {
+        Interface {
             listener:      listener.clone(),
             remote_addr:   remote_addr,
             cached_status: true,
@@ -114,23 +114,23 @@ impl UdpMockDLInterface {
     }
 }
 
-impl Interface for UdpMockDLInterface {
+impl Interface_T for Interface {
 
 }
 
-static disabled_interface_error: IoError = IoError {
+static DISABLED_INTERFACE_ERROR: IoError = IoError {
     kind: IoUnavailable,
-    desc: "This link-layer interface (a UdpMockDLInterface) has been disabled",
+    desc: "This link-layer interface (a Interface) has been disabled",
     detail: None,
 };
 
-impl DLInterface for UdpMockDLInterface {
+impl DLInterface for Interface {
 
 
     fn send(&self, packet: DLPacket) -> IoResult<()> {
 
         if self.cached_status == false {
-            return Err(disabled_interface_error.clone())
+            return Err(DISABLED_INTERFACE_ERROR.clone())
         }
 
         let mut socket = self.listener.socket.clone();

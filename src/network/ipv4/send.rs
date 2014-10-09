@@ -1,6 +1,6 @@
 extern crate packet;
 
-use std::io::IoResult;
+use std::io::{IoError, IoResult, IoUnavailable};
 use std::io::net::ip::IpAddr;
 
 use self::packet::ipv4::V as Ip;
@@ -41,8 +41,13 @@ pub fn send(state: &IPState, packet: Ip) -> IoResult<()> {
 }
 
 /// Broadcast data to all known nodes
-pub fn broadcast(state: &IPState, protocol: u8, data: Vec<u8>) {
+pub fn broadcast(state: &IPState, protocol: u8, data: Vec<u8>) -> IoResult<()> {
     for dst in state.routes.read().keys() {
-        send_data(state, *dst, protocol, data.as_slice());
+        let err = send_data(state, *dst, protocol, data.as_slice());
+        match err {
+            Err(IoError { kind: IoUnavailable, .. }) => continue,  // ignore down interface
+            _                                        => try!(err), // otherwise handle errors as usual
+        };
     }
+    Ok(())
 }
