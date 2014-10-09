@@ -14,7 +14,7 @@ use super::*;
 
 fn mk_listener(num_threads: uint) -> IoResult<(Listener, SocketAddr)> {
     // port 0 is dynamically assign
-    let mut listener = try!(Listener::new(0, num_threads));
+    let mut listener = try!(Listener::new(SocketAddr { ip: Ipv4Addr(0,0,0,0), port: 0}, num_threads));
     let mut addr     = try!(listener.socket.socket_name());
     addr.ip = Ipv4Addr(127, 0, 0, 1);
     println!("made listener with addr: {}", addr);
