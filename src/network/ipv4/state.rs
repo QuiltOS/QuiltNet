@@ -58,12 +58,20 @@ impl IPState {
             FromIterator::from_iter(interfaces_iter)
         };
 
-        Arc::new(IPState {
+        let state = Arc::new(IPState {
             routes:            RWLock::new(HashMap::new()),
             interfaces:        interfaces,
             interface_vec:     interfaces_vec,
             protocol_handlers: RWLock::new(Vec::with_capacity(size_of::<u8>())),
-        })
+        });
+
+        for &(_, _, ref interface) in state.interface_vec.iter() {
+            use super::receive::make_receive_callback;
+            (*interface.write())
+                .update_recv_handler(make_receive_callback(state.clone()));
+        }
+
+        state
     }
 
     /// Returns DLInterface struct for the requested interface

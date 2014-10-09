@@ -1,8 +1,12 @@
 #![feature(unboxed_closures)]
+
+#![allow(unknown_features)]
 #![feature(slicing_syntax)]
-#![cfg(test)]
+
 // This warning is really unimportant and annoying
 #![allow(unused_imports)]
+
+#![cfg(test)]
 #![feature(globs)]
 
 extern crate core;
