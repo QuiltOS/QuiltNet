@@ -1,6 +1,6 @@
 use std::collections::hashmap::{HashMap, Occupied, Vacant};
 
-use std::io::IoResult;
+use std::io::{IoError, IoResult, IoUnavailable};
 use std::io::net;
 use std::io::net::udp::UdpSocket;
 use std::io::net::ip::{SocketAddr, Ipv4Addr, Port};
@@ -122,6 +122,15 @@ impl DLInterface for UdpMockDLInterface {
 
 
     fn send(&self, packet: DLPacket) -> IoResult<()> {
+
+        if self.cached_status == false {
+            return Err(IoError {
+                kind: IoUnavailable,
+                desc: "This link-layer interface (a UdpMockDLInterface) has been disabled",
+                detail: None,
+            })
+        }
+
         let mut socket = self.listener.socket.clone();
         socket.send_to(packet.as_slice(), self.remote_addr)
     }
@@ -135,7 +144,7 @@ impl DLInterface for UdpMockDLInterface {
         let mut map = self.listener.handlers.write();
         self.cached_status = true;
         match map.deref_mut().entry(self.remote_addr) {
-            Vacant(entry) => fail!("udp mock interface should already have entry in table"),
+            Vacant(_) => fail!("udp mock interface should already have entry in table"),
             Occupied(mut entry) => {
                 let &(ref mut status, _) = entry.get_mut();
                 *status = true;
@@ -147,7 +156,7 @@ impl DLInterface for UdpMockDLInterface {
         let mut map = self.listener.handlers.write();
         self.cached_status = false;
         match map.deref_mut().entry(self.remote_addr) {
-            Vacant(entry) => fail!("udp mock interface should already have entry in table"),
+            Vacant(_) => fail!("udp mock interface should already have entry in table"),
             Occupied(mut entry) => {
                 let &(ref mut status, _) = entry.get_mut();
                 *status = false;
