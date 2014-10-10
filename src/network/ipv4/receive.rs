@@ -49,7 +49,7 @@ fn forward(state: &IPState, mut packet: Ip) -> IoResult<()> {
 
 /// Determine whether packet is destined for this node
 fn is_packet_dst_local(state: &IPState, packet: &Ip) -> bool {
-    state.interfaces.contains_key(&packet.borrow().dest())
+    state.interfaces.contains_key(&packet.borrow().get_destination())
 }
 
 /// Fix packet headers in place

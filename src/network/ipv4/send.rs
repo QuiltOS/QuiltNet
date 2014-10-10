@@ -1,9 +1,10 @@
 extern crate packet;
 
-use std::io::{IoError, IoResult, IoUnavailable};
-use std::io::net::ip::IpAddr;
+use std::io::{IoError, IoResult, IoUnavailable, NotConnected};
+use std::io::net::ip::{Ipv4Addr, IpAddr};
 
 use self::packet::ipv4::V as Ip;
+use self::packet::ipv4::A as IpSlice;
 
 use network::ipv4::state::{IPState, RoutingRow};
 //use network::ipv4::packet::{IpAddr, IPPacket};
@@ -18,22 +19,41 @@ pub fn send_data(state: &IPState, vip: IpAddr, protocol: u8, data: &[u8]) -> IoR
     Ok(())
 }
 
+static NO_ROUTE_ERROR: IoError = IoError {
+    kind: NotConnected,
+    desc: "No routing table entry for this packet",
+    detail: None,
+};
+
 //TODO: visibility?
-pub fn send(state: &IPState, packet: Ip) -> IoResult<()> {
-    match state.routes.read().find(&packet.borrow().dest()) {
-        None => (), // drop, no route to destination
+//TODO: move, not copy, packet for final interface
+pub fn send(state: &IPState, mut packet: Ip) -> IoResult<()> {
+    match packet.borrow().get_destination() {
+        // broadcast,
+        Ipv4Addr(0,0,0,0) =>
+            for &(_, _, ref interface) in state.interface_vec.iter() {
+                try!(interface.write().send(packet.clone().as_vec()));
+            },
+        Ipv4Addr(0,0,0,1) =>
+            for &(_, dest, ref interface) in state.interface_vec.iter() {
+                packet.borrow_mut().set_destination(dest);
+                try!(interface.write().send(packet.clone().as_vec()));
+            },
+        dest => match state.routes.read().find(&packet.borrow().get_destination()) {
+            None => (), // drop, no route to destination
 
-        // Send packet to next hop towards destination
-        // TODO: include loopback address in routing table
-        // TODO: include broadcast interface w/ overloaded send fn
-        Some(&RoutingRow { cost: _cost, next_hop: next_hop, learned_from: _learned_from}) => {
-            match state.interfaces.find(&next_hop) {
-                None => (), // drop, next hop isn't in our interface map
-
-                // Tell interface to send packet bytes
-                Some(index) => {
-                    let (_, _, ref interface) = state.interface_vec[*index];
-                    try!(interface.write().send(packet.as_vec()));
+            // Send packet to next hop towards destination
+            // TODO: include loopback address in routing table
+            // TODO: include broadcast interface w/ overloaded send fn
+            Some(&RoutingRow { next_hop: next_hop, .. }) => {
+                match state.interfaces.find(&next_hop) {
+                    // drop, next hop isn't in our interface map
+                    None => (), 
+                    // Tell interface to send packet bytes
+                    Some(index) => {
+                        let (_, _, ref interface) = state.interface_vec[*index];
+                        try!(interface.write().send(packet.as_vec()));
+                    }
                 }
             }
         }

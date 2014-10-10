@@ -79,4 +79,3 @@ impl IPState {
         self.interface_vec.as_slice().get(interface_ix)
     }
 }
- 
