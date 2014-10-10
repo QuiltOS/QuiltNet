@@ -2,15 +2,13 @@ use std::collections::HashMap;
 use std::io::net::ip::IpAddr;
 use std::sync::{Arc, RWLock};
 
-use super::{
-    InterfaceRow,
-};
+use network::ipv4::InterfaceRow;
+use network::ipv4::strategy::RoutingTable;
 
-use super::strategy::RoutingTable;
-use super::fowarding::FowardingRow;
+use transport::static_routing::ForwardingRow;
 
 pub struct RipRow {
-    pub rest: FowardingRow,
+    pub rest: ForwardingRow,
     pub cost:      u8,          // How many hops
     pub learned_from: IpAddr,   // Who we learned this route from (used in split-horizon)
 }
@@ -32,7 +30,7 @@ impl RoutingTable for RipTable {
         let routes_iter = elements.iter()
             .map( | &(ref src, dst, _) |
                       // src is our interface IP, seems like a fine IP to use for the learned-from field
-                      (dst.clone(), RipRow { rest: FowardingRow { next_hop: dst }, cost: 1, learned_from: *src }));
+                      (dst.clone(), RipRow { rest: ForwardingRow { next_hop: dst }, cost: 1, learned_from: *src }));
         RipTable { map: RWLock::new(FromIterator::from_iter(routes_iter)) }
     }
 

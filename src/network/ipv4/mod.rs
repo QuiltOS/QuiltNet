@@ -19,8 +19,6 @@ pub mod send;
 pub mod receive;
 
 pub mod strategy;
-pub mod fowarding;
-pub mod rip;
 
 // key:    adjacent ip (next hop)
 // value:  which one of our Ips we put as the src address
