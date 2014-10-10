@@ -9,13 +9,13 @@ use interface::Handler;
 use data_link::{DLPacket, DLHandler};
 
 use network::ipv4::send;
-use network::ipv4::IPState;
+use network::ipv4::IpState;
 
 
-/// Called upon receipt of an IP packet:
+/// Called upon receipt of an Ip packet:
 /// If packet is destined for this node, deliver it to appropriate handlers
 /// If packet is destined elsewhere, fix packet headers and forward
-pub fn receive(state: &IPState, packet: Ip) -> IoResult<()> {
+pub fn receive(state: &IpState, packet: Ip) -> IoResult<()> {
     println!("checking if packet is local");
     if is_packet_dst_local(state, &packet) {
         println!("Packet is local! {}", packet);
@@ -25,9 +25,9 @@ pub fn receive(state: &IPState, packet: Ip) -> IoResult<()> {
         // TODO: copy packet only if there are multiple handlers
         for handler in handlers.iter() {
             println!("Handing to handler");
-            // Handler also given IPState for
+            // Handler also given IpState for
             //  - inspection (CLI)
-            //  - modification (RIP)
+            //  - modification (Rip)
             (&**handler).call((packet.clone(),));
         }
     } else {
@@ -39,7 +39,7 @@ pub fn receive(state: &IPState, packet: Ip) -> IoResult<()> {
 
 /// Forwards a packet back into the network after rewriting its headers
 /// Result status is whether packet was able to be forwarded
-fn forward(state: &IPState, mut packet: Ip) -> IoResult<()> {
+fn forward(state: &IpState, mut packet: Ip) -> IoResult<()> {
     // map Error because Fix_headers does not return IoError
     try!(fix_headers(&mut packet).map_err(|_| ::std::io::IoError {
         kind:   ::std::io::InvalidInput,
@@ -51,7 +51,7 @@ fn forward(state: &IPState, mut packet: Ip) -> IoResult<()> {
 }
 
 /// Determine whether packet is destined for this node
-fn is_packet_dst_local(state: &IPState, packet: &Ip) -> bool {
+fn is_packet_dst_local(state: &IpState, packet: &Ip) -> bool {
     let dst = &packet.borrow().get_destination();
     println!("after borrow: {}", dst);
     state.ip_to_interface.contains_key(dst)
@@ -80,13 +80,13 @@ fn decrement_ttl(_packet: &mut Ip) {
 }
 
 /// Recompute checksum and add to header in place
-/// TODO: actually compute IPv4 checksum
+/// TODO: actually compute Ipv4 checksum
 fn add_checksum(_packet: &mut Ip) {
     // TODO: STUB
     //packet.set_header_checksum(0);
 }
 
-pub fn make_receive_callback(state: Arc<IPState>) -> DLHandler {
+pub fn make_receive_callback(state: Arc<IpState>) -> DLHandler {
     box |&: packet: DLPacket| -> () {
         println!("in callback");
         match receive(&*state, Ip::new(packet)) {

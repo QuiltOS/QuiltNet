@@ -6,11 +6,11 @@ use std::io::net::ip::{Ipv4Addr, IpAddr};
 use self::packet::ipv4::V as Ip;
 use self::packet::ipv4::A as IpSlice;
 
-use network::ipv4::{IPState, RoutingRow};
-//use network::ipv4::packet::{IpAddr, IPPacket};
+use network::ipv4::{IpState, RoutingRow};
+//use network::ipv4::packet::{IpAddr, IpPacket};
 
 //TODO: visibility?
-pub fn send_data(state: &IPState, vip: IpAddr, protocol: u8, data: &[u8]) -> IoResult<()> {
+pub fn send_data(state: &IpState, vip: IpAddr, protocol: u8, data: &[u8]) -> IoResult<()> {
     //TODO: make from for header in newly allocated vec, set fields
     println!("send:: sending {} {} {}", vip, protocol, data);
     let p = Ip::from_body(vip, protocol, data);
@@ -27,7 +27,7 @@ static NO_ROUTE_ERROR: IoError = IoError {
 
 //TODO: visibility?
 //TODO: move, not copy, packet for final interface
-pub fn send(state: &IPState, mut packet: Ip) -> IoResult<()> {
+pub fn send(state: &IpState, mut packet: Ip) -> IoResult<()> {
     match packet.borrow().get_destination() {
         // broadcast,
         Ipv4Addr(0,0,0,0) =>
@@ -63,7 +63,7 @@ pub fn send(state: &IPState, mut packet: Ip) -> IoResult<()> {
 }
 
 /// Broadcast data to all known nodes
-pub fn neighborcast(state: &IPState, protocol: u8, data: Vec<u8>) -> IoResult<()> {
+pub fn neighborcast(state: &IpState, protocol: u8, data: Vec<u8>) -> IoResult<()> {
     for dst in state.ip_to_interface.keys() {
         let err = send_data(state, *dst, protocol, data.as_slice());
         match err {

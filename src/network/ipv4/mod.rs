@@ -22,11 +22,11 @@ pub struct RoutingRow {
     pub learned_from: IpAddr,   // Who we learned this route from (used in split-horizon)
 }
 
-// key: IP we want to reach
+// key: Ip we want to reach
 pub type RoutingTable = HashMap<IpAddr, RoutingRow>;
 
 // key:   adjacent ip (next hop)
-// value:  which one of our IPs we put as the src address
+// value:  which one of our Ips we put as the src address
 //         which interface we send the packet with
 //pub type InterfaceTable = HashMap<IpAddr, (IpAddr, Box<DLInterface+'static>)>;
 pub type InterfaceTable = HashMap<IpAddr, uint>;
@@ -35,14 +35,14 @@ pub type InterfaceRow = (IpAddr, IpAddr, RWLock<Box<DLInterface + Send + Sync + 
 
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt
-// TODO: lifetime for IPState probably needs fixing
+// TODO: lifetime for IpState probably needs fixing
 // TODO: Make some Sender type
-pub type IPProtocolHandler = //Handler<Ip>;
+pub type IpHandler = //Handler<Ip>;
     Box<Fn<(Ip,), ()> + Send + Sync + 'static>;
 
-pub type ProtocolTable = Vec<Vec<IPProtocolHandler>>;
+pub type ProtocolTable = Vec<Vec<IpHandler>>;
 
-pub struct IPState {
+pub struct IpState {
     pub routes:            RWLock<RoutingTable>,
     pub ip_to_interface:    InterfaceTable,
     pub interfaces:        Vec<InterfaceRow>,
@@ -51,8 +51,8 @@ pub struct IPState {
     // used in Identification header for fragmentation purposes
 }
 
-impl IPState {
-    pub fn new(ip_to_interface_vec: Vec<InterfaceRow>) -> Arc<IPState>
+impl IpState {
+    pub fn new(ip_to_interface_vec: Vec<InterfaceRow>) -> Arc<IpState>
     {
         use std::iter::count;
         let ip_to_interface = {
@@ -62,7 +62,7 @@ impl IPState {
             FromIterator::from_iter(ip_to_interface_iter)
         };
 
-        let state = Arc::new(IPState {
+        let state = Arc::new(IpState {
             routes:            RWLock::new(HashMap::new()),
             ip_to_interface:        ip_to_interface,
             interfaces:     ip_to_interface_vec,

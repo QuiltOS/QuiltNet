@@ -17,7 +17,7 @@ pub fn parse_socketaddr(addr_s: &str) -> Option<SocketAddr> {
                 Some(port_num) => 
                     match addrinfo::get_host_addresses(host) {
                         
-                        // If we can resolve the hostname to an IP, return socket address
+                        // If we can resolve the hostname to an Ip, return socket address
                         Ok(addrs) => Some(SocketAddr { ip : addrs[0], port: port_num }),
                         Err(_) => None 
                     },
@@ -28,14 +28,14 @@ pub fn parse_socketaddr(addr_s: &str) -> Option<SocketAddr> {
     }
 }
 
-/// Tries to parse dotted-quad IPv4 address from string
+/// Tries to parse dotted-quad Ipv4 address from string
 pub fn parse_ipv4(vip_s: &str) -> Option<IpAddr> {
 
     // Separate components of address and try to parse all of them as 8-bit uints
     let quads: Vec<Option<u8>> = vip_s.as_slice().split('.').map(|s| ::std::u8::parse_bytes(s.as_bytes(), 10)).collect();
     match quads.as_slice() {
 
-        // If success, return IP address
+        // If success, return Ip address
         [Some(q1), Some(q2), Some(q3), Some(q4)] => Some(Ipv4Addr(q1, q2, q3, q4)),
         _ => None
     }
