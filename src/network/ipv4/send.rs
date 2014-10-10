@@ -6,7 +6,7 @@ use std::io::net::ip::{Ipv4Addr, IpAddr};
 use self::packet::ipv4::V as Ip;
 use self::packet::ipv4::A as IpSlice;
 
-use network::ipv4::state::{IPState, RoutingRow};
+use network::ipv4::{IPState, RoutingRow};
 //use network::ipv4::packet::{IpAddr, IPPacket};
 
 //TODO: visibility?

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use network::ipv4::state::{IPProtocolHandler, IPState};
+use network::ipv4::{IPProtocolHandler, IPState};
 
 
 /// Enables the given interface

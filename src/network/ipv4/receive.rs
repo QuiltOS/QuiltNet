@@ -9,7 +9,7 @@ use interface::Handler;
 use data_link::{DLPacket, DLHandler};
 
 use network::ipv4::send;
-use network::ipv4::state::IPState;
+use network::ipv4::IPState;
 
 
 /// Called upon receipt of an IP packet:
