@@ -54,7 +54,7 @@ fn forward(state: &IPState, mut packet: Ip) -> IoResult<()> {
 fn is_packet_dst_local(state: &IPState, packet: &Ip) -> bool {
     let dst = &packet.borrow().get_destination();
     println!("after borrow: {}", dst);
-    state.interfaces.contains_key(dst)
+    state.ip_to_interface.contains_key(dst)
 }
 
 /// Fix packet headers in place

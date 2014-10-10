@@ -22,7 +22,7 @@ static RECV_BUF_SIZE: uint = 64 * 1024;
 
 type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr, ( bool, DLHandler)>>>;
 
-/// The backing listening socket / read loop for a bunch of UDP-backed mock link interfaces
+/// The backing listening socket / read loop for a bunch of UDP-backed mock link ip_to_interface
 pub struct Listener {
     socket:   UdpSocket,
     handlers: SharedHandlerMap,

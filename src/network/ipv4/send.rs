@@ -31,11 +31,11 @@ pub fn send(state: &IPState, mut packet: Ip) -> IoResult<()> {
     match packet.borrow().get_destination() {
         // broadcast,
         Ipv4Addr(0,0,0,0) =>
-            for &(_, _, ref interface) in state.interface_vec.iter() {
+            for &(_, _, ref interface) in state.interfaces.iter() {
                 try!(interface.write().send(packet.clone().as_vec()));
             },
         Ipv4Addr(0,0,0,1) =>
-            for &(_, dest, ref interface) in state.interface_vec.iter() {
+            for &(_, dest, ref interface) in state.interfaces.iter() {
                 let _ = packet.borrow_mut().set_destination(dest);
                 try!(interface.write().send(packet.clone().as_vec()));
             },
@@ -47,12 +47,12 @@ pub fn send(state: &IPState, mut packet: Ip) -> IoResult<()> {
             // TODO: include broadcast interface w/ overloaded send fn
             Some(&RoutingRow { next_hop, cost, .. }) => {
                 println!("Found route through {} w/ cost {}", next_hop, cost);
-                match state.interfaces.find(&next_hop) {
+                match state.ip_to_interface.find(&next_hop) {
                     // drop, next hop isn't in our interface map
                     None => return Err(NO_ROUTE_ERROR.clone()),
                     // Tell interface to send packet bytes
                     Some(index) => {
-                        let (_, _, ref interface) = state.interface_vec[*index];
+                        let (_, _, ref interface) = state.interfaces[*index];
                         try!(interface.write().send(packet.as_vec()));
                     }
                 }
@@ -64,7 +64,7 @@ pub fn send(state: &IPState, mut packet: Ip) -> IoResult<()> {
 
 /// Broadcast data to all known nodes
 pub fn neighborcast(state: &IPState, protocol: u8, data: Vec<u8>) -> IoResult<()> {
-    for dst in state.interfaces.keys() {
+    for dst in state.ip_to_interface.keys() {
         let err = send_data(state, *dst, protocol, data.as_slice());
         match err {
             // ignore down interface
