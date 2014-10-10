@@ -17,12 +17,13 @@ use network::ipv4::state::IPState;
 /// If packet is destined elsewhere, fix packet headers and forward
 pub fn receive(state: &IPState, packet: Ip) -> IoResult<()> {
     if is_packet_dst_local(state, &packet) {
+        println!("Packet is local! {}", packet);
         // local handling
         let handlers = &(*state.protocol_handlers.read())[packet.borrow().get_protocol() as uint];
         // If there are no handlers (vector is empty), the packet is just dropped
         // TODO: copy packet only if there are multiple handlers
         for handler in handlers.iter() {
-
+            println!("Handing to handler");
             // Handler also given IPState for
             //  - inspection (CLI)
             //  - modification (RIP)
