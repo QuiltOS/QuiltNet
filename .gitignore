@@ -13,3 +13,6 @@ data
 # misc
 *~
 .#*
+
+# generated test data
+*.lnx
