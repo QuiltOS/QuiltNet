@@ -36,10 +36,10 @@ pub fn send(state: &IPState, mut packet: Ip) -> IoResult<()> {
             },
         Ipv4Addr(0,0,0,1) =>
             for &(_, dest, ref interface) in state.interface_vec.iter() {
-                packet.borrow_mut().set_destination(dest);
+                let _ = packet.borrow_mut().set_destination(dest);
                 try!(interface.write().send(packet.clone().as_vec()));
             },
-        dest => match state.routes.read().find(&packet.borrow().get_destination()) {
+        _ => match state.routes.read().find(&packet.borrow().get_destination()) {
             None => (), // drop, no route to destination
 
             // Send packet to next hop towards destination
