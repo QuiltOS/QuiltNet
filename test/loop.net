@@ -1,0 +1,14 @@
+node src localhost
+node dst localhost
+node srcR localhost
+node dstR localhost
+node short localhost
+node long1 localhost
+node long2 localhost
+src <-> srcR
+srcR <-> short
+short <-> dstR
+srcR <-> long1
+long1 <-> long2
+long2 <-> dstR
+dstR <-> dst
