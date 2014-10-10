@@ -1,13 +1,13 @@
-#![feature(unboxed_closures)]
-
-#![allow(unknown_features)]
-#![feature(slicing_syntax)]
-
-// This warning is really unimportant and annoying
 #![allow(unused_imports)]
+// This warning is really unimportant and annoying
+#![allow(unknown_features)]
 
-#![cfg(test)]
+#![feature(unboxed_closures)]
+// for Anson's rustc
+#![feature(slicing_syntax)]
+// for tests
 #![feature(globs)]
+
 
 extern crate core;
 extern crate rustrt;
