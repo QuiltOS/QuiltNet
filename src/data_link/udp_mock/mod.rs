@@ -60,7 +60,9 @@ impl Listener {
                         Ok((len, src_addr)) => match handlers.read().deref().find(&src_addr) {
                             None          => continue, // drop that packet!
                             Some(&(is_enabled, ref on_recv)) => {
+                                println!("received packet");
                                 if is_enabled {
+                                    println!("Interface is enabled");
                                     let args = buf[..len].to_vec();
                                     (**on_recv).call((args,));
                                 }

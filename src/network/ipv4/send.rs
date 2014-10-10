@@ -45,10 +45,11 @@ pub fn send(state: &IPState, mut packet: Ip) -> IoResult<()> {
             // Send packet to next hop towards destination
             // TODO: include loopback address in routing table
             // TODO: include broadcast interface w/ overloaded send fn
-            Some(&RoutingRow { next_hop: next_hop, .. }) => {
+            Some(&RoutingRow { next_hop, cost, .. }) => {
+                println!("Found route through {} w/ cost {}", next_hop, cost);
                 match state.interfaces.find(&next_hop) {
                     // drop, next hop isn't in our interface map
-                    None => (), 
+                    None => return Err(NO_ROUTE_ERROR.clone()),
                     // Tell interface to send packet bytes
                     Some(index) => {
                         let (_, _, ref interface) = state.interface_vec[*index];
@@ -66,8 +67,10 @@ pub fn neighborcast(state: &IPState, protocol: u8, data: Vec<u8>) -> IoResult<()
     for dst in state.interfaces.keys() {
         let err = send_data(state, *dst, protocol, data.as_slice());
         match err {
-            Err(IoError { kind: IoUnavailable, .. }) => continue,  // ignore down interface
-            _                                        => try!(err), // otherwise handle errors as usual
+            // ignore down interface
+            Err(IoError { kind: IoUnavailable, .. }) => continue,
+            // otherwise handle errors as usual
+            _                                        => try!(err),
         };
     }
     Ok(())
