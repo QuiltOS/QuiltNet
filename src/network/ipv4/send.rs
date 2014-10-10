@@ -1,19 +1,16 @@
-extern crate packet;
-
 use std::io::{IoError, IoResult, IoUnavailable, NotConnected};
 use std::io::net::ip::{Ipv4Addr, IpAddr};
 
-use self::packet::ipv4::V as Ip;
-use self::packet::ipv4::A as IpSlice;
+use packet::ipv4 as packet;
 
 use network::ipv4::{IpState, RoutingRow};
 //use network::ipv4::packet::{IpAddr, IpPacket};
 
 //TODO: visibility?
 pub fn send_data(state: &IpState, vip: IpAddr, protocol: u8, data: &[u8]) -> IoResult<()> {
-    //TODO: make from for header in newly allocated vec, set fields
+
     println!("send:: sending {} {} {}", vip, protocol, data);
-    let p = Ip::from_body(vip, protocol, data);
+    let p = packet::V::from_body(vip, protocol, data);
     println!("build packet {}", p);
     try!(send(state, p));
     Ok(())
@@ -27,7 +24,7 @@ static NO_ROUTE_ERROR: IoError = IoError {
 
 //TODO: visibility?
 //TODO: move, not copy, packet for final interface
-pub fn send(state: &IpState, mut packet: Ip) -> IoResult<()> {
+pub fn send(state: &IpState, mut packet: packet::V) -> IoResult<()> {
     match packet.borrow().get_destination() {
         // broadcast,
         Ipv4Addr(0,0,0,0) =>

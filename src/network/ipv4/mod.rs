@@ -1,3 +1,5 @@
+extern crate packet;
+
 use std::collections::hashmap::HashMap;
 use std::io::net::ip::IpAddr;
 use std::iter::FromIterator;
@@ -35,8 +37,6 @@ pub type InterfaceRow = (IpAddr, IpAddr, RWLock<Box<DLInterface + Send + Sync + 
 
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt
-// TODO: lifetime for IpState probably needs fixing
-// TODO: Make some Sender type
 pub type IpHandler = //Handler<Ip>;
     Box<Fn<(Ip,), ()> + Send + Sync + 'static>;
 
