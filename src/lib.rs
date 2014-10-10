@@ -1,5 +1,5 @@
-#![allow(unused_imports)]
 // This warning is really unimportant and annoying
+#![allow(unused_imports)]
 #![allow(unknown_features)]
 
 #![feature(unboxed_closures)]
