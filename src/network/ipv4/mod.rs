@@ -24,10 +24,10 @@ pub struct RoutingRow {
     pub learned_from: IpAddr,   // Who we learned this route from (used in split-horizon)
 }
 
-// key: Ip we want to reach
+// key: Ip we want to reach, NOT our interface's IP
 pub type RoutingTable = HashMap<IpAddr, RoutingRow>;
 
-// key:   adjacent ip (next hop)
+// key:    adjacent ip (next hop)
 // value:  which one of our Ips we put as the src address
 //         which interface we send the packet with
 //pub type InterfaceTable = HashMap<IpAddr, (IpAddr, Box<DLInterface+'static>)>;
@@ -44,7 +44,7 @@ pub type ProtocolTable = Vec<Vec<IpHandler>>;
 
 pub struct IpState {
     pub routes:            RWLock<RoutingTable>,
-    pub ip_to_interface:    InterfaceTable,
+    pub ip_to_interface:   InterfaceTable,
     pub interfaces:        Vec<InterfaceRow>,
     pub protocol_handlers: RWLock<ProtocolTable>,
     // Identification counter? increased with each packet sent out,
@@ -60,14 +60,23 @@ impl IpState {
         let ip_to_interface = {
             let ip_to_interface_iter = ip_to_interface_vec.iter()
                 .zip(count(0, 1))
-                .map(|(&(ref src, _, _), ix)| (src.clone(), ix));
+                .map(|(&(_, ref dst, _), ix)| (dst.clone(), ix));
             FromIterator::from_iter(ip_to_interface_iter)
         };
 
+        let routes = {
+            // don't need
+            let routes_iter = ip_to_interface_vec.iter()
+                .map( | &(ref src, dst, _) |
+                          // src is our interface IP, seems like a fine IP to use for the learned-from field
+                          (dst.clone(), RoutingRow { cost: 1, next_hop: dst, learned_from: *src }));
+            RWLock::new(FromIterator::from_iter(routes_iter))
+        };
+
         let state = Arc::new(IpState {
-            routes:            RWLock::new(HashMap::new()),
-            ip_to_interface:        ip_to_interface,
-            interfaces:     ip_to_interface_vec,
+            routes:            routes,
+            ip_to_interface:   ip_to_interface,
+            interfaces:        ip_to_interface_vec,
             // handlers are not clonable, so the nice ways of doing this do not work
             protocol_handlers: RWLock::new(vec!(
                 vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
