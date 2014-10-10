@@ -8,14 +8,16 @@ use interface::{MyFn, Handler};
 
 use data_link::{DLPacket, DLHandler};
 
-use network::ipv4::send;
+use network::ipv4::{strategy, send};
 use network::ipv4::IpState;
 
 
 /// Called upon receipt of an IP packet:
 /// If packet is destined for this node, deliver it to appropriate handlers
 /// If packet is destined elsewhere, fix packet headers and forward
-fn receive(state: &IpState, buf: Vec<u8>) -> IoResult<()> {
+fn receive<A>(state: &IpState<A>, buf: Vec<u8>) -> IoResult<()>
+    where A: strategy::RoutingTable
+{
 
     let packet = match packet::validate(buf.as_slice()) {
         Ok(_)  => packet::V::new(buf),
@@ -49,7 +51,9 @@ fn receive(state: &IpState, buf: Vec<u8>) -> IoResult<()> {
 
 /// Forwards a packet back into the network after rewriting its headers
 /// Result status is whether packet was able to be forwarded
-fn forward(state: &IpState, mut packet: packet::V) -> IoResult<()> {
+fn forward<A>(state: &IpState<A>, mut packet: packet::V) -> IoResult<()>
+    where A: strategy::RoutingTable
+{
     // map Error because Fix_headers does not return IoError
     try!(fix_headers(&mut packet).map_err(|_| ::std::io::IoError {
         kind:   ::std::io::InvalidInput,
@@ -61,10 +65,15 @@ fn forward(state: &IpState, mut packet: packet::V) -> IoResult<()> {
 }
 
 /// Determine whether packet is destined for this node
-fn is_packet_dst_local(state: &IpState, packet: &packet::V) -> bool {
+fn is_packet_dst_local<A>(state: &IpState<A>, packet: &packet::V) -> bool
+    where A: strategy::RoutingTable
+{
     let dst = &packet.borrow().get_destination();
     println!("after borrow: {}", dst);
-    state.ip_to_interface.contains_key(dst)
+    
+    state.interfaces.iter()
+        .map(|&(ref src, _, _)| src)
+        .any(|src| src == dst)//.contains(dst)
 }
 
 /// Fix packet headers in place
@@ -96,11 +105,15 @@ fn add_checksum(_packet: &mut packet::V) {
     //packet.set_header_checksum(0);
 }
 
-struct IpDl {
-    state: Arc<IpState>,
+struct IpDl<A>
+    where A: strategy::RoutingTable, A: Send
+{
+    state: Arc<IpState<A>>,
 }
 
-impl MyFn<(DLPacket,), ()> for IpDl {
+impl<A> MyFn<(DLPacket,), ()> for IpDl<A>
+    where A: strategy::RoutingTable, A: Send
+{
     fn call(&self, args: (DLPacket,)) {
         let (packet,) = args;
         println!("in callback");
@@ -111,6 +124,8 @@ impl MyFn<(DLPacket,), ()> for IpDl {
     }
 }
 
-pub fn make_receive_callback(state: Arc<IpState>) -> DLHandler {
+pub fn make_receive_callback<A>(state: Arc<IpState<A>>) -> DLHandler
+    where A: strategy::RoutingTable, A: Send
+{
     box IpDl { state: state.clone() }
 }

@@ -12,20 +12,14 @@ use packet::ipv4::V as Ip;
 
 use data_link::{DLInterface, DLHandler};
 
+use self::strategy::RoutingTable;
 
 pub mod control;
 pub mod send;
 pub mod receive;
 
-
-pub struct RoutingRow {
-    pub cost:      u8,          // How many hops
-    pub next_hop:  IpAddr,      // Which link-layer interface to use
-    pub learned_from: IpAddr,   // Who we learned this route from (used in split-horizon)
-}
-
-// key: Ip we want to reach, NOT our interface's IP
-pub type RoutingTable = HashMap<IpAddr, RoutingRow>;
+pub mod strategy;
+pub mod fowarding;
 
 // key:    adjacent ip (next hop)
 // value:  which one of our Ips we put as the src address
@@ -42,8 +36,8 @@ pub type IpHandler = //Handler<Ip>;
 
 pub type ProtocolTable = Vec<Vec<IpHandler>>;
 
-pub struct IpState {
-    pub routes:            RWLock<RoutingTable>,
+pub struct IpState<A> where A: RoutingTable {
+    pub routes:            A,
     pub ip_to_interface:   InterfaceTable,
     pub interfaces:        Vec<InterfaceRow>,
     pub protocol_handlers: RWLock<ProtocolTable>,
@@ -51,8 +45,9 @@ pub struct IpState {
     // used in Identification header for fragmentation purposes
 }
 
-impl IpState {
-    pub fn new(ip_to_interface_vec: Vec<InterfaceRow>) -> Arc<IpState>
+impl<A> IpState<A> where A: strategy::RoutingTable
+{
+    pub fn new(ip_to_interface_vec: Vec<InterfaceRow>) -> Arc<IpState<A>>
     {
         use std::iter::count;
         use std::iter::Repeat;
@@ -64,14 +59,7 @@ impl IpState {
             FromIterator::from_iter(ip_to_interface_iter)
         };
 
-        let routes = {
-            // don't need
-            let routes_iter = ip_to_interface_vec.iter()
-                .map( | &(ref src, dst, _) |
-                          // src is our interface IP, seems like a fine IP to use for the learned-from field
-                          (dst.clone(), RoutingRow { cost: 1, next_hop: dst, learned_from: *src }));
-            RWLock::new(FromIterator::from_iter(routes_iter))
-        };
+        let routes = strategy::RoutingTable::init(ip_to_interface_vec.as_slice());
 
         let state = Arc::new(IpState {
             routes:            routes,
