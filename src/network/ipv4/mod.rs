@@ -20,6 +20,7 @@ pub mod receive;
 
 pub mod strategy;
 pub mod fowarding;
+pub mod rip;
 
 // key:    adjacent ip (next hop)
 // value:  which one of our Ips we put as the src address
@@ -45,7 +46,7 @@ pub struct IpState<A> where A: RoutingTable {
     // used in Identification header for fragmentation purposes
 }
 
-impl<A> IpState<A> where A: strategy::RoutingTable
+impl<A> IpState<A> where A: RoutingTable
 {
     pub fn new(ip_to_interface_vec: Vec<InterfaceRow>) -> Arc<IpState<A>>
     {
