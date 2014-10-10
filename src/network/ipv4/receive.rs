@@ -16,6 +16,7 @@ use network::ipv4::state::IPState;
 /// If packet is destined for this node, deliver it to appropriate handlers
 /// If packet is destined elsewhere, fix packet headers and forward
 pub fn receive(state: &IPState, packet: Ip) -> IoResult<()> {
+    println!("checking if packet is local");
     if is_packet_dst_local(state, &packet) {
         println!("Packet is local! {}", packet);
         // local handling
@@ -30,6 +31,7 @@ pub fn receive(state: &IPState, packet: Ip) -> IoResult<()> {
             (&**handler).call((packet.clone(),));
         }
     } else {
+        println!("packet is not local!");
         try!(forward(state, packet));
     }
     Ok(())
@@ -44,13 +46,15 @@ fn forward(state: &IPState, mut packet: Ip) -> IoResult<()> {
         desc:   "Packet had invalid headers",
         detail: None,
     }));
-    try!(send::send(state, packet));
+    try!(send::send(state, packet.borrow().dest(), packet));
     Ok(())
 }
 
 /// Determine whether packet is destined for this node
 fn is_packet_dst_local(state: &IPState, packet: &Ip) -> bool {
-    state.interfaces.contains_key(&packet.borrow().dest())
+    let dst = &packet.borrow().dest();
+    println!("after borrow: {}", dst);
+    state.interfaces.contains_key(dst)
 }
 
 /// Fix packet headers in place
@@ -84,6 +88,7 @@ fn add_checksum(_packet: &mut Ip) {
 
 pub fn make_receive_callback(state: Arc<IPState>) -> DLHandler {
     box |&: packet: DLPacket| -> () {
+        println!("in callback");
         match receive(&*state, Ip::new(packet)) {
             Ok(v)  => v,
             Err(e) => fail!(e),

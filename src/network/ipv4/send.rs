@@ -14,19 +14,21 @@ pub fn send_data(state: &IPState, vip: IpAddr, protocol: u8, data: &[u8]) -> IoR
     println!("send:: sending {} {} {}", vip, protocol, data);
     let p = Ip::from_body(vip, protocol, data);
     println!("build packet {}", p);
-    try!(send(state, p));
+    try!(send(state, vip, p));
     Ok(())
 }
 
 //TODO: visibility?
-pub fn send(state: &IPState, packet: Ip) -> IoResult<()> {
-    match state.routes.read().find(&packet.borrow().dest()) {
+pub fn send(state: &IPState, dst: IpAddr, packet: Ip) -> IoResult<()> {
+    println!("Sending packet w/ dest {}", dst);
+    match state.routes.read().find(&dst) {
         None => (), // drop, no route to destination
 
         // Send packet to next hop towards destination
         // TODO: include loopback address in routing table
         // TODO: include broadcast interface w/ overloaded send fn
-        Some(&RoutingRow { cost: _cost, next_hop: next_hop, learned_from: _learned_from}) => {
+        Some(&RoutingRow { cost: cost, next_hop: next_hop, learned_from: _learned_from}) => {
+            println!("Found route through {} w/ cost {}", next_hop, cost);
             match state.interfaces.find(&next_hop) {
                 None => (), // drop, next hop isn't in our interface map
 
