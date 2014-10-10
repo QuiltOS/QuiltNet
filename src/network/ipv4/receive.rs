@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use packet::ipv4 as packet;
 
-use interface::Handler;
+use interface::{MyFn, Handler};
 
 use data_link::{DLPacket, DLHandler};
 
@@ -96,12 +96,21 @@ fn add_checksum(_packet: &mut packet::V) {
     //packet.set_header_checksum(0);
 }
 
-pub fn make_receive_callback(state: Arc<IpState>) -> DLHandler {
-    box |&: packet: DLPacket| -> () {
+struct IpDl {
+    state: Arc<IpState>,
+}
+
+impl MyFn<(DLPacket,), ()> for IpDl {
+    fn call(&self, args: (DLPacket,)) {
+        let (packet,) = args;
         println!("in callback");
-        match receive(&*state, packet) {
+        match receive(&*self.state, packet) {
             Ok(v)  => v,
             Err(e) => fail!(e),
         }
     }
+}
+
+pub fn make_receive_callback(state: Arc<IpState>) -> DLHandler {
+    box IpDl { state: state.clone() }
 }

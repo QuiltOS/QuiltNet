@@ -2,9 +2,23 @@ use std::comm::Sender;
 use std::sync::Mutex;
 use std::io::IoResult;
 
+// to get around broken closures
+pub trait MyFn<Args, Result> : Send {
+    fn call(&self, args: Args) -> Result;
+}
+
+pub struct Nop;
+
+impl<T> MyFn<T, ()> for Nop where T: Send {
+    fn call(&self, _: T) { }
+}
+
+
+
+
 
 // TODO: real network card may consolidate multiple packets per interrupt.
-pub type Handler<Packet> = Box<Fn<(Packet,), ()> + Send + 'static>;
+pub type Handler<Packet> = Box<MyFn<(Packet,), ()> + Send + 'static>;
 //pub type Handler<Packet> = <|&: Packet|:Send -> ()>;
 
 pub trait Interface {
@@ -17,10 +31,10 @@ pub struct LockedClosure<F> {
     pub closure: Mutex<F>
 }
 
-impl<F, Args, Result> Fn<Args, Result> for LockedClosure<F>
+impl<F, Args, Result> MyFn<Args, Result> for LockedClosure<F>
     where F: FnMut<Args, Result>, F:Send
 {
-    #[rust_call_abi_hack]
+//    #[rust_call_abi_hack]
     fn call(&self, args: Args) -> Result {
         self.closure.lock().deref_mut().call_mut(args)
     }
@@ -36,10 +50,8 @@ impl<T> SenderClosure<T> {
     }
 }
 
-impl<T> Fn<T, ()> for SenderClosure<T>
-    where T: Send
-{
-    #[rust_call_abi_hack]
+impl<T> MyFn<T, ()> for SenderClosure<T> where T: Send {
+//    #[rust_call_abi_hack]
     fn call(&self, args: T) -> () {
         println!("SenderClosure called!");
         self.sender.send(args);

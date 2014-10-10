@@ -6,7 +6,7 @@ use std::sync::{Arc, Barrier};
 use std::str::from_utf8;
 use std::string::String;
 
-use interface::SenderClosure;
+use interface::{SenderClosure, Nop};
 
 use data_link::{DLPacket, DLHandler, DLInterface};
 
@@ -65,16 +65,26 @@ fn talk_to_self_channel_parallel() {
     talk_to_self_channel_helper(4);
 }
 
+struct DlCalback {
+    msg: Vec<u8>,
+    barrier: Arc<Barrier>,
+}
+
+impl MyFn<(Packet,), ()> for DebugPrintClosure {
+
+    fn call(&self, args: (DlPacket,)) {
+        let (packet,) = args;
+        println!("got packet: {}", from_utf8(packet.as_slice()));
+        println!("matching against: {}", from_utf8(self.msg.as_slice()));
+        assert_eq!(packet, self.msg);
+        self.barrier.wait();
+    }
+}
+
 fn talk_to_self_callback_helper(num_threads: uint) {
 
     fn mk_callback(barrier: Arc<Barrier>, msg: &str) -> DLHandler {
-        let msg = String::from_str(msg).into_bytes();
-        box |&: packet: Vec<u8> | -> () {
-            println!("got packet: {}", from_utf8(packet.as_slice()));
-            println!("matching against: {}", from_utf8(msg.as_slice()));
-            assert_eq!(packet, msg);
-            barrier.wait();
-        }
+        box DlCalback { barrier: barrier, msg: msg }
     }
 
     fn inner(num_threads: uint) -> IoResult<()> {
@@ -116,10 +126,10 @@ fn disable_then_cant_send() {
 
     fn inner() -> IoResult<()> {
 
-        let nop = box |&: _packet: Vec<u8>| { };
+        //let nop = box |&: _packet: Vec<u8>| { };
 
         let (l, a) = try!(mk_listener(1));
-        let mut i = Interface::new(&l, a, nop);
+        let mut i = Interface::new(&l, a, box interface::Nop);
 
         i.disable();
 

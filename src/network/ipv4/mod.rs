@@ -6,7 +6,7 @@ use std::iter::FromIterator;
 use std::mem::size_of;
 use std::sync::{Arc, RWLock};
 
-use interface::Handler;
+use interface::{MyFn, Handler};
 
 use packet::ipv4::V as Ip;
 
@@ -38,7 +38,7 @@ pub type InterfaceRow = (IpAddr, IpAddr, RWLock<Box<DLInterface + Send + Sync + 
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt
 pub type IpHandler = //Handler<Ip>;
-    Box<Fn<(Ip,), ()> + Send + Sync + 'static>;
+    Box<MyFn<(Ip,), ()> + Send + Sync + 'static>;
 
 pub type ProtocolTable = Vec<Vec<IpHandler>>;
 
@@ -55,6 +55,8 @@ impl IpState {
     pub fn new(ip_to_interface_vec: Vec<InterfaceRow>) -> Arc<IpState>
     {
         use std::iter::count;
+        use std::iter::Repeat;
+
         let ip_to_interface = {
             let ip_to_interface_iter = ip_to_interface_vec.iter()
                 .zip(count(0, 1))
@@ -66,7 +68,48 @@ impl IpState {
             routes:            RWLock::new(HashMap::new()),
             ip_to_interface:        ip_to_interface,
             interfaces:     ip_to_interface_vec,
-            protocol_handlers: RWLock::new(Vec::with_capacity(size_of::<u8>())),
+            // handlers are not clonable, so the nice ways of doing this do not work
+            protocol_handlers: RWLock::new(vec!(
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+
+
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!())),
         });
 
         for &(_, _, ref interface) in state.interfaces.iter() {
