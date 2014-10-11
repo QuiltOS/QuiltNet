@@ -24,4 +24,4 @@ pub mod transport;
 // misc
 pub mod interface;
 pub mod drivers;
-pub mod utils;
+pub mod util;
