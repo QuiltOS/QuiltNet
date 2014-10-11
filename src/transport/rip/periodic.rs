@@ -1,4 +1,5 @@
 use std::io::Timer;
+use std::io::net::ip::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,64 +8,69 @@ use time::{Timespec, get_time};
 use network::ipv4::IpState;
 
 use super::{RipRow, RipTable};
-use super::comm::send;
+use super::comm::propagate;
 
 pub fn spawn_updater(state: Arc<IpState<RipTable>>) {
-    spawn(proc() {
-        let mut timer = Timer::new().unwrap();
-        let periodic = timer.periodic(Duration::seconds(5));
-        loop {
-            periodic.recv();
-            update(&*state);
-        }
-    })
+  spawn(proc() {
+    let mut timer = Timer::new().unwrap();
+    let periodic = timer.periodic(Duration::seconds(5));
+    loop {
+      periodic.recv();
+      update(&*state);
+    }
+  })
 }
 
 fn update(state: &IpState<RipTable>) {
-    let table_copy = {
-        let guard = state.routes.map.write();
-        guard.clone()
-    };
-    for (dst, row) in table_copy.into_iter() {
-        send(state, dst, &row);
-    }
+  // propegate the whole damn table!
+  let unlocked = state.routes.map.write();
+  let factory = || unlocked.iter().map(|(a,r)| (*a,r));
+  propagate(factory,
+            state.interfaces.iter());
 }
 
 pub fn spawn_garbage_collector(state: Arc<IpState<RipTable>>) {
-    spawn(proc() {
-        let mut timer = Timer::new().unwrap();
-        // evert 6 seconds to ensure nothing lasts longer than 12
-        let periodic = timer.periodic(Duration::seconds(6));
-        loop {
-            periodic.recv();
-            collector_garbage(&*state);
-        }
-    })
+  spawn(proc() {
+    let mut timer = Timer::new().unwrap();
+    // evert 6 seconds to ensure nothing lasts longer than 12
+    let periodic = timer.periodic(Duration::seconds(6));
+    loop {
+      periodic.recv();
+      collector_garbage(&*state);
+    }
+  })
 }
 
 fn collector_garbage(state: &IpState<RipTable>) {
-    let cur_time = get_time();
+  let cur_time = get_time();
 
-    let mut bad_keys = Vec::new();
-    { // naked block to avoid deadlock -- table needed to send packet too
-        let mut table = state.routes.map.write();
+  let mut bad_keys: Vec<IpAddr> = Vec::new();
+  { // naked block to make sure lock is released
+    let mut bad_rows: Vec<&RipRow> = Vec::new();
 
-        for (dst, row) in table.iter() {
-            let deadline = Timespec {
-                sec: row.time_added.sec + 12,
-                ..row.time_added
-            };
-            if row.cost == 16 || deadline >= cur_time {
-                bad_keys.push((*dst, *row));
-            }
-        }
-
-        for &(ref k, _) in bad_keys.iter() {
-            table.remove(k);
-        }
+    let mut table = state.routes.map.write();
+    for (dst, row) in table.iter_mut() {
+      let deadline = Timespec {
+        sec: row.time_added.sec + 12,
+        ..row.time_added
+      };
+      if row.cost == 16 || deadline >= cur_time {
+        row.cost = 16; // dead rows shall be poisonsed
+        bad_keys.push(*dst);
+        bad_rows.push(row);
+      }
     }
 
-    for (k, ref r) in bad_keys.into_iter() {
-        send(&*state, k, r);
-    }
+    let zip_iter_factory = || bad_keys.iter()
+      .map(|x| *x)
+      .zip(bad_rows.iter().map(|x| *x));
+
+    propagate(zip_iter_factory, state.interfaces.iter());
+  }
+
+  for k in bad_keys.into_iter() {
+    // lock is reaquired
+    let mut table2 = state.routes.map.write();
+    table2.remove(&k);
+  }
 }
