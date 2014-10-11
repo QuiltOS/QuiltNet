@@ -34,7 +34,7 @@ impl RoutingTable for StaticTable {
     }
 
     fn monitor(_state: Arc<IpState<StaticTable>>) -> () {
-        // nop
+        println!("Using static routing.");
     }
     
     fn dump(&self) {
