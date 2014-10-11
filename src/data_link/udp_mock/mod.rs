@@ -18,7 +18,7 @@ use data_link::{DLPacket, DLHandler, DLInterface};
 mod test;
 
 
-static RECV_BUF_SIZE: uint = 64 * 1024;
+const RECV_BUF_SIZE: uint = 64 * 1024;
 
 type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr, ( bool, DLHandler)>>>;
 
@@ -120,7 +120,7 @@ impl Interface_T for Interface {
 
 }
 
-static DISABLED_INTERFACE_ERROR: IoError = IoError {
+const DISABLED_INTERFACE_ERROR: IoError = IoError {
     kind: IoUnavailable,
     desc: "This link-layer interface (a Interface) has been disabled",
     detail: None,

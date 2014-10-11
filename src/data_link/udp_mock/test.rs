@@ -32,8 +32,8 @@ fn talk_to_self_channel_helper(num_threads: uint) {
         let (tx1, rx1) = channel::<(DLPacket,)>();
         let (tx2, rx2) = channel::<(DLPacket,)>();
 
-        static M1: &'static str = "Hey Josh!";
-        static M2: &'static str = "Hey Cody!";
+        const M1: &'static str = "Hey Josh!";
+        const M2: &'static str = "Hey Cody!";
 
         let interface1 = Interface::new(&l1, a2, box SenderClosure::new(tx1));
         let interface2 = Interface::new(&l2, a1, box SenderClosure::new(tx2));
@@ -93,8 +93,8 @@ fn talk_to_self_callback_helper(num_threads: uint) {
         let (l1, a1) = try!(mk_listener(num_threads));
         let (l2, a2) = try!(mk_listener(num_threads));
 
-        static M1: &'static str = "Hey Josh!";
-        static M2: &'static str = "Hey Cody!";
+        const M1: &'static str = "Hey Josh!";
+        const M2: &'static str = "Hey Cody!";
 
         let interface1 = Interface::new(&l1, a2, mk_callback(barrier.clone(), M1));
         let interface2 = Interface::new(&l2, a1, mk_callback(barrier.clone(), M2));

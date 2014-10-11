@@ -25,7 +25,7 @@ pub fn send_with_client<A>(state:              &IpState<A>,
     Ok(())
 }
 
-static NO_ROUTE_ERROR: IoError = IoError {
+const NO_ROUTE_ERROR: IoError = IoError {
     kind: NotConnected,
     desc: "No routing table entry for this packet",
     detail: None,
