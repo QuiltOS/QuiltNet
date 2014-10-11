@@ -1,3 +1,4 @@
+use std::io::net::ip::{IpAddr, Ipv4Addr};
 use std::io::{
   BufReader,
   BufWriter,
@@ -20,6 +21,18 @@ pub struct Entry {
 pub enum Packet<Arr> {
   Request,
   Response(Arr),
+}
+
+pub fn parse_ip(bits: u32) -> IpAddr {
+  let [a, b, c, d]: [u8, ..4] = unsafe { transmute(bits) };
+  Ipv4Addr(a, b, c, d)
+}
+
+pub fn write_ip(addr: IpAddr) -> u32{
+  match addr {
+    Ipv4Addr(a, b, c, d) => unsafe { transmute([a, b, c, d]) },
+    _                    => fail!("no ipv6 yet"),
+  }
 }
 
 pub fn parse<'a>(buf: &'a [u8]) -> Result<Packet<&'a [Entry]>, ()> {

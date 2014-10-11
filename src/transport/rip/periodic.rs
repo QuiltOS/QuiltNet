@@ -25,8 +25,10 @@ fn update(state: &IpState<RipTable>) {
   // propegate the whole damn table!
   let unlocked = state.routes.map.write();
   let factory = || unlocked.iter().map(|(a,r)| (*a,r));
-  propagate(factory,
-            state.interfaces.iter());
+
+  // ignore errors, for now
+  let _ = propagate(factory,
+                    state.interfaces.iter());
 }
 
 pub fn spawn_garbage_collector(state: Arc<IpState<RipTable>>) {
@@ -65,7 +67,8 @@ fn collector_garbage(state: &IpState<RipTable>) {
       .map(|x| *x)
       .zip(bad_rows.iter().map(|x| *x));
 
-    propagate(zip_iter_factory, state.interfaces.iter());
+    // ignore errors, for now
+    let _ = propagate(zip_iter_factory, state.interfaces.iter());
   }
 
   for k in bad_keys.into_iter() {

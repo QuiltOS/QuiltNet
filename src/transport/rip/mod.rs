@@ -13,9 +13,13 @@ use network::ipv4::strategy::RoutingTable;
 
 use transport::static_routing::StaticRow;
 
+
 mod comm;
 mod periodic;
 mod packet;
+
+
+const RIP_PROTOCOL:u8 = 200;
 
 #[deriving(Clone)]
 pub struct RipRow {
