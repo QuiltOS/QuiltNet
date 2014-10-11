@@ -31,94 +31,96 @@ pub type InterfaceRow = (IpAddr, IpAddr, RWLock<Box<DLInterface + Send + Sync + 
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt
 pub type IpHandler = //Handler<Ip>;
-    Box<MyFn<(Ip,), ()> + Send + Sync + 'static>;
+  Box<MyFn<(Ip,), ()> + Send + Sync + 'static>;
 
 pub type ProtocolTable = Vec<Vec<IpHandler>>;
 
 pub struct IpState<A> where A: RoutingTable {
-    pub routes:            A,
-    pub ip_to_interface:   InterfaceTable,
-    pub interfaces:        Vec<InterfaceRow>,
-    pub protocol_handlers: RWLock<ProtocolTable>,
-    // Identification counter? increased with each packet sent out,
-    // used in Identification header for fragmentation purposes
+  pub routes:            A,
+  pub ip_to_interface:   InterfaceTable,
+  pub interfaces:        Vec<InterfaceRow>,
+  pub protocol_handlers: RWLock<ProtocolTable>,
+  // Identification counter? increased with each packet sent out,
+  // used in Identification header for fragmentation purposes
 }
 
 impl<A> IpState<A> where A: RoutingTable
 {
-    pub fn new(ip_to_interface_vec: Vec<InterfaceRow>) -> Arc<IpState<A>>
-    {
-        use std::iter::count;
-        use std::iter::Repeat;
+  pub fn new(ip_to_interface_vec: Vec<InterfaceRow>) -> Arc<IpState<A>>
+  {
+    use std::iter::count;
+    use std::iter::Repeat;
 
-        let ip_to_interface = {
-            let ip_to_interface_iter = ip_to_interface_vec.iter()
-                .zip(count(0, 1))
-                .map(|(&(_, ref dst, _), ix)| (dst.clone(), ix));
-            FromIterator::from_iter(ip_to_interface_iter)
-        };
+    let ip_to_interface = {
+      let ip_to_interface_iter = ip_to_interface_vec.iter()
+        .zip(count(0, 1))
+        .map(|(&(_, ref dst, _), ix)| (dst.clone(), ix));
+      FromIterator::from_iter(ip_to_interface_iter)
+    };
 
-        let routes = strategy::RoutingTable::init(ip_to_interface_vec.as_slice());
+    let routes = strategy::RoutingTable::init(ip_to_interface_vec.as_slice());
 
-        let state = Arc::new(IpState {
-            routes:            routes,
-            ip_to_interface:   ip_to_interface,
-            interfaces:        ip_to_interface_vec,
-            // handlers are not clonable, so the nice ways of doing this do not work
-            protocol_handlers: RWLock::new(vec!(
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+    let state = Arc::new(IpState {
+      routes:            routes,
+      ip_to_interface:   ip_to_interface,
+      interfaces:        ip_to_interface_vec,
+      // handlers are not clonable, so the nice ways of doing this do not work
+      protocol_handlers: RWLock::new(vec!(
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
 
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
 
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
 
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
 
 
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
 
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
 
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
 
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-                vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!())),
-        });
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!())),
+    });
 
-        for &(_, _, ref interface) in state.interfaces.iter() {
-            use self::receive::make_receive_callback;
-            (*interface.write())
-                .update_recv_handler(make_receive_callback(state.clone()));
-        }
-
-        state
+    for &(_, _, ref interface) in state.interfaces.iter() {
+      use self::receive::make_receive_callback;
+      (*interface.write())
+        .update_recv_handler(make_receive_callback(state.clone()));
     }
 
-    /// Returns DLInterface struct for the requested interface
-    pub fn get_interface<'a> (&'a self, interface_ix: uint) -> Option<&'a InterfaceRow> {
-        self.interfaces.as_slice().get(interface_ix)
-    }
+    RoutingTable::monitor(state.clone());
+
+    state
+  }
+
+  /// Returns DLInterface struct for the requested interface
+  pub fn get_interface<'a> (&'a self, interface_ix: uint) -> Option<&'a InterfaceRow> {
+    self.interfaces.as_slice().get(interface_ix)
+  }
 }
