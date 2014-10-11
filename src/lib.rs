@@ -10,8 +10,9 @@
 
 
 extern crate core;
-extern crate rustrt;
 extern crate native;
+
+extern crate time;
 
 extern crate packet;
 
