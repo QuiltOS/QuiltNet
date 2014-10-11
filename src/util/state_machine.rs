@@ -34,4 +34,3 @@ impl<S, I> StateMachine<S, I> {
   }
 
 }
-
