@@ -38,24 +38,25 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
   //let interface_addr = packet.borrow().get_destination();
   let data = packet.borrow().get_payload();
 
+  match state.neighbors.find(&neighboor_addr) {
+    None    => println!("RIP: Odd, got packet from non-neighboor"),
+    _       => (),
+  };
+
+
   match packet::parse(data) {
 
     Ok(Request) => {
       println!("RIP: Got request from {}", neighboor_addr);
-      match state.neighbors.find(&neighboor_addr) {
-        None    => println!("Odd, got RIP packet from non-neighboor"),
-        Some(_) => {
-          let single = [neighboor_addr];
 
-          let unlocked = state.routes.map.write();
-          let factory = || unlocked.iter().map(|(a,r)| (*a,r));
+      let single = [neighboor_addr];
+      let unlocked = state.routes.map.write();
+      let factory = || unlocked.iter().map(|(a,r)| (*a,r));
 
-          try!(propagate(factory,
-                         single.iter().map(|x| *x),
-                         &state.neighbors,
-                         state.interfaces.as_slice()));
-        },
-      }
+      try!(propagate(factory,
+                     single.iter().map(|x| *x),
+                     &state.neighbors,
+                     state.interfaces.as_slice()));
     },
 
     Ok(Response(entries)) => {
@@ -64,16 +65,16 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
       let mut unlocked = state.routes.map.write();
 
       let mut changed_keys = ::std::collections::HashSet::new();
-      
+
       for &packet::Entry { cost, address } in entries.iter() {
         use std::collections::hashmap::{Occupied, Vacant};
-        
+
         let cost = cost + 1; // bump cost
-       
+
         let dst = packet::parse_ip(address);
 
         println!("RIP: can go to {} with cost {} via {}", dst, cost, neighboor_addr);
-        
+
         let mk_new_row = || {
           RipRow {
             time_added: ::time::get_time(),
@@ -85,7 +86,7 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
         match unlocked.entry(dst) {
           Vacant(entry) => {
             entry.set(mk_new_row());
-            
+
             changed_keys.insert(dst);
           },
           Occupied(e) => {
@@ -103,14 +104,14 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
       };
 
       let factory = || unlocked.iter().map(|(a,r)| (*a,r));
-      
+
       try!(propagate(factory,
                      changed_keys.iter().map(|x| *x),
                      &state.neighbors,
                      state.interfaces.as_slice()));
     },
 
-    _ => println!("invalid RIP packet received, oh well..."),
+    _ => println!("RIP: invalid packet received, oh well..."),
 
   }
   Ok(())
@@ -149,7 +150,7 @@ pub fn propagate<'a, I, J>(route_subset:        || -> I,
       None         => fail!("Can't propagate to non-neighbor"),
       Some(&index) => &interfaces[index],
     };
-    
+
     let packet = try!(Ip::new_with_client(
       neighbor_ip,
       super::RIP_PROTOCOL,

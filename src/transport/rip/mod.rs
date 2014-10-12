@@ -64,7 +64,7 @@ impl RoutingTable for RipTable {
   fn dump(&self) {
     for dst in self.map.read().keys() {
       let RipRow { cost, next_hop, time_added } = self.map.read().deref()[*dst];
-      println!("{} - {} -> {} [learned at: {} ]",
+      println!("RIP: {} - {} -> {} [learned at: {} ]",
                dst, cost, next_hop, time_added);
     }
   }
