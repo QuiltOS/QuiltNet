@@ -80,11 +80,11 @@ pub fn write<'a, I>(packet: Packet<I>) -> proc(&Vec<u8>):'a -> IoResult<()>
     let m: &mut MemWriter = unsafe { transmute(vec) };
     match packet {
       Request => {
-        try!(m.write_be_u16(0));
+        try!(m.write_be_u16(1));
         try!(m.write_be_u16(0));
       },
       Response(mut iter) => {
-        try!(m.write_be_u16(1));
+        try!(m.write_be_u16(2));
         try!(m.write_be_u16(0xFAAF)); // place holder
         let mut count = 0;
         for Entry { cost, address } in iter {
