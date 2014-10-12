@@ -15,6 +15,7 @@ pub fn spawn_updater(state: Arc<IpState<RipTable>>) {
     let mut timer = Timer::new().unwrap();
     let periodic = timer.periodic(Duration::seconds(5));
     loop {
+      println!("RIP: periodic update");
       periodic.recv();
       update(&*state);
     }
@@ -39,6 +40,7 @@ pub fn spawn_garbage_collector(state: Arc<IpState<RipTable>>) {
     // evert 6 seconds to ensure nothing lasts longer than 12
     let periodic = timer.periodic(Duration::seconds(6));
     loop {
+      println!("RIP: periodic gc");
       periodic.recv();
       collector_garbage(&*state);
     }
@@ -58,7 +60,10 @@ fn collector_garbage(state: &IpState<RipTable>) {
         sec: row.time_added.sec + 12,
         ..row.time_added
       };
-      if row.cost == 16 || deadline >= cur_time {
+      // allowed to forget neighboors, though the neighbor -> interface map 
+      // will remember them
+      if row.cost == 16 || deadline >= cur_time
+      {
         row.cost = 16; // dead rows shall be poisonsed
         bad_keys.push(*dst);
         bad_rows.push(row);

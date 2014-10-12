@@ -41,10 +41,10 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
   match packet::parse(data) {
 
     Ok(Request) => {
+      println!("RIP: Got request from {}", neighboor_addr);
       match state.neighbors.find(&neighboor_addr) {
         None    => println!("Odd, got RIP packet from non-neighboor"),
         Some(_) => {
-          println!("Got rip request");
           let single = [neighboor_addr];
 
           let unlocked = state.routes.map.write();
@@ -59,15 +59,21 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
     },
 
     Ok(Response(entries)) => {
-      println!("Got rip response");
+      println!("RIP: Got response from {}", neighboor_addr);
+      // hmm, thoughput or latency?
+      let mut unlocked = state.routes.map.write();
+
+      let mut changed_keys = ::std::collections::HashSet::new();
+      
       for &packet::Entry { cost, address } in entries.iter() {
         use std::collections::hashmap::{Occupied, Vacant};
         
-        // hmm, thoughput or latency?
-        let mut unlocked = state.routes.map.write();
-
+        let cost = cost + 1; // bump cost
+       
         let dst = packet::parse_ip(address);
 
+        println!("RIP: can go to {} with cost {} via {}", dst, cost, neighboor_addr);
+        
         let mk_new_row = || {
           RipRow {
             time_added: ::time::get_time(),
@@ -75,20 +81,33 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
             cost: cost as u8,
           }
         };
-        
+
         match unlocked.entry(dst) {
           Vacant(entry) => {
             entry.set(mk_new_row());
+            
+            changed_keys.insert(dst);
           },
           Occupied(e) => {
             let row = e.into_mut();
             let &RipRow { cost: old_cost, .. } = row;
             if old_cost > cost as u8 {
+              println!("RIP: route to {} upgraded from {} to {}",
+                       neighboor_addr, old_cost, cost);
               *row = mk_new_row();
+
+              changed_keys.insert(dst);
             }
           },
         };
       };
+
+      let factory = || unlocked.iter().map(|(a,r)| (*a,r));
+      
+      try!(propagate(factory,
+                     changed_keys.iter().map(|x| *x),
+                     &state.neighbors,
+                     state.interfaces.as_slice()));
     },
 
     _ => println!("invalid RIP packet received, oh well..."),

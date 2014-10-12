@@ -34,6 +34,14 @@ const NO_ROUTE_ERROR: IoError = IoError {
 pub fn send<A>(state: &IpState<A>, packet: packet::V) -> IoResult<()>
   where A: strategy::RoutingTable
 {
+  //if state.neighbors.contains_key(&packet.borrow().get_destination()) {
+  //  return Err(::std::io::IoError {
+  //    kind:   ::std::io::InvalidInput,
+  //    desc:   "Cannot send IP to ourself!",
+  //    detail: None,
+  //  })
+  //}
+
   match packet.borrow().get_destination() {
     //  TODO: The following is broken:
     //  // broadcast,

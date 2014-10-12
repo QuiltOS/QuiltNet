@@ -55,7 +55,8 @@ fn forward<A>(state: &IpState<A>, mut packet: packet::V) -> IoResult<()>
   where A: strategy::RoutingTable
 {
   { // decrement TTL
-    let ttl = packet.borrow().get_time_to_live();
+    let ttl = packet.borrow().get_time_to_live() - 1;
+    if ttl == 0 { return Ok(()); }
     packet.borrow_mut().set_time_to_live(ttl);
   }
   { // do something with checksum ?
@@ -80,7 +81,7 @@ fn is_packet_dst_local<A>(state: &IpState<A>, packet: &packet::V) -> bool
 
   state.interfaces.iter()
     .map(|&InterfaceRow { local_ip, .. }| local_ip)
-    .any(|src| src == dst)//.contains(dst)
+    .any(|local_ip| local_ip == dst)//.contains(dst)
 }
 
 struct IpDl<A>

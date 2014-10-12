@@ -10,12 +10,16 @@ use std::io::{
 };
 use std::mem::{transmute, size_of};
 
+#[deriving(PartialEq, PartialOrd, Eq, Ord,
+           Clone, Show)]
 #[repr(packed)]
 pub struct Entry {
   pub cost:    u32,
   pub address: u32,
 }
 
+#[deriving(PartialEq, PartialOrd, Eq, Ord,
+           Clone, Show)]
 #[repr(u16)]
 #[repr(packed)]
 pub enum Packet<Arr> {
@@ -42,18 +46,25 @@ pub fn parse<'a>(buf: &'a [u8]) -> Result<Packet<&'a [Entry]>, ()> {
 fn parse_helper<'a>(buf: &'a [u8]) -> IoResult<Packet<&'a [Entry]>> {
   let mut r = BufReader::new(buf);
   match try!(r.read_be_u16()) {
-    0 => Ok(Request),
-    1 => {
+    1 => Ok(Request),
+    2 => {
       let count = try!(r.read_be_u16());
       // ought to be static
       let hdr_len: uint = size_of::<u16>() * 2;
-      if buf.len() < size_of::<Entry>() + hdr_len {
-        return Err(IoError::last_error()); // some random error
-      }
-      let entries: &'a[Entry] = unsafe {
-        let s: &'a[Entry] = transmute(buf[hdr_len..]);
-        s[..count as uint + 1] // 2 dots in exclusive
+      let body_len: uint = size_of::<Entry>() * count as uint;
+
+      let entries: &'a[Entry] = match buf.len().cmp(&(body_len + hdr_len)) {
+        Less    => return Err(IoError::last_error()), // some random error
+        Equal   => {
+          unsafe { transmute(buf[hdr_len..]) }
+        },
+        Greater => {
+          println!("Rip: packet was too large");
+          let s: &'a[Entry] = unsafe { transmute(buf[hdr_len..]) };
+          s[..count as uint + 1] // 2 dots in exclusive
+        },
       };
+
       Ok(Response(entries))
     },
     _ => Err(IoError::last_error()), // some random error
@@ -92,4 +103,49 @@ pub fn write<'a, I>(packet: Packet<I>) -> proc(&Vec<u8>):'a -> IoResult<()>
     }
     Ok(())
   }
+}
+
+#[cfg(test)]
+mod test {
+  use super::*;
+
+  use std::io::{
+    BufReader,
+    BufWriter,
+    MemWriter,
+    SeekSet,
+
+    IoError,
+    IoResult,
+  };
+
+  #[test]
+  fn parse_invalid() {
+    assert!(parse(&[0]).is_err());
+    assert!(parse(&[1]).is_err());
+    assert!(parse(&[2]).is_err());
+
+    assert!(parse(&[0,0]).is_err());
+    assert!(parse(&[1,0]).is_err());
+    assert!(parse(&[2,0]).is_err());
+
+    assert!(parse(&[0,0]).is_err());
+    assert!(parse(&[1,0,0]).is_err());
+    assert!(parse(&[2,0,0,0]).is_err());
+
+    assert!(parse(&[1,1,0]).is_err());
+    assert!(parse(&[2,1,0,0]).is_err());
+  }
+
+  #[test]
+  fn parse_request() {
+    assert_eq!(parse(&[0,1]), Ok(Request));
+  }
+
+  #[test]
+  fn parse_response() {
+    let empty: [Entry, ..0] = [];
+    assert_eq!(parse(&[0,2,0,0]), Ok(Response(empty.as_slice())));
+}
+
 }
