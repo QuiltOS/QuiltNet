@@ -31,13 +31,11 @@ const NO_ROUTE_ERROR: IoError = IoError {
   detail: None,
 };
 
-//TODO: visibility?
-//TODO: move, not copy, packet for final interface
 pub fn send<A>(state: &IpState<A>, packet: packet::V) -> IoResult<()>
   where A: strategy::RoutingTable
 {
   match packet.borrow().get_destination() {
-    //  The following is broken:
+    //  TODO: The following is broken:
     //  // broadcast,
     //  Ipv4Addr(0,0,0,0) =>
     //    for row in state.interfaces.iter() {
@@ -54,8 +52,6 @@ pub fn send<A>(state: &IpState<A>, packet: packet::V) -> IoResult<()>
       None => (), // drop, no route to destination
 
       // Send packet to next hop towards destination
-      // TODO: include loopback address in routing table
-      // TODO: include broadcast interface w/ overloaded send fn
       Some(next_hop) => {
         println!("Found route through {}", next_hop);
         match state.neighbors.find(&next_hop) {
