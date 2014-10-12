@@ -33,22 +33,23 @@ const NO_ROUTE_ERROR: IoError = IoError {
 
 //TODO: visibility?
 //TODO: move, not copy, packet for final interface
-pub fn send<A>(state: &IpState<A>, mut packet: packet::V) -> IoResult<()>
+pub fn send<A>(state: &IpState<A>, packet: packet::V) -> IoResult<()>
   where A: strategy::RoutingTable
 {
   match packet.borrow().get_destination() {
-    // broadcast,
-    Ipv4Addr(0,0,0,0) =>
-      for row in state.interfaces.iter() {
-        try!(send_manual(packet.clone(), row));
-      },
-    // neighbor cast
-    Ipv4Addr(0,0,0,1) =>
-      for row in state.interfaces.iter() {
-        let &(_, dest, _) = row;
-        let _ = packet.borrow_mut().set_destination(dest);
-        try!(send_manual(packet.clone(), row));
-      },
+    //  The following is broken:
+    //  // broadcast,
+    //  Ipv4Addr(0,0,0,0) =>
+    //    for row in state.interfaces.iter() {
+    //      try!(send_manual(packet.clone(), row));
+    //    },
+    //  // neighbor cast
+    //  Ipv4Addr(0,0,0,1) =>
+    //    for row in state.interfaces.iter() {
+    //      let &(_, dest, _) = row;
+    //      let _ = packet.borrow_mut().set_destination(dest);
+    //      try!(send_manual(packet.clone(), row));
+    //    },
     _ => match state.routes.lookup(packet.borrow().get_destination()) {
       None => (), // drop, no route to destination
 
@@ -73,7 +74,7 @@ pub fn send<A>(state: &IpState<A>, mut packet: packet::V) -> IoResult<()>
 
 // Public for rip, or anybody that wants to do their own routing
 pub fn send_manual(mut packet: packet::V, row: &InterfaceRow) -> IoResult<()> {
-  let &(src, _, ref interface) = row;
-  let _ = packet.borrow_mut().set_source(src); // ip for this interface
+  let &InterfaceRow { local_ip, ref interface } = row;
+  let _ = packet.borrow_mut().set_source(local_ip); // ip for this interface
   interface.write().send(packet.to_vec())
 }

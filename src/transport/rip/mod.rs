@@ -11,8 +11,6 @@ use network::ipv4::{
 };
 use network::ipv4::strategy::RoutingTable;
 
-use transport::static_routing::StaticRow;
-
 
 mod comm;
 mod periodic;
@@ -23,10 +21,10 @@ const RIP_PROTOCOL:u8 = 200;
 
 #[deriving(Clone)]
 pub struct RipRow {
+  // the next hop is always the same node that told your about the route 
+  pub next_hop:     IpAddr,    // which neighbor to we send the packet too
   pub time_added:   Timespec,  // Relative to 1970
-  pub rest:         StaticRow, // just the interface IP address for now
   pub cost:         u8,        // How many hops
-  pub learned_from: IpAddr,    // Who we learned this route from (used in split-horizon)
 }
 
 pub struct RipTable {
@@ -38,22 +36,21 @@ impl RoutingTable for RipTable {
 
   fn lookup(&self, ip: IpAddr) -> Option<IpAddr> {
     self.map.read().find(&ip).and_then( |table| {
-      Some(table.rest.next_hop)
+      Some(table.next_hop)
     })
   }
 
-  fn init(elements: &[InterfaceRow]) -> RipTable {
+  fn init<I>(elements: I) -> RipTable where I: Iterator<IpAddr> {
     let cur_time = get_time();
     // don't need
-    let routes_iter = elements.iter()
-      .map(|&(ref src, dst, _)|
-           // src is our interface IP, seems like a fine IP to use for the learned-from field
-           (dst.clone(), RipRow {
-             time_added: cur_time,
-             rest: StaticRow { next_hop: dst },
-             cost: 1,
-             learned_from: *src
-           }));
+    let routes_iter = elements.map(
+      |neighbor_addr|
+      // src is our interface IP, seems like a fine IP to use for the learned-from field
+      (neighbor_addr, RipRow {
+        time_added: cur_time,
+        next_hop: neighbor_addr,
+        cost: 1,
+      }));
     RipTable { map: RWLock::new(FromIterator::from_iter(routes_iter)) }
   }
 
@@ -65,10 +62,10 @@ impl RoutingTable for RipTable {
   }
 
   fn dump(&self) {
-    for vip in self.map.read().keys() {
-      let RipRow { cost, rest, learned_from, time_added } = self.map.read().deref()[*vip];
-      println!("{} - {} -> {} [learned from: {}, at: {} ]",
-               vip, cost, rest.next_hop, learned_from, time_added);
+    for dst in self.map.read().keys() {
+      let RipRow { cost, next_hop, time_added } = self.map.read().deref()[*dst];
+      println!("{} - {} -> {} [learned at: {} ]",
+               dst, cost, next_hop, time_added);
     }
   }
 

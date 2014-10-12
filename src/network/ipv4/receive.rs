@@ -9,7 +9,7 @@ use interface::{MyFn, Handler};
 use data_link::{DLPacket, DLHandler};
 
 use network::ipv4::{strategy, send};
-use network::ipv4::IpState;
+use network::ipv4::{InterfaceRow, IpState};
 
 
 /// Called upon receipt of an IP packet:
@@ -68,11 +68,11 @@ fn forward<A>(state: &IpState<A>, mut packet: packet::V) -> IoResult<()>
 fn is_packet_dst_local<A>(state: &IpState<A>, packet: &packet::V) -> bool
     where A: strategy::RoutingTable
 {
-    let dst = &packet.borrow().get_destination();
+    let dst = packet.borrow().get_destination();
     println!("after borrow: {}", dst);
     
     state.interfaces.iter()
-        .map(|&(ref src, _, _)| src)
+        .map(|&InterfaceRow { local_ip, .. }| local_ip)
         .any(|src| src == dst)//.contains(dst)
 }
 

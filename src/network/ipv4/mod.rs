@@ -21,12 +21,14 @@ pub mod receive;
 pub mod strategy;
 
 // key:    adjacent ip (next hop)
-// value:  which one of our Ips we put as the src address
-//         which interface we send the packet with
+// value:  index to InterfaceRow (see below)
 //pub type InterfaceTable = HashMap<IpAddr, (IpAddr, Box<DLInterface+'static>)>;
 pub type InterfaceTable = HashMap<IpAddr, uint>;
 
-pub type InterfaceRow = (IpAddr, IpAddr, RWLock<Box<DLInterface + Send + Sync + 'static>>);
+pub struct InterfaceRow {
+  pub local_ip:  IpAddr,
+  pub interface: RWLock<Box<DLInterface + Send + Sync + 'static>>,
+}
 
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt
@@ -46,24 +48,27 @@ pub struct IpState<A> where A: RoutingTable {
 
 impl<A> IpState<A> where A: RoutingTable
 {
-  pub fn new(ip_to_interface_vec: Vec<InterfaceRow>) -> Arc<IpState<A>>
+  pub fn new<I>(interface_iter: I) -> Arc<IpState<A>>
+    where I: Iterator<(IpAddr, InterfaceRow)>
   {
     use std::iter::count;
     use std::iter::Repeat;
 
-    let ip_to_interface = {
-      let ip_to_interface_iter = ip_to_interface_vec.iter()
-        .zip(count(0, 1))
-        .map(|(&(_, ref dst, _), ix)| (dst.clone(), ix));
-      FromIterator::from_iter(ip_to_interface_iter)
-    };
+    let mut interfaces = Vec::new();
+    let mut ip_to_interface: InterfaceTable = HashMap::new();
 
-    let routes = strategy::RoutingTable::init(ip_to_interface_vec.as_slice());
+    for ((neighbor_ip, row), index) in interface_iter.zip(count(0, 1))
+    {
+      interfaces.push(row);
+      ip_to_interface.insert(neighbor_ip, index);
+    }
+
+    let routes = strategy::RoutingTable::init(ip_to_interface.keys().map(|x| *x));
 
     let state = Arc::new(IpState {
       routes:            routes,
       ip_to_interface:   ip_to_interface,
-      interfaces:        ip_to_interface_vec,
+      interfaces:        interfaces,
       // handlers are not clonable, so the nice ways of doing this do not work
       protocol_handlers: RWLock::new(vec!(
         vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
@@ -108,7 +113,7 @@ impl<A> IpState<A> where A: RoutingTable
         vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!())),
     });
 
-    for &(_, _, ref interface) in state.interfaces.iter() {
+    for &InterfaceRow { ref interface, .. } in state.interfaces.iter() {
       use self::receive::make_receive_callback;
       (*interface.write())
         .update_recv_handler(make_receive_callback(state.clone()));

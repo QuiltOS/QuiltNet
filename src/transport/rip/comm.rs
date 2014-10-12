@@ -4,7 +4,13 @@ use std::mem::transmute;
 use std::sync::Arc;
 use std::option::{Option, None};
 
-use network::ipv4::{strategy, control, IpState, IpHandler, InterfaceRow};
+use network::ipv4::{
+  IpState,
+  IpHandler,
+  InterfaceRow,
+  InterfaceTable,
+};
+use network::ipv4::{strategy, control};
 use network::ipv4::send::send_manual;
 
 use packet::ipv4::V as Ip;
@@ -36,17 +42,18 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
 
     Ok(Request) => {
       match state.ip_to_interface.find(&neighboor_addr) {
-        None        => println!("Odd, got RIP packet from non-neighboor"),
-        Some(&index) => {
+        None    => println!("Odd, got RIP packet from non-neighboor"),
+        Some(_) => {
           println!("Got rip request");
-          let single = state.interfaces.as_slice()[index..index+1];
-          assert!(single.len() == 1);
+          let single = [neighboor_addr];
 
           let unlocked = state.routes.map.write();
           let factory = || unlocked.iter().map(|(a,r)| (*a,r));
 
           try!(propagate(factory,
-                         single.iter()));
+                         single.iter().map(|x| *x),
+                         &state.ip_to_interface,
+                         state.interfaces.as_slice()));
         },
       }
     },
@@ -62,12 +69,10 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
         let dst = packet::parse_ip(address);
 
         let mk_new_row = || {
-          use transport::static_routing::StaticRow;
           RipRow {
             time_added: ::time::get_time(),
-            rest: StaticRow { next_hop: neighboor_addr },
+            next_hop: neighboor_addr,
             cost: cost as u8,
-            learned_from: neighboor_addr,
           }
         };
         
@@ -108,23 +113,33 @@ pub fn register(state: Arc<IpState<RipTable>>) {
 /// from the neighbor in question will be "poisoned" accordingly. This is fine for the case of
 /// sending expired packets to other nodes, as the cost field would be infinite anyways.
 ///
-/// Note that unlike the normal send method, this does not take any locks
-pub fn propagate<'a, I, J>(key_rows: || -> I, mut interfaces: J) -> IoResult<()>
+/// Note that unlike the normal send method, this does not take any locks. It purposely asks for
+/// certain fields of IpState, rather than the structure as a whole, to prevent itself from taking
+/// any locks.
+pub fn propagate<'a, I, J>(route_subset:        || -> I,
+                           mut neighbor_subset: J,
+                           ip_to_interface:     &'a InterfaceTable,
+                           interfaces:          &'a [InterfaceRow])
+                           -> IoResult<()>
   where I: Iterator<(IpAddr, &'a RipRow)>,
-        J: Iterator<&'a InterfaceRow>
+        J: Iterator<IpAddr>
 {
-  for interface_row in interfaces {
-    let &(_, dst, ref interface) = interface_row;
+  for neighbor_ip in neighbor_subset {
 
+    let interface_row = match ip_to_interface.find(&neighbor_ip) {
+      None         => fail!("Can't propagate to non-neighbor"),
+      Some(&index) => &interfaces[index],
+    };
+    
     let packet = try!(Ip::new_with_client(
-      dst,
+      neighbor_ip,
       super::RIP_PROTOCOL,
       None,
       |packet| -> IoResult<()> {
 
         let entry_builder = |(ip, row): (IpAddr, &'a RipRow)| packet::Entry {
           address: packet::write_ip(ip),
-          cost: if row.learned_from == dst.clone() {
+          cost: if row.next_hop == neighbor_ip {
             //poison
             16
           } else {
@@ -132,7 +147,7 @@ pub fn propagate<'a, I, J>(key_rows: || -> I, mut interfaces: J) -> IoResult<()>
           }
         };
 
-        let entries_iter = key_rows().map(entry_builder);
+        let entries_iter = route_subset().map(entry_builder);
         let packet_thunk = packet::write(packet::Response(entries_iter));
 
         packet_thunk(packet.as_vec())
