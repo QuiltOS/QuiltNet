@@ -38,9 +38,9 @@ pub type IpHandler = //Handler<Ip>;
 pub type ProtocolTable = Vec<Vec<IpHandler>>;
 
 pub struct IpState<A> where A: RoutingTable {
-  pub routes:            A,
-  pub ip_to_interface:   InterfaceTable,
   pub interfaces:        Vec<InterfaceRow>,
+  pub neighbors:         InterfaceTable,
+  pub routes:            A,
   pub protocol_handlers: RWLock<ProtocolTable>,
   // Identification counter? increased with each packet sent out,
   // used in Identification header for fragmentation purposes
@@ -48,26 +48,13 @@ pub struct IpState<A> where A: RoutingTable {
 
 impl<A> IpState<A> where A: RoutingTable
 {
-  pub fn new<I>(interface_iter: I) -> Arc<IpState<A>>
-    where I: Iterator<(IpAddr, InterfaceRow)>
+  pub fn new(interfaces: Vec<InterfaceRow>, neighbors: InterfaceTable) -> Arc<IpState<A>>
   {
-    use std::iter::count;
-    use std::iter::Repeat;
-
-    let mut interfaces = Vec::new();
-    let mut ip_to_interface: InterfaceTable = HashMap::new();
-
-    for ((neighbor_ip, row), index) in interface_iter.zip(count(0, 1))
-    {
-      interfaces.push(row);
-      ip_to_interface.insert(neighbor_ip, index);
-    }
-
-    let routes = strategy::RoutingTable::init(ip_to_interface.keys().map(|x| *x));
+    let routes = strategy::RoutingTable::init(neighbors.keys().map(|x| *x));
 
     let state = Arc::new(IpState {
       routes:            routes,
-      ip_to_interface:   ip_to_interface,
+      neighbors:         neighbors,
       interfaces:        interfaces,
       // handlers are not clonable, so the nice ways of doing this do not work
       protocol_handlers: RWLock::new(vec!(

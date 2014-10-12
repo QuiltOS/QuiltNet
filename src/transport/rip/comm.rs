@@ -41,7 +41,7 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
   match packet::parse(data) {
 
     Ok(Request) => {
-      match state.ip_to_interface.find(&neighboor_addr) {
+      match state.neighbors.find(&neighboor_addr) {
         None    => println!("Odd, got RIP packet from non-neighboor"),
         Some(_) => {
           println!("Got rip request");
@@ -52,7 +52,7 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
 
           try!(propagate(factory,
                          single.iter().map(|x| *x),
-                         &state.ip_to_interface,
+                         &state.neighbors,
                          state.interfaces.as_slice()));
         },
       }
@@ -118,7 +118,7 @@ pub fn register(state: Arc<IpState<RipTable>>) {
 /// any locks.
 pub fn propagate<'a, I, J>(route_subset:        || -> I,
                            mut neighbor_subset: J,
-                           ip_to_interface:     &'a InterfaceTable,
+                           neighbors:     &'a InterfaceTable,
                            interfaces:          &'a [InterfaceRow])
                            -> IoResult<()>
   where I: Iterator<(IpAddr, &'a RipRow)>,
@@ -126,7 +126,7 @@ pub fn propagate<'a, I, J>(route_subset:        || -> I,
 {
   for neighbor_ip in neighbor_subset {
 
-    let interface_row = match ip_to_interface.find(&neighbor_ip) {
+    let interface_row = match neighbors.find(&neighbor_ip) {
       None         => fail!("Can't propagate to non-neighbor"),
       Some(&index) => &interfaces[index],
     };

@@ -58,7 +58,7 @@ pub fn send<A>(state: &IpState<A>, packet: packet::V) -> IoResult<()>
       // TODO: include broadcast interface w/ overloaded send fn
       Some(next_hop) => {
         println!("Found route through {}", next_hop);
-        match state.ip_to_interface.find(&next_hop) {
+        match state.neighbors.find(&next_hop) {
           // drop, next hop isn't in our interface map
           None => return Err(NO_ROUTE_ERROR.clone()),
           // Tell interface to send packet bytes

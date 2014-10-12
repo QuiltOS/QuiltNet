@@ -28,8 +28,8 @@ fn update(state: &IpState<RipTable>) {
 
   // ignore errors, for now
   let _ = propagate(factory,
-                    state.ip_to_interface.keys().map(|x| *x),
-                    &state.ip_to_interface,
+                    state.neighbors.keys().map(|x| *x),
+                    &state.neighbors,
                     state.interfaces.as_slice());
 }
 
@@ -71,8 +71,8 @@ fn collector_garbage(state: &IpState<RipTable>) {
 
     // ignore errors, for now
     let _ = propagate(zip_iter_factory,
-                      state.ip_to_interface.keys().map(|x| *x),
-                      &state.ip_to_interface,
+                      state.neighbors.keys().map(|x| *x),
+                      &state.neighbors,
                       state.interfaces.as_slice());
   }
 
