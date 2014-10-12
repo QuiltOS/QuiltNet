@@ -111,7 +111,7 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
                      state.interfaces.as_slice()));
     },
 
-    _ => println!("RIP: invalid packet received, oh well..."),
+    _ => println!("RIP: invalid packet received: {}", data),
 
   }
   Ok(())

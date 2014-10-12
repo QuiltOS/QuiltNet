@@ -1,3 +1,4 @@
+use std::num::Int;
 use std::io::net::ip::{IpAddr, Ipv4Addr};
 use std::io::{
   BufReader,
@@ -28,13 +29,13 @@ pub enum Packet<Arr> {
 }
 
 pub fn parse_ip(bits: u32) -> IpAddr {
-  let [a, b, c, d]: [u8, ..4] = unsafe { transmute(bits) };
+  let [a, b, c, d]: [u8, ..4] = unsafe { transmute(Int::from_be(bits)) };
   Ipv4Addr(a, b, c, d)
 }
 
 pub fn write_ip(addr: IpAddr) -> u32{
   match addr {
-    Ipv4Addr(a, b, c, d) => unsafe { transmute([a, b, c, d]) },
+    Ipv4Addr(a, b, c, d) => unsafe { transmute::<_, u32>([a, b, c, d]) }.to_be(),
     _                    => fail!("no ipv6 yet"),
   }
 }
@@ -85,7 +86,7 @@ pub fn write<'a, I>(packet: Packet<I>) -> proc(&Vec<u8>):'a -> IoResult<()>
       },
       Response(mut iter) => {
         try!(m.write_be_u16(2));
-        try!(m.write_be_u16(0xFAAF)); // place holder
+        try!(m.write_be_u16(0x_FF_FF)); // place holder
         let mut count = 0;
         for Entry { cost, address } in iter {
           count += 1;
@@ -97,6 +98,7 @@ pub fn write<'a, I>(packet: Packet<I>) -> proc(&Vec<u8>):'a -> IoResult<()>
         {
           let mut b = BufWriter::new(vec2.as_mut_slice());
           try!(b.seek(size_of::<u16>() as i64, SeekSet));
+          println!("RIP: fixing count ({}) when writing packet", count);
           try!(b.write_be_u16(count));
         }
       },
@@ -109,6 +111,7 @@ pub fn write<'a, I>(packet: Packet<I>) -> proc(&Vec<u8>):'a -> IoResult<()>
 mod test {
   use super::*;
 
+  use std::io::net::ip::{IpAddr, Ipv4Addr};
   use std::io::{
     BufReader,
     BufWriter,
@@ -146,6 +149,43 @@ mod test {
   fn parse_response() {
     let empty: [Entry, ..0] = [];
     assert_eq!(parse(&[0,2,0,0]), Ok(Response(empty.as_slice())));
-}
+  }
+
+ #[test]
+ fn write_request() {
+   let empty: [Entry, ..0] = [];
+
+   let things = [Response(empty.iter().map(|x| *x)),
+                 Request];
+
+
+   let msg: &[u8] = &[0,1,0,0];
+   let vec = Vec::new();
+   write(things[1])(&vec).unwrap();
+   assert_eq!(vec.as_slice(), msg);
+ }
+
+  #[test]
+  fn write_response() {
+    {
+      let empty: [Entry, ..0] = [];
+      let msg: &[u8] = &[0,2,0,0];
+
+      let vec = Vec::new();
+      write(Response(empty.iter().map(|x| *x)))(&vec).unwrap();
+      assert_eq!(vec.as_slice(), msg);
+    }
+    {
+      let entries = [Entry { cost: 5,  address: write_ip(Ipv4Addr(1,2,3,4)) },
+                     Entry { cost: 16, address: write_ip(Ipv4Addr(5,4,3,2)) }];
+      let msg: &[u8] = &[0,2,0,2,
+                         0,0,0,5,  1,2,3,4,
+                         0,0,0,16, 5,4,3,2];
+
+      let vec = Vec::new();
+      write(Response(entries.iter().map(|x| *x)))(&vec).unwrap();
+      assert_eq!(vec.as_slice(), msg);
+    }
+  }
 
 }
