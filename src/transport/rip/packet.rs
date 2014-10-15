@@ -77,6 +77,7 @@ pub fn write<'a, I>(packet: Packet<I>) -> proc(&Vec<u8>):'a -> IoResult<()>
 {
   proc(vec) {
     let packet = packet;
+    let thus_far = vec.len();
     // MemWriter is just a newtype
     let m: &mut MemWriter = unsafe { transmute(vec) };
     match packet {
@@ -97,7 +98,7 @@ pub fn write<'a, I>(packet: Packet<I>) -> proc(&Vec<u8>):'a -> IoResult<()>
         let vec2: &mut Vec<u8> = unsafe { transmute(m) };
         {
           let mut b = BufWriter::new(vec2.as_mut_slice());
-          try!(b.seek(size_of::<u16>() as i64, SeekSet));
+          try!(b.seek((thus_far + size_of::<u16>()) as i64, SeekSet));
           println!("RIP: fixing count ({}) when writing packet", count);
           try!(b.write_be_u16(count));
         }
