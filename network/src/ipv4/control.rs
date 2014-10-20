@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use network::ipv4::{strategy, InterfaceRow, IpHandler, IpState};
+use ipv4::{strategy, InterfaceRow, IpHandler, IpState};
 
 
 /// Enables the given interface

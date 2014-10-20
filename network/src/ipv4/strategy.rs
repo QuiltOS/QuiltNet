@@ -2,7 +2,7 @@ use std::io::net::ip::{Ipv4Addr, IpAddr};
 use std::option::Option;
 use std::sync::Arc;
 
-use packet::ipv4 as packet;
+use super::packet;
 
 use super::{
   IpState,

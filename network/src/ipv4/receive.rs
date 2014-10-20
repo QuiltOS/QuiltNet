@@ -2,14 +2,14 @@ use std::collections::HashMap;
 use std::io::IoResult;
 use std::sync::Arc;
 
-use packet::ipv4 as packet;
+use super::packet2 as packet;
 
-use interface::{MyFn, Handler};
+use misc::interface::{MyFn, Handler};
 
-use data_link::{DLPacket, DLHandler};
+use data_link as dl;
 
-use network::ipv4::{strategy, send};
-use network::ipv4::{InterfaceRow, IpState};
+use ipv4::{strategy, send};
+use ipv4::{InterfaceRow, IpState};
 
 
 /// Called upon receipt of an IP packet:
@@ -90,10 +90,10 @@ struct IpDl<A>
   state: Arc<IpState<A>>,
 }
 
-impl<A> MyFn<(DLPacket,), ()> for IpDl<A>
+impl<A> MyFn<(dl::Packet,), ()> for IpDl<A>
   where A: strategy::RoutingTable, A: Send
 {
-  fn call(&self, args: (DLPacket,)) {
+  fn call(&self, args: (dl::Packet,)) {
     let (packet,) = args;
     println!("in callback");
     match receive(&*self.state, packet) {
@@ -103,7 +103,7 @@ impl<A> MyFn<(DLPacket,), ()> for IpDl<A>
   }
 }
 
-pub fn make_receive_callback<A>(state: Arc<IpState<A>>) -> DLHandler
+pub fn make_receive_callback<A>(state: Arc<IpState<A>>) -> dl::Handler
   where A: strategy::RoutingTable, A: Send
 {
   box IpDl { state: state.clone() }

@@ -1,10 +1,10 @@
 use std::io::{IoError, IoResult, IoUnavailable, NotConnected};
 use std::io::net::ip::{Ipv4Addr, IpAddr};
 
-use packet::ipv4 as packet;
+use super::packet2 as packet;
 
-use network::ipv4::{strategy, IpState, InterfaceRow};
-//use network::ipv4::packet::{IpAddr, IpPacket};
+use ipv4::{strategy, IpState, InterfaceRow};
+//use ipv4::packet::{IpAddr, IpPacket};
 
 //TODO: visibility?
 pub fn send_with_client<A>(state:              &IpState<A>,
