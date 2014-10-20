@@ -1,9 +1,12 @@
 [package]
 
-name = "rust-net-misc"
+name = "rust-net-data-link"
 version = "0.0.1"
 authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
           , "John Ericson <Ericson2314@Yahoo.com>" ]
 
 [lib]
-name = "misc"
+name = "data_link"
+
+[dependencies.rust-net-misc]
+path = "../misc"

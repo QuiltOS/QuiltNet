@@ -6,9 +6,7 @@ use std::sync::{Arc, Barrier};
 use std::str::from_utf8;
 use std::string::String;
 
-use interface::{MyFn, SenderClosure, Nop};
-
-use data_link::{DLPacket, DLHandler, DLInterface};
+use misc::interface::{MyFn, SenderClosure, Nop};
 
 use super::*;
 
@@ -29,8 +27,8 @@ fn talk_to_self_channel_helper(num_threads: uint) {
         let (l1, a1) = try!(mk_listener(num_threads));
         let (l2, a2) = try!(mk_listener(num_threads));
 
-        let (tx1, rx1) = channel::<(DLPacket,)>();
-        let (tx2, rx2) = channel::<(DLPacket,)>();
+        let (tx1, rx1) = channel::<(::Packet,)>();
+        let (tx2, rx2) = channel::<(::Packet,)>();
 
         const M1: &'static str = "Hey Josh!";
         const M2: &'static str = "Hey Cody!";
@@ -38,8 +36,8 @@ fn talk_to_self_channel_helper(num_threads: uint) {
         let interface1 = Interface::new(&l1, a2, box SenderClosure::new(tx1));
         let interface2 = Interface::new(&l2, a1, box SenderClosure::new(tx2));
 
-        try!(interface1.send(String::from_str(M2).into_bytes()));
-        try!(interface2.send(String::from_str(M1).into_bytes()));
+        try!(::Interface::send(&interface1, String::from_str(M2).into_bytes()));
+        try!(::Interface::send(&interface2, String::from_str(M1).into_bytes()));
 
         let (packet_1,) = rx1.recv();
         assert_eq!(packet_1.as_slice(), M1.as_bytes());
@@ -65,14 +63,14 @@ fn talk_to_self_channel_parallel() {
     talk_to_self_channel_helper(4);
 }
 
-struct DLCallback {
+struct TestCallback {
     msg: &'static str,
     barrier: Arc<Barrier>,
 }
 
-impl MyFn<(DLPacket,), ()> for DLCallback {
+impl MyFn<(::Packet,), ()> for TestCallback {
 
-    fn call(&self, args: (DLPacket,)) {
+    fn call(&self, args: (::Packet,)) {
         let (packet,) = args;
         println!("got packet: {}", from_utf8(packet.as_slice()));
         println!("matching against: {}", from_utf8(self.msg.as_bytes()));
@@ -83,8 +81,8 @@ impl MyFn<(DLPacket,), ()> for DLCallback {
 
 fn talk_to_self_callback_helper(num_threads: uint) {
 
-    fn mk_callback(barrier: Arc<Barrier>, msg: &'static str) -> DLHandler {
-        box DLCallback { barrier: barrier, msg: msg }
+    fn mk_callback(barrier: Arc<Barrier>, msg: &'static str) -> ::Handler {
+        box TestCallback { barrier: barrier, msg: msg }
     }
 
     fn inner(num_threads: uint) -> IoResult<()> {
@@ -99,8 +97,8 @@ fn talk_to_self_callback_helper(num_threads: uint) {
         let interface1 = Interface::new(&l1, a2, mk_callback(barrier.clone(), M1));
         let interface2 = Interface::new(&l2, a1, mk_callback(barrier.clone(), M2));
 
-        try!(interface1.send(String::from_str(M2).into_bytes()));
-        try!(interface2.send(String::from_str(M1).into_bytes()));
+        try!(::Interface::send(&interface1, String::from_str(M2).into_bytes()));
+        try!(::Interface::send(&interface2, String::from_str(M1).into_bytes()));
 
         barrier.wait();
 
@@ -131,9 +129,9 @@ fn disable_then_cant_send() {
         let (l, a) = try!(mk_listener(1));
         let mut i = Interface::new(&l, a, box Nop);
 
-        i.disable();
+        ::Interface::disable(&mut i);
 
-        assert_eq!(i.send(Vec::new()).unwrap_err(),
+        assert_eq!(::Interface::send(&i, Vec::new()).unwrap_err(),
                    // TODO: Report bug: shouldn't need prefix with `use super::*;` above
                    super::DISABLED_INTERFACE_ERROR);
 
