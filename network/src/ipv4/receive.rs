@@ -85,13 +85,13 @@ fn is_packet_dst_local<A>(state: &IpState<A>, packet: &packet::V) -> bool
 }
 
 struct IpDl<A>
-  where A: strategy::RoutingTable, A: Send
+  where A: strategy::RoutingTable + Send
 {
   state: Arc<IpState<A>>,
 }
 
 impl<A> MyFn<(dl::Packet,), ()> for IpDl<A>
-  where A: strategy::RoutingTable, A: Send
+  where A: strategy::RoutingTable + Send
 {
   fn call(&self, args: (dl::Packet,)) {
     let (packet,) = args;
@@ -104,7 +104,7 @@ impl<A> MyFn<(dl::Packet,), ()> for IpDl<A>
 }
 
 pub fn make_receive_callback<A>(state: Arc<IpState<A>>) -> dl::Handler
-  where A: strategy::RoutingTable, A: Send
+  where A: strategy::RoutingTable + Send
 {
   box IpDl { state: state.clone() }
 }
