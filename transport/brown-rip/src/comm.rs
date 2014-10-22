@@ -13,9 +13,9 @@ use network::ipv4::{
 use network::ipv4::{strategy, control};
 use network::ipv4::send::send_manual;
 
-use packet::ipv4::V as Ip;
+use network::ipv4::packet2::V as Ip;
 
-use interface::MyFn;
+use misc::interface::MyFn;
 
 use super::{
   RipTable,
