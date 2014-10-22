@@ -12,4 +12,4 @@ git="http://github.com/Ericson2314/packet.git"
 path = "../../network"
 
 [lib]
-name = "static-routing"
+name = "static_routing"

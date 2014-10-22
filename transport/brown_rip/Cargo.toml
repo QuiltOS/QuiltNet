@@ -15,4 +15,4 @@ path = "../../misc"
 path = "../../network"
 
 [lib]
-name = "brown-rip"
+name = "brown_rip"
