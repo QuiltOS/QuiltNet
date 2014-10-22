@@ -50,7 +50,7 @@ impl<RT> IpState<RT> where RT: RoutingTable
 {
   pub fn new(interfaces: Vec<InterfaceRow>, neighbors: InterfaceTable) -> Arc<IpState<RT>>
   {
-    let routes: RT = RoutingTable::init(neighbors.keys().map(|x| *x));
+    let routes: RT = strategy::init_hack::<RT, _>(neighbors.keys().map(|x| *x));
 
     let state: Arc<IpState<RT>> = Arc::new(IpState {
       routes:            routes,
@@ -106,13 +106,14 @@ impl<RT> IpState<RT> where RT: RoutingTable
         .update_recv_handler(make_receive_callback::<RT>(state.clone()));
     }
 
-    RoutingTable::monitor(state.clone());
+    strategy::monitor_hack::<RT>(state.clone());
 
     state
   }
 
   /// Returns dl::Interface struct for the requested interface
-  pub fn get_interface<'a> (&'a self, interface_ix: uint) -> Option<&'a InterfaceRow> {
+  pub fn get_interface<'a> (&'a self, interface_ix: uint) -> Option<&'a InterfaceRow>
+  {
     self.interfaces.as_slice().get(interface_ix)
   }
 }
