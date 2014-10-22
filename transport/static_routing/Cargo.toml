@@ -1,0 +1,15 @@
+[package]
+
+name = "rust-net-transport-static-routing"
+version = "0.0.1"
+authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
+          , "John Ericson <Ericson2314@Yahoo.com>" ]
+
+[dependencies.packet]
+git="http://github.com/Ericson2314/packet.git"
+
+[dependencies.rust-net-network]
+path = "../../network"
+
+[lib]
+name = "static-routing"
