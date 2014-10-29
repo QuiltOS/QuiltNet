@@ -59,19 +59,17 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
                      state.interfaces.as_slice()));
     },
 
-    Ok(Response(entries)) => {
+    Ok(Response(mut entries)) => {
       println!("RIP: Got response from {}", neighboor_addr);
       // hmm, thoughput or latency?
       let mut unlocked = state.routes.map.write();
 
       let mut changed_keys = ::std::collections::HashSet::new();
 
-      for &packet::Entry { cost, address } in entries.iter() {
+      for packet::Entry { cost, address: dst } in entries {
         use std::collections::hashmap::{Occupied, Vacant};
 
         let cost = cost + 1; // bump cost
-
-        let dst = packet::parse_ip(address);
 
         println!("RIP: can go to {} with cost {} via {}", dst, cost, neighboor_addr);
 
@@ -158,7 +156,7 @@ pub fn propagate<'a, I, J>(route_subset:        || -> I,
       |packet| -> IoResult<()> {
 
         let entry_builder = |(ip, row): (IpAddr, &'a RipRow)| packet::Entry {
-          address: packet::write_ip(ip),
+          address: ip,
           cost: if row.next_hop == neighbor_ip {
             //poison
             16

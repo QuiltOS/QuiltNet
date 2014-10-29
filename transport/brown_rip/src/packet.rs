@@ -11,12 +11,11 @@ use std::io::{
 };
 use std::mem::{transmute, size_of};
 
-#[deriving(PartialEq, PartialOrd, Eq, Ord,
-           Clone, Show)]
+#[deriving(PartialEq, Eq, Clone, Show)]
 #[repr(packed)]
 pub struct Entry {
   pub cost:    u32,
-  pub address: u32,
+  pub address: IpAddr,
 }
 
 #[deriving(PartialEq, PartialOrd, Eq, Ord,
@@ -28,45 +27,65 @@ pub enum Packet<Arr> {
   Response(Arr),
 }
 
-pub fn parse_ip(bits: u32) -> IpAddr {
-  let [a, b, c, d]: [u8, ..4] = unsafe { transmute(Int::from_be(bits)) };
+#[inline]
+pub fn parse_ip(&[a, b, c, d]: &[u8, ..4]) -> IpAddr {
   Ipv4Addr(a, b, c, d)
 }
 
-pub fn write_ip(addr: IpAddr) -> u32{
+#[inline]
+pub fn write_ip(addr: IpAddr) -> [u8, ..4] {
   match addr {
-    Ipv4Addr(a, b, c, d) => unsafe { transmute::<_, u32>([a, b, c, d]) }.to_be(),
+    Ipv4Addr(a, b, c, d) => [a, b, c, d],
     _                    => fail!("no ipv6 yet"),
   }
 }
 
-pub fn parse<'a>(buf: &'a [u8]) -> Result<Packet<&'a [Entry]>, ()> {
+pub fn parse<'a>(buf: &'a [u8]) -> Result<Packet<Entries<'a>>, ()> {
   parse_helper(buf).map_err(|_| ())
 }
 
-fn parse_helper<'a>(buf: &'a [u8]) -> IoResult<Packet<&'a [Entry]>> {
+pub type Entries<'a> = EntryIter<BufReader<'a>>;
+
+struct EntryIter<R>(R);
+
+impl<R> EntryIter<R> where R: Reader {
+
+  fn next_helper(&mut self) -> IoResult<Entry> {
+    let &EntryIter(ref mut r)      = self;
+    let cost                   = try!(r.read_be_u32());
+    let mut addr_buf: [u8, ..4] = [0, 0, 0, 0];
+    try!(r.read(addr_buf.as_mut_slice()));
+    let address                = parse_ip(&addr_buf);
+    Ok(Entry { cost: cost, address: address })
+  }
+}
+
+impl<R> Iterator<Entry> for EntryIter<R> where R: Reader
+{
+  fn next(&mut self) -> Option<Entry> {
+    self.next_helper().ok()
+  }
+}
+
+#[inline]
+fn parse_helper<'a>(buf: &'a [u8]) -> IoResult<Packet<Entries<'a>>>
+{
   let mut r = BufReader::new(buf);
   match try!(r.read_be_u16()) {
     1 => Ok(Request),
     2 => {
       let count = try!(r.read_be_u16());
       // ought to be static
-      let hdr_len: uint = size_of::<u16>() * 2;
-      let body_len: uint = size_of::<Entry>() * count as uint;
+      let hdr_len:  uint = size_of::<u16>() * 2;
+      let body_len: uint = size_of::<u32>() * 2 * count as uint;
 
-      let entries: &'a[Entry] = match buf.len().cmp(&(body_len + hdr_len)) {
+      match buf.len().cmp(&(body_len + hdr_len)) {
         Less    => return Err(IoError::last_error()), // some random error
-        Equal   => {
-          unsafe { transmute(buf[hdr_len..]) }
-        },
-        Greater => {
-          println!("Rip: packet was too large");
-          let s: &'a[Entry] = unsafe { transmute(buf[hdr_len..]) };
-          s[..count as uint + 1] // 2 dots in exclusive
-        },
-      };
+        Greater => println!("Rip: packet was too large"),
+        Equal   => (),
+      }
 
-      Ok(Response(entries))
+      Ok(Response(EntryIter(r)))
     },
     _ => Err(IoError::last_error()), // some random error
   }
@@ -92,7 +111,7 @@ pub fn write<'a, I>(packet: Packet<I>) -> proc(&Vec<u8>):'a -> IoResult<()>
         for Entry { cost, address } in iter {
           count += 1;
           try!(m.write_be_u32(cost));
-          try!(m.write_be_u32(address));
+          try!(m.write(write_ip(address)));
         }
         // cast back, because previous cast was interpreted as move
         let vec2: &mut Vec<u8> = unsafe { transmute(m) };
