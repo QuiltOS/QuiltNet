@@ -23,13 +23,13 @@ pub fn spawn_updater(state: Arc<IpState<RipTable>>) {
 }
 
 fn update(state: &IpState<RipTable>) {
+  let unlocked = state.routes.map.read();
   // propegate the whole damn table!
-  let unlocked = state.routes.map.write();
   let factory = || unlocked.iter().map(|(a,r)| (*a,r));
 
   // ignore errors, for now
   let _ = propagate(factory,
-                    state.neighbors.keys().map(|x| *x),
+                    state.neighbors.keys().map(|x| *x), // tell everyone
                     &state.neighbors,
                     state.interfaces.as_slice());
 }
@@ -60,7 +60,7 @@ fn collector_garbage(state: &IpState<RipTable>) {
         sec: row.time_added.sec + 12,
         ..row.time_added
       };
-      // allowed to forget neighboors, though the neighbor -> interface map 
+      // allowed to forget neighboors, though the neighbor -> interface map
       // will remember them
       if row.cost == 16 || deadline >= cur_time
       {
@@ -76,14 +76,14 @@ fn collector_garbage(state: &IpState<RipTable>) {
 
     // ignore errors, for now
     let _ = propagate(zip_iter_factory,
-                      state.neighbors.keys().map(|x| *x),
+                      state.neighbors.keys().map(|x| *x), // all neighbors
                       &state.neighbors,
                       state.interfaces.as_slice());
   }
 
   for k in bad_keys.into_iter() {
     // lock is reaquired
-    let mut table2 = state.routes.map.write();
-    table2.remove(&k);
+    let mut table = state.routes.map.write();
+    table.remove(&k);
   }
 }

@@ -51,23 +51,24 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
 
       let single = [neighboor_addr];
       let unlocked = state.routes.map.write();
-      let factory = || unlocked.iter().map(|(a,r)| (*a,r));
+      let factory = || unlocked.iter().map(|(a,r)| (*a,r)); // the whole table
 
       try!(propagate(factory,
-                     single.iter().map(|x| *x),
+                     single.iter().map(|x| *x), // just who issued the request
                      &state.neighbors,
                      state.interfaces.as_slice()));
     },
 
     Ok(Response(mut entries)) => {
       println!("RIP: Got response from {}", neighboor_addr);
-      // hmm, thoughput or latency?
-      let mut unlocked = state.routes.map.write();
 
-      let mut changed_keys = ::std::collections::HashSet::new();
+      let mut updated_entries = ::std::collections::hashmap::HashMap::new();
 
       for packet::Entry { cost, address: dst } in entries {
         use std::collections::hashmap::{Occupied, Vacant};
+
+        // hmm, thoughput or latency?
+        let mut unlocked = state.routes.map.write();
 
         let cost = cost + 1; // bump cost
 
@@ -83,28 +84,33 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
 
         match unlocked.entry(dst) {
           Vacant(entry) => {
-            entry.set(mk_new_row());
 
-            changed_keys.insert(dst);
+            let r = mk_new_row();
+            updated_entries.insert(dst, r);
+
+            entry.set(r.clone());
           },
           Occupied(e) => {
             let row = e.into_mut();
-            let &RipRow { cost: old_cost, .. } = row;
-            if old_cost > cost as u8 {
-              println!("RIP: route to {} upgraded from {} to {}",
-                       neighboor_addr, old_cost, cost);
-              *row = mk_new_row();
+            let &RipRow { cost: old_cost, next_hop: old_hop, .. } = row;
+            if old_cost >= cost as u8 {
+              println!("RIP: route to {} upgraded from ({}, {}) to ({}, {})",
+                       dst, old_cost, old_hop, cost, neighboor_addr);
 
-              changed_keys.insert(dst);
+              let r = mk_new_row();
+              updated_entries.insert(dst, r);
+
+              *row = r;
             }
           },
         };
       };
 
-      let factory = || unlocked.iter().map(|(a,r)| (*a,r));
+      // just those keys which were updated
+      let factory = || updated_entries.iter().map(|(a,r)| (*a,r));
 
       try!(propagate(factory,
-                     changed_keys.iter().map(|x| *x),
+                     state.neighbors.keys().map(|x| *x), // tell everyone
                      &state.neighbors,
                      state.interfaces.as_slice()));
     },
@@ -134,13 +140,13 @@ pub fn register(state: Arc<IpState<RipTable>>) {
 /// Note that unlike the normal send method, this does not take any locks. It purposely asks for
 /// certain fields of IpState, rather than the structure as a whole, to prevent itself from taking
 /// any locks.
-pub fn propagate<'a, I, J>(route_subset:        || -> I,
+pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
                            mut neighbor_subset: J,
                            neighbors:           &'a InterfaceTable,
                            interfaces:          &'a [InterfaceRow])
                            -> IoResult<()>
-  where I: Iterator<(IpAddr, &'a RipRow)>,
-        J: Iterator<IpAddr>
+  where I: Iterator<(IpAddr, &'a RipRow)> + 'a,
+        J: Iterator<IpAddr> + 'a
 {
   for neighbor_ip in neighbor_subset {
 
@@ -155,8 +161,8 @@ pub fn propagate<'a, I, J>(route_subset:        || -> I,
       None,
       |packet| -> IoResult<()> {
 
-        let entry_builder = |(ip, row): (IpAddr, &'a RipRow)| packet::Entry {
-          address: ip,
+        let entry_builder = |(route_dst, row): (IpAddr, &'a RipRow)| packet::Entry {
+          address: route_dst,
           cost: if row.next_hop == neighbor_ip {
             //poison
             16
