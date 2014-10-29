@@ -1,3 +1,0 @@
-node A localhost
-node B localhost
-A <-> B
