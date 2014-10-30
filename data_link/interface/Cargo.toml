@@ -1,0 +1,12 @@
+[package]
+
+name = "rust-net-data-link-interface"
+version = "0.0.1"
+authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
+          , "John Ericson <Ericson2314@Yahoo.com>" ]
+
+[dependencies.rust-net-misc]
+path = "../../misc"
+
+[lib]
+name = "interface"

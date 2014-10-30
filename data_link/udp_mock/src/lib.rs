@@ -1,16 +1,26 @@
+//#![feature(unboxed_closures)]
+#![feature(slicing_syntax)]
+
+// for tests
+#![feature(globs)]
+
+extern crate misc;
+extern crate interface;
+
 use std::collections::hashmap::{HashMap, Occupied, Vacant};
 
-use std::io::{IoError, IoResult, IoUnavailable};
-use std::io::net;
+use std::io::IoResult;
 use std::io::net::udp::UdpSocket;
-use std::io::net::ip::{SocketAddr, Ipv4Addr, Port};
+use std::io::net::ip::{SocketAddr};
 
 use std::sync::Arc;
 use std::sync::RWLock;
 
 use std::task::spawn;
 
-use misc::interface::Interface as Interface_T;
+use misc::interface as root;
+
+use interface as dl;
 
 #[cfg(test)]
 mod test;
@@ -18,19 +28,20 @@ mod test;
 
 const RECV_BUF_SIZE: uint = 64 * 1024;
 
-type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr, ( bool, ::Handler)>>>;
+type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr,
+                                           (bool, dl::Handler)>>>;
 
-/// The backing listening socket / read loop for a bunch of UDP-backed mock link neighbors
+/// The backing listening socket / read loop for a bunch of UDP-backed mock link
+/// neighbors
 pub struct Listener {
   socket:   UdpSocket,
   handlers: SharedHandlerMap,
 }
 
-impl Listener {
-
+impl Listener
+{
   pub fn new(listen_addr: SocketAddr, num_threads: uint) -> IoResult<Listener>
   {
-
     assert!(num_threads > 0);
 
     let socket = try!(UdpSocket::bind(listen_addr));
@@ -102,7 +113,7 @@ impl Interface {
 
   pub fn new(listener:    &Listener,
              remote_addr: SocketAddr,
-             on_recv:     ::Handler) -> Interface
+             on_recv:     dl::Handler) -> Interface
   {
     listener.handlers.write().deref_mut().insert(remote_addr, (true, on_recv));
 
@@ -114,30 +125,23 @@ impl Interface {
   }
 }
 
-impl Interface_T for Interface {
+impl root::Interface for Interface {
 
 }
 
-const DISABLED_INTERFACE_ERROR: IoError = IoError {
-  kind: IoUnavailable,
-  desc: "This link-layer interface (a Interface) has been disabled",
-  detail: None,
-};
-
-impl ::Interface for Interface {
-
-
-  fn send(&self, packet: ::Packet) -> IoResult<()> {
+impl dl::Interface for Interface
+{
+  fn send(&self, packet: dl::Packet) -> dl::Result<()> {
 
     if self.cached_status == false {
-      return Err(DISABLED_INTERFACE_ERROR.clone())
+      return Err(dl::Disabled);
     }
 
     let mut socket = self.listener.socket.clone();
-    socket.send_to(packet.as_slice(), self.remote_addr)
+    socket.send_to(packet.as_slice(), self.remote_addr).map_err(dl::External)
   }
 
-  fn update_recv_handler(&self, on_recv: ::Handler) {
+  fn update_recv_handler(&self, on_recv: dl::Handler) {
     self.listener.handlers.write().deref_mut()
       .insert(self.remote_addr, (true, on_recv));
   }

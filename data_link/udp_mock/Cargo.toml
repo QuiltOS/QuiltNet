@@ -1,12 +1,15 @@
 [package]
 
-name = "rust-net-data-link"
+name = "rust-net-data-link-udp-mock"
 version = "0.0.1"
 authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
           , "John Ericson <Ericson2314@Yahoo.com>" ]
 
 [dependencies.rust-net-misc]
-path = "../misc"
+path = "../../misc"
+
+[dependencies.rust-net-data-link-interface]
+path = "../interface"
 
 [lib]
-name = "data_link"
+name = "udp_mock"

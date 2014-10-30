@@ -1,6 +1,5 @@
 use std::io::net::ip::{SocketAddr, IpAddr, Ipv4Addr};
 use std::io::net::addrinfo;
-use std::io::IoResult;
 
 /// Tries to parse Socket Address from <host>:<port> string
 pub fn socketaddr(addr_s: &str) -> Option<SocketAddr> {

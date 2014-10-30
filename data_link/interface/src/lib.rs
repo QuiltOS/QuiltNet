@@ -1,30 +1,28 @@
-// This warning is really unimportant and annoying
-#![allow(unused_imports)]
-#![allow(unknown_features)]
-
 //#![feature(unboxed_closures)]
-// for Anson's rustc
-#![feature(slicing_syntax)]
-// for tests
-#![feature(globs)]
 
 extern crate misc;
 
-use std::io::IoResult;
+use std::io::IoError;
 
 pub use misc::interface as i;
 
-pub mod udp_mock;
 
 // TODO: use Box<[u8]> instead of Vec<u8>
 pub type Packet = Vec<u8>;
-
 pub type Handler = i::Handler<Packet>;
+
+// TODO: use associated type instead of IoError
+pub enum Error {
+  Disabled,
+  External(IoError),
+}
+
+pub type Result<T> = std::result::Result<T, self::Error>;
 
 pub trait Interface: i::Interface {
 
   /// Send packet with specified body
-  fn send(&self, packet: Packet) -> IoResult<()>;
+  fn send(&self, packet: Packet) -> self::Result<()>;
 
   /// Update the function called on an arriving packet
   fn update_recv_handler(&self, on_recv: Handler);
