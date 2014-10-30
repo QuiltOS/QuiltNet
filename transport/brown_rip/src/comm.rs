@@ -40,9 +40,7 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
     _       => (),
   };
 
-
   match packet::parse(data) {
-
     Ok(Request) => {
       println!("RIP: Got request from {}", neighbor_addr);
 

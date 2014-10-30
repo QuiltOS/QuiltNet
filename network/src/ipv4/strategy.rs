@@ -1,4 +1,4 @@
-use std::io::net::ip::{Ipv4Addr, IpAddr};
+use std::io::net::ip::IpAddr;
 use std::option::Option;
 use std::sync::Arc;
 

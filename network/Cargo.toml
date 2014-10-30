@@ -11,8 +11,8 @@ git="http://github.com/Ericson2314/packet.git"
 [dependencies.rust-net-misc]
 path = "../misc"
 
-[dependencies.rust-net-data-link]
-path = "../data_link"
+[dependencies.rust-net-data-link-interface]
+path = "../data_link/interface"
 
 [lib]
 name = "network"

@@ -12,6 +12,7 @@ pub type Packet = Vec<u8>;
 pub type Handler = i::Handler<Packet>;
 
 // TODO: use associated type instead of IoError
+#[deriving(PartialEq, Eq, Clone, Show)]
 pub enum Error {
   Disabled,
   External(IoError),

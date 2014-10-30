@@ -1,12 +1,10 @@
-use std::collections::HashMap;
-use std::io::IoResult;
 use std::sync::Arc;
 
 use super::packet2 as packet;
 
 use misc::interface::{MyFn, Handler};
 
-use data_link as dl;
+use data_link::interface as dl;
 
 use ipv4::{strategy, send};
 use ipv4::{InterfaceRow, IpState};
@@ -15,43 +13,40 @@ use ipv4::{InterfaceRow, IpState};
 /// Called upon receipt of an IP packet:
 /// If packet is destined for this node, deliver it to appropriate handlers
 /// If packet is destined elsewhere, fix packet headers and forward
-fn receive<A>(state: &IpState<A>, buf: Vec<u8>) -> IoResult<()>
+fn receive<A>(state: &IpState<A>, buf: Vec<u8>)
   where A: strategy::RoutingTable
 {
-
   let packet = match packet::validate(buf.as_slice()) {
     Ok(_)  => packet::V::new(buf),
     Err(e) => {
-      println!("dropping incomming packet because {}", e);
-      return Ok(())
+      println!("IP: dropping incomming packet because {}", e);
+      return;
     },
   };
 
-  println!("checking if packet is local");
   if is_packet_dst_local(state, &packet) {
-    println!("Packet is local! {}", packet);
+    println!("IP: Packet is local! {}", packet);
     // local handling
     let handlers = &(*state.protocol_handlers.read())
       [packet.borrow().get_protocol() as uint];
     // If there are no handlers (vector is empty), the packet is just dropped
     // TODO: copy packet only if there are multiple handlers
     for handler in handlers.iter() {
-      println!("Handing to handler");
-      // Handler also given IpState for
-      //  - inspection (CLI)
-      //  - modification (Rip)
       (&**handler).call((packet.clone(),));
     }
   } else {
-    println!("packet is not local!");
-    try!(forward(state, packet));
+    println!("IP: packet is not local! {}", packet);
+    // handle errors just for logging purposes
+    match forward(state, packet) {
+      Ok(_) => (),
+      Err(e) => println!("IP: packet could not be fowarded because {}", e),
+    };
   }
-  Ok(())
 }
 
 /// Forwards a packet back into the network after rewriting its headers
 /// Result status is whether packet was able to be forwarded
-fn forward<A>(state: &IpState<A>, mut packet: packet::V) -> IoResult<()>
+fn forward<A>(state: &IpState<A>, mut packet: packet::V) -> send::Result<()>
   where A: strategy::RoutingTable
 {
   { // decrement TTL
@@ -68,8 +63,7 @@ fn forward<A>(state: &IpState<A>, mut packet: packet::V) -> IoResult<()>
   //  desc:   "Packet had invalid headers",
   //  detail: None,
   //}));
-  try!(send::send(state, packet));
-  Ok(())
+  send::send(state, packet)
 }
 
 /// Determine whether packet is destined for this node
@@ -77,7 +71,6 @@ fn is_packet_dst_local<A>(state: &IpState<A>, packet: &packet::V) -> bool
   where A: strategy::RoutingTable
 {
   let dst = packet.borrow().get_destination();
-  println!("after borrow: {}", dst);
 
   // TODO: factor out is_neighbor_addr and is_our_addr
   state.interfaces.iter()
@@ -95,11 +88,7 @@ impl<A> MyFn<(dl::Packet,), ()> for IpDl<A>
 {
   fn call(&self, args: (dl::Packet,)) {
     let (packet,) = args;
-    println!("in callback");
-    match receive(&*self.state, packet) {
-      Ok(v)  => v,
-      Err(e) => fail!(e),
-    }
+    receive(&*self.state, packet);
   }
 }
 

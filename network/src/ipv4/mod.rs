@@ -2,15 +2,13 @@ extern crate packet;
 
 use std::collections::hashmap::HashMap;
 use std::io::net::ip::IpAddr;
-use std::iter::FromIterator;
-use std::mem::size_of;
 use std::sync::{Arc, RWLock};
 
-use misc::interface::{MyFn, Handler};
+use misc::interface::{MyFn, /* Handler */};
 
 pub use self::packet::ipv4 as packet2;
 
-use data_link as dl;
+use data_link::interface as dl;
 
 use self::strategy::RoutingTable;
 
