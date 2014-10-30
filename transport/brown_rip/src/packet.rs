@@ -11,6 +11,8 @@ use std::io::{
 };
 use std::mem::{transmute, size_of};
 
+use super::RIP_MAX_ENTRIES;
+
 #[deriving(PartialEq, Eq, Clone, Show)]
 #[repr(packed)]
 pub struct Entry {
@@ -91,37 +93,49 @@ fn parse_helper<'a>(buf: &'a [u8]) -> IoResult<Packet<Entries<'a>>>
   }
 }
 
-pub fn write<'a, I>(packet: Packet<I>) -> proc(&Vec<u8>):'a -> IoResult<()>
-  where I: Iterator<Entry> + 'a
+pub fn write_request(vec: &Vec<u8>) -> IoResult<()>
 {
-  proc(vec) {
-    let packet = packet;
+  // MemWriter is just a newtype
+  let m: &mut MemWriter = unsafe { transmute(vec) };
+  try!(m.write_be_u16(1));
+  try!(m.write_be_u16(0));
+  Ok(())
+}
+
+// iterator must yield at least one entry, or assertion will fall
+pub fn write_response<'a, I>(entries_iter: &'a mut I)
+                             -> proc(&mut Vec<u8>):'a -> IoResult<()>
+  where I: Iterator<Entry>
+{
+  proc(vec)
+  {
+    let entries_iter = entries_iter;
     let thus_far = vec.len();
-    // MemWriter is just a newtype
-    let m: &mut MemWriter = unsafe { transmute(vec) };
-    match packet {
-      Request => {
-        try!(m.write_be_u16(1));
-        try!(m.write_be_u16(0));
-      },
-      Response(mut iter) => {
-        try!(m.write_be_u16(2));
-        try!(m.write_be_u16(0x_FF_FF)); // place holder
-        let mut count = 0;
-        for Entry { cost, address } in iter {
-          count += 1;
-          try!(m.write_be_u32(cost));
-          try!(m.write(write_ip(address)));
-        }
-        // cast back, because previous cast was interpreted as move
-        let vec2: &mut Vec<u8> = unsafe { transmute(m) };
-        {
-          let mut b = BufWriter::new(vec2.as_mut_slice());
-          try!(b.seek((thus_far + size_of::<u16>()) as i64, SeekSet));
-          println!("RIP: fixing count ({}) when writing packet", count);
-          try!(b.write_be_u16(count));
-        }
-      },
+    let mut count: u16 = 0;
+    {
+      // MemWriter is just a newtype
+      let m: &mut MemWriter = unsafe { transmute(&*vec) };
+      try!(m.write_be_u16(2));
+      try!(m.write_be_u16(0x_FF_FF)); // place holder
+
+      // this seems overly manual, except I need to remember number of times I
+      // loop
+      while count < RIP_MAX_ENTRIES {
+        let Entry { cost, address } = match entries_iter.next() {
+          Some(e) => e,
+          None    => break,
+        };
+        count += 1;
+        try!(m.write_be_u32(cost));
+        try!(m.write(write_ip(address)));
+      }
+      assert!(count > 0); // we don't want to send empty response packets
+    }
+    {
+      let mut b = BufWriter::new(vec.as_mut_slice());
+      try!(b.seek((thus_far + size_of::<u16>()) as i64, SeekSet));
+      println!("RIP: fixing count ({}) when writing entries_iter", count);
+      try!(b.write_be_u16(count));
     }
     Ok(())
   }
@@ -173,15 +187,9 @@ mod test {
 
  #[test]
  fn write_request() {
-   let empty: [Entry, ..0] = [];
-
-   let things = [Response(empty.iter().map(|x| *x)),
-                 Request];
-
-
    let msg: &[u8] = &[0,1,0,0];
    let vec = Vec::new();
-   write(things[1])(&vec).unwrap();
+   super::write_request(&vec).unwrap();
    assert_eq!(vec.as_slice(), msg);
  }
 
@@ -203,7 +211,7 @@ mod test {
                          0,0,0,16, 5,4,3,2];
 
       let vec = Vec::new();
-      write(Response(entries.iter().map(|x| *x)))(&vec).unwrap();
+      super::write_responce(Response(entries.iter().map(|x| *x)))(&vec).unwrap();
       assert_eq!(vec.as_slice(), msg);
     }
   }

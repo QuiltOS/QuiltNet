@@ -7,7 +7,7 @@ use time::{Timespec, get_time};
 
 use network::ipv4::IpState;
 
-use super::{RipRow, RipTable};
+use super::{RIP_INFINITY, RipRow, RipTable};
 use super::comm::propagate;
 
 pub fn spawn_updater(state: Arc<IpState<RipTable>>) {
@@ -62,9 +62,9 @@ fn collector_garbage(state: &IpState<RipTable>) {
       };
       // allowed to forget neighboors, though the neighbor -> interface map
       // will remember them
-      if row.cost == 16 || deadline >= cur_time
+      if row.cost == RIP_INFINITY || deadline >= cur_time
       {
-        row.cost = 16; // dead rows shall be poisonsed
+        row.cost = RIP_INFINITY; // dead rows shall be poisonsed
         bad_keys.push(*dst);
         bad_rows.push(row);
       }

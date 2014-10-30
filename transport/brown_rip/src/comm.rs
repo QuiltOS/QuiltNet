@@ -17,10 +17,7 @@ use network::ipv4::packet2::V as Ip;
 
 use misc::interface::MyFn;
 
-use super::{
-  RipTable,
-  RipRow,
-};
+use super::{RIP_INFINITY, RipTable, RipRow};
 use super::packet::{mod, Packet, Request, Response};
 
 struct RipHandler { state: Arc<IpState<RipTable>> }
@@ -145,38 +142,41 @@ pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
                            neighbors:           &'a InterfaceTable,
                            interfaces:          &'a [InterfaceRow])
                            -> IoResult<()>
-  where I: Iterator<(IpAddr, &'a RipRow)> + 'a,
-        J: Iterator<IpAddr> + 'a
+  where I: Iterator<(IpAddr, &'a RipRow)>,
+J: Iterator<IpAddr>
 {
-  for neighbor_ip in neighbor_subset {
-
+  for neighbor_ip in neighbor_subset
+  {
     let interface_row = match neighbors.find(&neighbor_ip) {
       None         => fail!("Can't propagate to non-neighbor: {}", neighbor_ip),
       Some(&index) => &interfaces[index],
     };
 
-    let packet = try!(Ip::new_with_client(
-      neighbor_ip,
-      super::RIP_PROTOCOL,
-      None,
-      |packet| -> IoResult<()> {
+    let entry_builder = |(route_dst, row): (IpAddr, &'a RipRow)| packet::Entry {
+      address: route_dst,
+      cost: if row.next_hop == neighbor_ip {
+        //poison
+        RIP_INFINITY
+      } else {
+        row.cost
+      } as u32
+    };
 
-        let entry_builder = |(route_dst, row): (IpAddr, &'a RipRow)| packet::Entry {
-          address: route_dst,
-          cost: if row.next_hop == neighbor_ip {
-            //poison
-            16
-          } else {
-            row.cost as u32
-          }
-        };
+    let mut entries_iter = route_subset().map(entry_builder).peekable();
 
-        let entries_iter = route_subset().map(entry_builder);
-        let packet_thunk = packet::write(packet::Response(entries_iter));
+    while !entries_iter.is_empty() {
 
-        packet_thunk(packet.as_vec())
-      }));
-    try!(send_manual(packet, interface_row));
+      let f = |packet: &mut Ip| {
+        packet::write_response(&mut entries_iter)(packet.as_mut_vec())
+      };
+
+      let packet = try!(Ip::new_with_client(
+        neighbor_ip,
+        super::RIP_PROTOCOL,
+        None,
+        f));
+      try!(send_manual(packet, interface_row));
+    }
   }
   Ok(())
 }

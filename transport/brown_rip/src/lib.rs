@@ -29,8 +29,9 @@ mod comm;
 mod periodic;
 mod packet;
 
-
-const RIP_PROTOCOL:u8 = 200;
+const RIP_INFINITY:    u8  = 16;
+const RIP_MAX_ENTRIES: u16 = 64;
+const RIP_PROTOCOL:    u8  = 200;
 
 #[deriving(Clone)]
 pub struct RipRow {
