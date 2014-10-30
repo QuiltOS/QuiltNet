@@ -79,9 +79,9 @@ fn is_packet_dst_local<A>(state: &IpState<A>, packet: &packet::V) -> bool
   let dst = packet.borrow().get_destination();
   println!("after borrow: {}", dst);
 
+  // TODO: factor out is_neighbor_addr and is_our_addr
   state.interfaces.iter()
-    .map(|&InterfaceRow { local_ip, .. }| local_ip)
-    .any(|local_ip| local_ip == dst)//.contains(dst)
+    .any(|&InterfaceRow { local_ip, .. }| local_ip == dst)
 }
 
 struct IpDl<A>

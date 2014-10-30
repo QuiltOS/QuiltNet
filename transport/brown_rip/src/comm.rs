@@ -31,12 +31,12 @@ impl MyFn<(Ip,), ()> for RipHandler {
 }
 
 fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
-  let neighboor_addr = packet.borrow().get_source();
+  let neighbor_addr = packet.borrow().get_source();
   //let interface_addr = packet.borrow().get_destination();
   let data = packet.borrow().get_payload();
 
-  match state.neighbors.find(&neighboor_addr) {
-    None    => println!("RIP: Odd, got packet from non-neighboor: {}", neighboor_addr),
+  match state.neighbors.find(&neighbor_addr) {
+    None    => println!("RIP: Odd, got packet from non-neighbor: {}", neighbor_addr),
     _       => (),
   };
 
@@ -44,9 +44,11 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
   match packet::parse(data) {
 
     Ok(Request) => {
-      println!("RIP: Got request from {}", neighboor_addr);
+      println!("RIP: Got request from {}", neighbor_addr);
 
-      let single = [neighboor_addr];
+      // TODO: factor out singleton iterator
+
+      let single = [neighbor_addr];
       let unlocked = state.routes.map.write();
       let factory = || unlocked.iter().map(|(a,r)| (*a,r)); // the whole table
 
@@ -54,70 +56,21 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
                      single.iter().map(|x| *x), // just who issued the request
                      &state.neighbors,
                      state.interfaces.as_slice()));
+
+      // TODO factor out empty iterator
+      let empty: [packet::Entry, ..0] = [];
+      let empty_iter = empty.as_slice().iter().map(|x| *x);
+
+      try!(update(state, neighbor_addr, empty_iter));
     },
-
-    Ok(Response(mut entries)) => {
-      println!("RIP: Got response from {}", neighboor_addr);
-
-      let mut updated_entries = ::std::collections::hashmap::HashMap::new();
-
-      for packet::Entry { cost, address: dst } in entries {
-        use std::collections::hashmap::{Occupied, Vacant};
-
-        // hmm, thoughput or latency?
-        let mut unlocked = state.routes.map.write();
-
-        let cost = cost + 1; // bump cost
-
-        println!("RIP: can go to {} with cost {} via {}", dst, cost, neighboor_addr);
-
-        let mk_new_row = || {
-          RipRow {
-            time_added: ::time::get_time(),
-            next_hop: neighboor_addr,
-            cost: cost as u8,
-          }
-        };
-
-        match unlocked.entry(dst) {
-          Vacant(entry) => {
-
-            let r = mk_new_row();
-            updated_entries.insert(dst, r);
-
-            entry.set(r.clone());
-          },
-          Occupied(e) => {
-            let row = e.into_mut();
-            let &RipRow { cost: old_cost, next_hop: old_hop, .. } = row;
-            if old_cost >= cost as u8 {
-              println!("RIP: route to {} upgraded from ({}, {}) to ({}, {})",
-                       dst, old_cost, old_hop, cost, neighboor_addr);
-
-              let r = mk_new_row();
-              updated_entries.insert(dst, r);
-
-              *row = r;
-            }
-          },
-        };
-      };
-
-      // just those keys which were updated
-      let factory = || updated_entries.iter().map(|(a,r)| (*a,r));
-
-      try!(propagate(factory,
-                     state.neighbors.keys().map(|x| *x), // tell everyone
-                     &state.neighbors,
-                     state.interfaces.as_slice()));
+    Ok(Response(entries)) => {
+      println!("RIP: Got response from {}", neighbor_addr);
+      try!(update(state, neighbor_addr, entries));
     },
-
     _ => println!("RIP: invalid packet received: {}", data),
-
   }
   Ok(())
 }
-
 
 /// Runs simple debug handler, printing out all packets received for the given protocols
 pub fn register(state: Arc<IpState<RipTable>>) {
@@ -143,7 +96,7 @@ pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
                            interfaces:          &'a [InterfaceRow])
                            -> IoResult<()>
   where I: Iterator<(IpAddr, &'a RipRow)>,
-J: Iterator<IpAddr>
+        J: Iterator<IpAddr>
 {
   for neighbor_ip in neighbor_subset
   {
@@ -178,5 +131,90 @@ J: Iterator<IpAddr>
       try!(send_manual(packet, interface_row));
     }
   }
+  Ok(())
+}
+
+
+/// Go through a bunch of entries, update the table, propigate changes
+fn update<I>(state: &IpState<RipTable>,
+             neighbor_addr: IpAddr,
+             entries_but_neighbor_itself: I)
+             -> IoResult<()>
+  where I: Iterator<packet::Entry>
+{
+  // TODO: factor out singleton iterator
+  // "cons on" neighbor who just responded
+  let scratch = [packet::Entry { cost: 0, address: neighbor_addr }];
+  let mut entries = scratch.as_slice().iter().map(|x| *x).chain(entries_but_neighbor_itself);
+
+  let mut updated_entries = ::std::collections::hashmap::HashMap::new();
+
+  for packet::Entry { mut cost, address: dst } in entries {
+    use std::collections::hashmap::{Occupied, Vacant};
+
+    // hmm, thoughput or latency?
+    let mut unlocked = state.routes.map.write();
+
+    if cost > RIP_INFINITY as u32 {
+      println!("RIP: received bad cost grater than infinity: {}", cost);
+    };
+    if cost < RIP_INFINITY as u32 { cost += 1; }; // bump cost unless infinite
+
+    println!("RIP: can go to {} with cost {} via {}", dst, cost, neighbor_addr);
+
+    let mk_new_row = || {
+      RipRow {
+        time_added: ::time::get_time(),
+        next_hop: neighbor_addr,
+        cost: cost as u8,
+      }
+    };
+
+    match unlocked.entry(dst) {
+      Vacant(entry) => {
+        if cost < RIP_INFINITY as u32 { // no point spending memory on dead routes
+          let r = mk_new_row();
+          updated_entries.insert(dst, r);
+          entry.set(r.clone());
+        }
+      },
+      Occupied(e) => {
+        let old = e.into_mut();
+
+        let no_worse   = cost           <= old.cost as u32;
+        let update     = neighbor_addr == old.next_hop;
+        let dead_route = cost           >= RIP_INFINITY as u32;
+        let to_self    = state.interfaces.iter()
+          .any(|&InterfaceRow { local_ip, .. }| local_ip == dst);
+
+        // accept update from neighbor, or better route
+        // don't bother switching what sort of dead route it is
+        // don't bother accepting route to self
+        if (update || no_worse) && !dead_route && !to_self
+        {
+          let new = mk_new_row();
+          println!("RIP: route to {} changed from ({}, {}) to ({}, {})",
+                   dst, old.cost, old.next_hop, new.cost, new.next_hop);
+
+          // only propigate updates that effect cost
+          // nobody cares about our next hop
+          // routes renews (i.e. only timestamp changed) are only propigated via periodic updates
+          if new.cost != old.cost {
+            updated_entries.insert(dst, new);
+          }
+
+          *old = new;
+        }
+      },
+    };
+  };
+
+  // just those keys which were updated
+  let factory = || updated_entries.iter().map(|(a,r)| (*a,r));
+
+  try!(propagate(factory,
+                 state.neighbors.keys().map(|x| *x), // tell everyone
+                 &state.neighbors,
+                 state.interfaces.as_slice()));
   Ok(())
 }

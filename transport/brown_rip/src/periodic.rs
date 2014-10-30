@@ -60,7 +60,7 @@ fn collector_garbage(state: &IpState<RipTable>) {
         sec: row.time_added.sec + 12,
         ..row.time_added
       };
-      // allowed to forget neighboors, though the neighbor -> interface map
+      // allowed to forget neighbors, though the neighbor -> interface map
       // will remember them
       if row.cost == RIP_INFINITY || deadline >= cur_time
       {
