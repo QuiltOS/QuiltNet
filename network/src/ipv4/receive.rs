@@ -35,9 +35,23 @@ fn receive<A>(state: &IpState<A>, buf: Vec<u8>)
     let handlers = &(*state.protocol_handlers.read())
       [packet.borrow().get_protocol() as uint];
     // If there are no handlers (vector is empty), the packet is just dropped
-    // TODO: copy packet only if there are multiple handlers
-    for handler in handlers.iter() {
-      (&**handler).call((packet.clone(),));
+    // TODO: factor out this clone-until-last-time pattern
+    let mut iter = handlers.iter().peekable();
+    match iter.next() {
+      None => (),
+      Some(mut handler) => loop {
+        match iter.next() {
+          None         => {
+            // no clone needed!
+            (&**handler).call((packet,));
+            break;
+          }
+          Some(h_next) => {
+            (&**handler).call((packet.clone(),));
+            handler = h_next;
+          }
+        }
+      }
     }
   } else {
     debug!("packet is not local! {}", packet);
