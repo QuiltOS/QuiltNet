@@ -16,6 +16,7 @@ use ipv4::{InterfaceRow, IpState};
 fn receive<A>(state: &IpState<A>, buf: Vec<u8>)
   where A: strategy::RoutingTable
 {
+  debug!("Received packet.");
   let packet = match packet::validate(buf.as_slice()) {
     Ok(_)  => packet::V::new(buf),
     Err(e) => {
@@ -23,6 +24,10 @@ fn receive<A>(state: &IpState<A>, buf: Vec<u8>)
       return;
     },
   };
+
+  debug!("packet header:");
+  // TODO: make print instead return String to write with debug!
+  if log_enabled!(::log::DEBUG) { packet.borrow().print(); };
 
   if is_packet_dst_local(state, &packet) {
     debug!("Packet is local! {}", packet);
