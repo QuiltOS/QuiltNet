@@ -1,16 +1,14 @@
 use std::io::IoResult;
-use std::io::net::ip::{IpAddr, Ipv4Addr};
-use std::mem::transmute;
+use std::io::net::ip::IpAddr;
 use std::sync::Arc;
-use std::option::{Option, None};
+use std::option::None;
 
 use network::ipv4::{
   IpState,
-  IpHandler,
   InterfaceRow,
   InterfaceTable,
 };
-use network::ipv4::{strategy, control};
+use network::ipv4::control;
 use network::ipv4::send::send_manual;
 
 use network::ipv4::packet2::V as Ip;
@@ -18,7 +16,7 @@ use network::ipv4::packet2::V as Ip;
 use misc::interface::MyFn;
 
 use super::{RIP_INFINITY, RipTable, RipRow};
-use super::packet::{mod, Packet, Request, Response};
+use super::packet::{mod, Request, Response};
 
 struct RipHandler { state: Arc<IpState<RipTable>> }
 
@@ -126,7 +124,10 @@ pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
         super::RIP_PROTOCOL,
         None,
         f));
-      try!(send_manual(packet, interface_row));
+      match send_manual(packet, interface_row) {
+        Ok(_)  => (),
+        Err(e) => println!("RIP: could not propigate to {}, because {}", neighbor_ip, e),
+      };
     }
   }
   Ok(())

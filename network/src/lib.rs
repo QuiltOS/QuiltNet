@@ -2,7 +2,7 @@
 //#![feature(slicing_syntax)]
 
 // for tests
-#![feature(globs)]
+//#![feature(globs)]
 
 extern crate misc;
 

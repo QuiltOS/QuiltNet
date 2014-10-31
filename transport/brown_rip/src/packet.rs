@@ -1,4 +1,3 @@
-use std::num::Int;
 use std::io::net::ip::{IpAddr, Ipv4Addr};
 use std::io::{
   BufReader,

@@ -1,10 +1,6 @@
-// This warning is really unimportant and annoying
-#![allow(unused_imports)]
-#![allow(unknown_features)]
-
 //#![feature(unboxed_closures)]
-// for Anson's rustc
-#![feature(slicing_syntax)]
+//#![feature(slicing_syntax)]
+
 // for tests
 #![feature(globs)]
 
@@ -15,14 +11,10 @@ extern crate network;
 use std::collections::HashMap;
 use std::io::net::ip::IpAddr;
 use std::sync::{Arc, RWLock};
-use std::time::Duration;
 
 use time::{Timespec, get_time};
 
-use network::ipv4::{
-  InterfaceRow,
-  IpState,
-};
+use network::ipv4::IpState;
 use network::ipv4::strategy::RoutingTable;
 
 mod comm;
