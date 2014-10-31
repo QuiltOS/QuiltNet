@@ -20,7 +20,7 @@ pub fn send_with_client<A>(state:              &IpState<A>,
                                           protocol,
                                           expected_body_size,
                                           client));
-  debug!("IP: built packet: {}", p);
+  debug!("built packet: {}", p);
   send(state, p)
 }
 
@@ -62,7 +62,7 @@ pub fn send<A>(state: &IpState<A>, packet: packet::V) -> self::Result<()>
   match state.routes.lookup(dst) {
     None           => Err(self::NoRoute),
     Some(next_hop) => { // Send packet to next hop towards destination
-      debug!("IP: Found route through {}", next_hop);
+      debug!("Found route through {}", next_hop);
       match state.neighbors.find(&next_hop) {
         None => fail!("IP: Route's next hop is not a neighbor!"),
         // Tell interface to send packet bytes
@@ -80,6 +80,6 @@ pub fn send_manual(mut packet: packet::V, row: &InterfaceRow) -> dl::Result<()> 
   let dst = packet.borrow().get_destination();
   let _   = packet.borrow_mut().set_source(local_ip); // ip for this interface
   try!(interface.write().send(packet.to_vec()));
-  debug!("IP: sent packet to {}", dst);
+  debug!("sent packet to {}", dst);
   Ok(())
 }

@@ -34,13 +34,13 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
   let data = packet.borrow().get_payload();
 
   match state.neighbors.find(&neighbor_addr) {
-    None    => debug!("RIP: Odd, got packet from non-neighbor: {}", neighbor_addr),
+    None    => debug!("Odd, got packet from non-neighbor: {}", neighbor_addr),
     _       => (),
   };
 
   match packet::parse(data) {
     Ok(Request) => {
-      debug!("RIP: Got request from {}", neighbor_addr);
+      debug!("Got request from {}", neighbor_addr);
 
       // TODO: factor out singleton iterator
 
@@ -60,10 +60,10 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
       try!(update(state, neighbor_addr, empty_iter));
     },
     Ok(Response(entries)) => {
-      debug!("RIP: Got response from {}", neighbor_addr);
+      debug!("Got response from {}", neighbor_addr);
       try!(update(state, neighbor_addr, entries));
     },
-    _ => debug!("RIP: invalid packet received: {}", data),
+    _ => debug!("invalid packet received: {}", data),
   }
   Ok(())
 }
@@ -126,7 +126,7 @@ pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
         f));
       match send_manual(packet, interface_row) {
         Ok(_)  => (),
-        Err(e) => debug!("RIP: could not propigate to {}, because {}", neighbor_ip, e),
+        Err(e) => debug!("could not propigate to {}, because {}", neighbor_ip, e),
       };
     }
   }
@@ -155,11 +155,11 @@ fn update<I>(state: &IpState<RipTable>,
     let mut unlocked = state.routes.map.write();
 
     if cost > RIP_INFINITY as u32 {
-      debug!("RIP: received bad cost grater than infinity: {}", cost);
+      debug!("received bad cost grater than infinity: {}", cost);
     };
     if cost < RIP_INFINITY as u32 { cost += 1; }; // bump cost unless infinite
 
-    debug!("RIP: can go to {} with cost {} via {}", dst, cost, neighbor_addr);
+    debug!("can go to {} with cost {} via {}", dst, cost, neighbor_addr);
 
     let mk_new_row = || {
       RipRow {
@@ -192,7 +192,7 @@ fn update<I>(state: &IpState<RipTable>,
         if (update || no_worse) && !dead_route && !to_self
         {
           let new = mk_new_row();
-          debug!("RIP: route to {} changed from ({}, {}) to ({}, {})",
+          debug!("route to {} changed from ({}, {}) to ({}, {})",
                    dst, old.cost, old.next_hop, new.cost, new.next_hop);
 
           // only propigate updates that effect cost

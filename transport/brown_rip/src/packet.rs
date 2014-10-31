@@ -82,7 +82,7 @@ fn parse_helper<'a>(buf: &'a [u8]) -> IoResult<Packet<Entries<'a>>>
 
       match buf.len().cmp(&(body_len + hdr_len)) {
         Less    => return Err(IoError::last_error()), // some random error
-        Greater => debug!("Rip: packet was too large"),
+        Greater => debug!("packet was too large"),
         Equal   => (),
       }
 
@@ -133,7 +133,7 @@ pub fn write_response<'a, I>(entries_iter: &'a mut I)
     {
       let mut b = BufWriter::new(vec.as_mut_slice());
       try!(b.seek((thus_far + size_of::<u16>()) as i64, SeekSet));
-      debug!("RIP: fixing count ({}) when writing entries_iter", count);
+      debug!("fixing count ({}) when writing entries_iter", count);
       try!(b.write_be_u16(count));
     }
     Ok(())

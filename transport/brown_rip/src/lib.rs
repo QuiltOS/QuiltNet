@@ -67,7 +67,7 @@ impl RoutingTable for RipTable {
   }
 
   fn monitor(state: Arc<IpState<RipTable>>) -> () {
-    debug!("RIP: In use");
+    debug!("In use");
     comm::register(state.clone());
     periodic::spawn_updater(state.clone());
     periodic::spawn_garbage_collector(state);

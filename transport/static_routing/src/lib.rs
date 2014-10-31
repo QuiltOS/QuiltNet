@@ -41,7 +41,7 @@ impl RoutingTable for StaticTable {
   }
 
   fn monitor(_state: Arc<IpState<StaticTable>>) -> () {
-    debug!("Static Routing: In use");
+    debug!("In use");
   }
 
   fn dump(&self) {

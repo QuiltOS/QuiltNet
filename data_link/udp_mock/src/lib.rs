@@ -65,18 +65,18 @@ impl Listener
           match socket.recv_from(buf.as_mut_slice()) {
             Err(e) => {
               // maybe it will work next time...
-              debug!("UDP Mock: OS error when trying to wait for packet: {}", e);
+              debug!("OS error when trying to wait for packet: {}", e);
             },
             Ok((len, src_addr)) => match handlers.read().deref().find(&src_addr) {
               None          => continue, // drop that packet!
               Some(&(is_enabled, ref on_recv)) => {
-                debug!("UDP Mock: Received packet");
+                debug!("Received packet");
                 if is_enabled {
-                  debug!("UDP Mock: Virtual Interface is enabled");
+                  debug!("Virtual Interface is enabled");
                   let args = buf[..len].to_vec();
                   (**on_recv).call((args,));
                 } else {
-                  debug!("UDP Mock: Virtual Interface is not enabled, dropping packet");
+                  debug!("Virtual Interface is not enabled, dropping packet");
                 }
               },
             }
