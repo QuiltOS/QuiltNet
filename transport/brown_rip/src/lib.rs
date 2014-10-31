@@ -1,9 +1,15 @@
 //#![feature(unboxed_closures)]
 //#![feature(slicing_syntax)]
+#![feature(phase)]
 
 // for tests
 #![feature(globs)]
 
+#[cfg(not(ndebug))]
+#[phase(plugin, link)]
+extern crate log;
+
+#[phase(plugin, link)]
 extern crate misc;
 extern crate time;
 extern crate network;
@@ -61,7 +67,7 @@ impl RoutingTable for RipTable {
   }
 
   fn monitor(state: Arc<IpState<RipTable>>) -> () {
-    println!("Using Rip!");
+    debug!("RIP: In use");
     comm::register(state.clone());
     periodic::spawn_updater(state.clone());
     periodic::spawn_garbage_collector(state);
@@ -70,7 +76,7 @@ impl RoutingTable for RipTable {
   fn dump(&self) {
     for dst in self.map.read().keys() {
       let RipRow { cost, next_hop, time_added } = self.map.read().deref()[*dst];
-      println!("RIP: {} - {} -> {} [learned at: {} ]",
+      println!("{} - {} -> {} [learned at: {} ]",
                dst, cost, next_hop, time_added);
     }
   }

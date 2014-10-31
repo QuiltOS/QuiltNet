@@ -1,9 +1,15 @@
 //#![feature(unboxed_closures)]
 #![feature(slicing_syntax)]
+#![feature(phase)]
 
 // for tests
 #![feature(globs)]
 
+#[cfg(not(ndebug))]
+#[phase(plugin, link)]
+extern crate log;
+
+#[phase(plugin, link)]
 extern crate misc;
 extern crate interface;
 
@@ -24,7 +30,6 @@ use interface as dl;
 
 #[cfg(test)]
 mod test;
-
 
 const RECV_BUF_SIZE: uint = 64 * 1024;
 
@@ -56,24 +61,22 @@ impl Listener
         // TODO: shouldn't need to initialize this
         let mut buf: [u8, ..RECV_BUF_SIZE] = [0, ..RECV_BUF_SIZE];
         loop {
-          // select! (
-          //     () = die.recv() => {
-          //         println!("I am going to die");
-          //         return;
-          //     },
+          // TODO: someway to kill task eventually
           match socket.recv_from(buf.as_mut_slice()) {
-            Err(_) => {
+            Err(e) => {
               // maybe it will work next time...
-              println!("something bad happened");
+              debug!("UDP Mock: OS error when trying to wait for packet: {}", e);
             },
             Ok((len, src_addr)) => match handlers.read().deref().find(&src_addr) {
               None          => continue, // drop that packet!
               Some(&(is_enabled, ref on_recv)) => {
-                println!("received packet");
+                debug!("UDP Mock: Received packet");
                 if is_enabled {
-                  println!("Interface is enabled");
+                  debug!("UDP Mock: Virtual Interface is enabled");
                   let args = buf[..len].to_vec();
                   (**on_recv).call((args,));
+                } else {
+                  debug!("UDP Mock: Virtual Interface is not enabled, dropping packet");
                 }
               },
             }

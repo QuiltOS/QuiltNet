@@ -1,8 +1,16 @@
 //#![feature(unboxed_closures)]
 //#![feature(slicing_syntax)]
+#![feature(phase)]
 
 // for tests
 //#![feature(globs)]
+
+#[cfg(not(ndebug))]
+#[phase(plugin, link)]
+extern crate log;
+
+#[phase(plugin, link)]
+extern crate misc;
 
 extern crate network;
 
@@ -33,7 +41,7 @@ impl RoutingTable for StaticTable {
   }
 
   fn monitor(_state: Arc<IpState<StaticTable>>) -> () {
-    println!("Using static routing.");
+    debug!("Static Routing: In use");
   }
 
   fn dump(&self) {

@@ -8,6 +8,9 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 [dependencies.packet]
 git="http://github.com/Ericson2314/packet.git"
 
+[dependencies.rust-net-misc]
+path = "../../misc"
+
 [dependencies.rust-net-network]
 path = "../../network"
 

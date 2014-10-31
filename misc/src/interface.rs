@@ -53,7 +53,7 @@ impl<T> SenderClosure<T> {
 impl<T> MyFn<T, ()> for SenderClosure<T> where T: Send {
   //    #[rust_call_abi_hack]
   fn call(&self, args: T) -> () {
-    println!("SenderClosure called!");
+    debug!("Misc: SenderClosure called!");
     self.sender.send(args);
   }
 }

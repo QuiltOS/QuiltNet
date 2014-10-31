@@ -19,13 +19,13 @@ fn receive<A>(state: &IpState<A>, buf: Vec<u8>)
   let packet = match packet::validate(buf.as_slice()) {
     Ok(_)  => packet::V::new(buf),
     Err(e) => {
-      println!("IP: dropping incomming packet because {}", e);
+      debug!("IP: dropping incomming packet because {}", e);
       return;
     },
   };
 
   if is_packet_dst_local(state, &packet) {
-    println!("IP: Packet is local! {}", packet);
+    debug!("IP: Packet is local! {}", packet);
     // local handling
     let handlers = &(*state.protocol_handlers.read())
       [packet.borrow().get_protocol() as uint];
@@ -35,11 +35,11 @@ fn receive<A>(state: &IpState<A>, buf: Vec<u8>)
       (&**handler).call((packet.clone(),));
     }
   } else {
-    println!("IP: packet is not local! {}", packet);
+    debug!("IP: packet is not local! {}", packet);
     // handle errors just for logging purposes
     match forward(state, packet) {
       Ok(_) => (),
-      Err(e) => println!("IP: packet could not be fowarded because {}", e),
+      Err(e) => debug!("IP: packet could not be fowarded because {}", e),
     };
   }
 }
