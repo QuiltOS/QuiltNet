@@ -11,5 +11,4 @@ extern crate log;
 pub mod mock_debug;
 
 pub mod interface;
-pub mod parse;
 pub mod state_machine;
