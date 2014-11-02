@@ -180,9 +180,9 @@ fn update<I>(state: &IpState<RipTable>,
       Occupied(e) => {
         let old = e.into_mut();
 
-        let no_worse   = cost           <= old.cost as u32;
+        let no_worse   = cost          <= old.cost as u32;
         let update     = neighbor_addr == old.next_hop;
-        let dead_route = cost           >= RIP_INFINITY as u32;
+        let dead_route = cost          >= RIP_INFINITY as u32;
         let to_self    = state.interfaces.iter()
           .any(|&InterfaceRow { local_ip, .. }| local_ip == dst);
 

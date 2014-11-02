@@ -10,10 +10,15 @@ use network::ipv4::IpState;
 use super::{RIP_INFINITY, RipRow, RipTable};
 use super::comm::propagate;
 
+
+const UPDATE_PERIOD:     uint = 5;
+const EXPIRATION_PERIOD: uint = 12;
+
+
 pub fn spawn_updater(state: Arc<IpState<RipTable>>) {
   spawn(proc() {
     let mut timer = Timer::new().unwrap();
-    let periodic = timer.periodic(Duration::seconds(5));
+    let periodic = timer.periodic(Duration::seconds(UPDATE_PERIOD));
     loop {
       debug!("periodic update");
       periodic.recv();
@@ -37,10 +42,10 @@ fn update(state: &IpState<RipTable>) {
 pub fn spawn_garbage_collector(state: Arc<IpState<RipTable>>) {
   spawn(proc() {
     let mut timer = Timer::new().unwrap();
-    // evert 6 seconds to ensure nothing lasts longer than 12
-    let periodic = timer.periodic(Duration::seconds(6));
+    // half the expiration period to ensure nothing lives too long
+    let periodic = timer.periodic(Duration::seconds(EXPIRATION_PERIOD / 2));
     loop {
-      debug!("periodic gc");
+      debug!("Periodic gc");
       periodic.recv();
       collector_garbage(&*state);
     }
@@ -57,7 +62,7 @@ fn collector_garbage(state: &IpState<RipTable>) {
     let mut table = state.routes.map.write();
     for (dst, row) in table.iter_mut() {
       let deadline = Timespec {
-        sec: row.time_added.sec + 12,
+        sec: row.time_added.sec + EXPIRATION_PERIOD,
         ..row.time_added
       };
       // allowed to forget neighbors, though the neighbor -> interface map
