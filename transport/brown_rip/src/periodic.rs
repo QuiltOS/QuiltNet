@@ -11,8 +11,8 @@ use super::{RIP_INFINITY, RipRow, RipTable};
 use super::comm::propagate;
 
 
-const UPDATE_PERIOD:     uint = 5;
-const EXPIRATION_PERIOD: uint = 12;
+const UPDATE_PERIOD:     i64 = 5;
+const EXPIRATION_PERIOD: i64 = 12;
 
 
 pub fn spawn_updater(state: Arc<IpState<RipTable>>) {
