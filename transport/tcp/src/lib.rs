@@ -24,7 +24,14 @@ use network::ipv4::IpState;
 use network::ipv4::strategy::RoutingTable;
 
 
+use listener::Listener;
+//use connection::Connection;
+
 //mod packet;
+
+mod listener;
+//mod connection;
+
 mod capability;
 
 /// Closed state and memory usage:
@@ -65,9 +72,5 @@ pub struct PerPort {
 }
 
 
-
 #[deriving(Clone)]
 pub struct Connection;
-
-#[deriving(Clone)]
-pub struct Listener;
