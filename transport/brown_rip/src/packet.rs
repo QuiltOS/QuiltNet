@@ -37,7 +37,7 @@ pub fn parse_ip(&[a, b, c, d]: &[u8, ..4]) -> IpAddr {
 pub fn write_ip(addr: IpAddr) -> [u8, ..4] {
   match addr {
     Ipv4Addr(a, b, c, d) => [a, b, c, d],
-    _                    => fail!("no ipv6 yet"),
+    _                    => panic!("no ipv6 yet"),
   }
 }
 

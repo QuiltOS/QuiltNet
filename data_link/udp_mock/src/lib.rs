@@ -153,7 +153,7 @@ impl dl::Interface for Interface
     let mut map = self.listener.handlers.write();
     self.cached_status = true;
     match map.deref_mut().entry(self.remote_addr) {
-      Vacant(_) => fail!("udp mock interface should already have entry in table"),
+      Vacant(_) => panic!("udp mock interface should already have entry in table"),
       Occupied(mut entry) => {
         let &(ref mut status, _) = entry.get_mut();
         *status = true;
@@ -165,7 +165,7 @@ impl dl::Interface for Interface
     let mut map = self.listener.handlers.write();
     self.cached_status = false;
     match map.deref_mut().entry(self.remote_addr) {
-      Vacant(_) => fail!("udp mock interface should already have entry in table"),
+      Vacant(_) => panic!("udp mock interface should already have entry in table"),
       Occupied(mut entry) => {
         let &(ref mut status, _) = entry.get_mut();
         *status = false;
