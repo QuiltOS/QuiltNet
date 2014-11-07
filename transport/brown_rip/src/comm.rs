@@ -189,7 +189,7 @@ fn update<I>(state: &IpState<RipTable>,
         // accept update from neighbor, or better route
         // don't bother switching what sort of dead route it is
         // don't bother accepting route to self
-        if (update || no_worse) && !dead_route && !to_self
+        if (update || (no_worse && !dead_route)) && !to_self
         {
           let new = mk_new_row();
           debug!("route to {} changed from ({}, {}) to ({}, {})",
