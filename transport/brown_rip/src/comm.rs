@@ -68,7 +68,7 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
   Ok(())
 }
 
-/// Runs simple debug handler, printing out all packets received for the given protocols
+/// Registers protocol handler for incomming RIP packets.
 pub fn register(state: Arc<IpState<RipTable>>) {
   control::register_protocol_handler(
     &*state,
