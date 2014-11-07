@@ -11,7 +11,7 @@ use network::ipv4::{
 use network::ipv4::control;
 use network::ipv4::send::send_manual;
 
-use network::ipv4::packet2::V as Ip;
+use network::ipv4::packet::V as Ip;
 
 use misc::interface::MyFn;
 

@@ -1,6 +1,6 @@
 use std::io::net::ip::IpAddr;
 
-use super::packet2 as packet;
+use super::packet as packet;
 
 use ipv4::{strategy, IpState, InterfaceRow};
 //use ipv4::packet::{IpAddr, IpPacket};

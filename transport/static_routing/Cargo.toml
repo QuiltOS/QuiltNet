@@ -5,14 +5,12 @@ version = "0.0.1"
 authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
           , "John Ericson <Ericson2314@Yahoo.com>" ]
 
-[dependencies.packet]
-git="http://github.com/Ericson2314/packet.git"
+[lib]
+name = "static_routing"
+
 
 [dependencies.rust-net-misc]
 path = "../../misc"
 
 [dependencies.rust-net-network]
 path = "../../network"
-
-[lib]
-name = "static_routing"

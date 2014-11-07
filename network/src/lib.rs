@@ -1,5 +1,5 @@
 //#![feature(unboxed_closures)]
-//#![feature(slicing_syntax)]
+#![feature(slicing_syntax)]
 
 // for tests
 //#![feature(globs)]
