@@ -94,6 +94,8 @@ pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
 {
   for neighbor_ip in neighbor_subset
   {
+    debug!("trying to propagate to: {}", neighbor_ip);
+
     let interface_row = match neighbors.get(&neighbor_ip) {
       None         => panic!("Can't propagate to non-neighbor: {}", neighbor_ip),
       Some(&index) => &interfaces[index],
