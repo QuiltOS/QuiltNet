@@ -19,13 +19,13 @@ pub fn trans<A>(e: &mut Connection, s: &::State<A>, p: TcpPacket)
   where A: RoutingTable
 {
   use std::mem::{uninitialized, swap};
-  
+
   let mut blank: Connection = unsafe { uninitialized() };
 
   swap(e, &mut blank);
-  
+
   *e = match blank {
-    Closed(c)      => c.next(s, p),
+    Closed         => Closed,
     Established(c) => c.next(s, p),
   }
 }

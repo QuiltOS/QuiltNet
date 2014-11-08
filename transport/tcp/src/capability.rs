@@ -8,6 +8,8 @@ use std::comm::{
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
+/*
+
 /// A TCP Capability is mostly analogous to a (TCP) Socket on
 /// Unix. This library wraps the more low-level core implementation to
 /// provide a "blocking", synchronous interface.
@@ -24,22 +26,47 @@ use network::ipv4::strategy::RoutingTable;
 // TODO: clonable capabilities
 
 /// Capability that gives synchronous access to a Listener
+
 struct L<A>
   where A: RoutingTable
 {
-  src_port:       Port,
+  local_port:       Port,
 
-  tcp_state:      Arc<super::Table>,
-  ip_state:       Arc<ipv4::State<A>>,
+  state:          Arc<super::State<A>>,
 
   pub candidates: Receiver<C<A>>,
+}
+
+struct AcceptorFn(pub Sender<C<A>>);
+
+impl self::L
+{
+  pub fn new(state:      Arc<super::State<A>>,
+             local_port: Port) -> self::L
+  {
+    let (tx, rx) = channel::<C<A>>();
+    self::L {
+      local_port: local_port,
+      state: state,
+      candidates: rx,
+    }
+  }
+}
+
+struct ReadFn {
+
+}
+
+struct WriteFn {
+
 }
 
 /// Capability that gives synchronous access to a Connection
 struct C<A>
   where A: RoutingTable
 {
-  src_port:  Port,
+  src:       ConAddr,
+  dst:       ConAddr,
 
   tcp_state: Arc<super::Table>,
   ip_state:  Arc<ipv4::State<A>>,
@@ -47,3 +74,4 @@ struct C<A>
   can_read:  Receiver<()>,
   can_write: Receiver<()>,
 }
+*/

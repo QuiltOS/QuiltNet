@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::collections::hash_map::{Occupied, Vacant};
 use std::io::net::ip::Port;
 use std::sync::RWLock;
 
@@ -15,7 +16,8 @@ use super::state::State;
 use connection::established::RWHandler;
 
 pub type OnConnectionAttempt = //Handler<Ip>;
-  Box<MyFn<(::ConAddr, ::ConAddr,), Option<[RWHandler, ..2]>> + Send + Sync + 'static>;
+  // us, them
+  Box<MyFn<(Port, ::ConAddr,), Option<[RWHandler, ..2]>> + Send + Sync + 'static>;
 
 pub struct Listen {
   handler: OnConnectionAttempt,
@@ -36,23 +38,18 @@ impl State for Listen
 
 impl Listen
 {
-  fn new<A>(state:      &::State<A>,
-            handler:    OnConnectionAttempt,
-            local_port: Port)
-            -> Result<(), ()>
+  pub fn new<A>(state:      &::State<A>,
+                handler:    OnConnectionAttempt,
+                local_port: Port)
+                -> Result<(), ()>
   {
-    use std::collections::hash_map::{Occupied, Vacant};
-
     let mut lock = state.tcp.write();
 
     let per_port = match (*lock).entry(local_port) {
-      Vacant(entry)   => {
-        // allocate blank
-        entry.set(::PerPort {
-          listener: RWLock::new(super::Closed),
-          connections: RWLock::new(HashMap::new()),
-        })
-      },
+      Vacant(entry)   => entry.set(::PerPort { // allocate blank
+        listener:    RWLock::new(super::Closed),
+        connections: RWLock::new(HashMap::new()),
+      }),
       Occupied(entry) => entry.into_mut(),
     };
 
