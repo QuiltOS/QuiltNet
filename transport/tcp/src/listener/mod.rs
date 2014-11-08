@@ -1,9 +1,9 @@
 pub mod state;
 
-pub mod closed;
+//pub mod closed;
 pub mod listen;
 
 pub enum Listener {
-  Closed(closed::Closed),
+  Closed,
   Listen(listen::Listen),
 }

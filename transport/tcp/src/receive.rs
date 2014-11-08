@@ -37,6 +37,9 @@ fn handle<A>(state:  &::State<A>,
   };
 
   let packet = TcpPacket::new(packet);
+
+  debug!("Got TCP Packet: {}", &packet);
+
   let dst_port = packet.get_dst_port();
 
   let lock = state.tcp.read();
@@ -56,13 +59,10 @@ fn handle<A>(state:  &::State<A>,
       state,
       packet),
     // no existing connection, let's see if we have a listener
-    None => match sub_table.listener {
-      None               => return,
-      Some(ref listener) => super::listener::state::trans(
-        &mut *listener.write(),
-        state,
-        packet),
-    },
+    None => super::listener::state::trans(
+      &mut *sub_table.listener.write(),
+      state,
+      packet),
   }
 }
 

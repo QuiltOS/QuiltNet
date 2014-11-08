@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+use std::io::net::ip::Port;
+use std::sync::RWLock;
+
 use misc::interface::{MyFn, /* Handler */};
 
 use network::ipv4;
@@ -13,7 +17,9 @@ use connection::established::RWHandler;
 pub type OnConnectionAttempt = //Handler<Ip>;
   Box<MyFn<(::ConAddr, ::ConAddr,), Option<[RWHandler, ..2]>> + Send + Sync + 'static>;
 
-pub struct Listen;
+pub struct Listen {
+  handler: OnConnectionAttempt,
+}
 
 impl State for Listen
 {
@@ -24,18 +30,41 @@ impl State for Listen
     where A: RoutingTable
   {
     // keep on listening
-    super::Listen(super::listen::Listen)
+    super::Listen(self)
   }
 }
 
 impl Listen
 {
-  fn new<A>(state:   &::State<A>,
-            handler: OnConnectionAttempt)
+  fn new<A>(state:      &::State<A>,
+            handler:    OnConnectionAttempt,
+            local_port: Port)
             -> Result<(), ()>
   {
+    use std::collections::hash_map::{Occupied, Vacant};
 
+    let mut lock = state.tcp.write();
+
+    let per_port = match (*lock).entry(local_port) {
+      Vacant(entry)   => {
+        // allocate blank
+        entry.set(::PerPort {
+          listener: RWLock::new(super::Closed),
+          connections: RWLock::new(HashMap::new()),
+        })
+      },
+      Occupied(entry) => entry.into_mut(),
+    };
+
+    //lock.downgrade(); // TODO: get us a read lock instead
+    let mut lock = per_port.listener.write(); // get listener read lock
+
+    match *lock {
+      super::Closed => (),
+      _             => return Err(()),
+    }
+
+    *lock = super::Listen(Listen { handler: handler });
     Ok(())
   }
-  
 }

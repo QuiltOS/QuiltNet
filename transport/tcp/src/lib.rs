@@ -79,7 +79,6 @@ pub struct State<A> where A: RoutingTable {
 }
 
 pub struct PerPort {
-  // the Option ensures the
-  listener:    Option<RWLock<Listener>>,
+  listener:    RWLock<Listener>,
   connections: RWLock<HashMap<ConAddr, RWLock<Connection>>>,
 }

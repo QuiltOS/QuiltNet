@@ -20,8 +20,14 @@ pub fn trans<A>(e: &mut Listener,
                 p: TcpPacket)
   where A: RoutingTable
 {
-  *e = match e {
-    &Closed(ref l) => l.next(s, p),
-    &Listen(ref l) => l.next(s, p),
+  use std::mem::{uninitialized, swap};
+
+  let mut blank: Listener = unsafe { uninitialized() };
+
+  swap(e, &mut blank);
+
+  *e = match blank {
+    Closed    => Closed,
+    Listen(l) => l.next(s, p),
   }
 }
