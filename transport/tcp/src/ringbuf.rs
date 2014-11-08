@@ -1,6 +1,7 @@
 use std::cmp;
 use std::slice::bytes::copy_memory;
 
+#[deriving(Show)]
 struct RingBuf {
   tail : uint, // Back of unconsumed, valid data
   head : uint,     // Front of unconsumed, valid data
@@ -14,12 +15,17 @@ impl RingBuf {
     RingBuf {
       tail : 0,
       head : 0,
-      data : Vec::from_fn(size, |n| 0),
+      // add 1 slot to disambiguate full/empty
+      data : Vec::from_fn(size + 1, |n| 0),
     }   
   }
 
   fn window_size(&self) -> uint {
-    return self.head - self.tail;
+    if self.tail <= self.head {
+      self.head - self.tail
+    } else {
+      self.data.len() - self.tail + self.head
+    }
   }
 
   // Reads as many bytes as possible into buf, returns number of bytes read
@@ -27,6 +33,7 @@ impl RingBuf {
     
     // Number of bytes we're going to copy
     let n = cmp::min(self.window_size(), buf.len());
+    println!("read: n: {}, ws: {}", n, self.window_size());
 
     // Head of slice we're reading from, wrapped around
     let read_head = (self.tail + n) % self.data.len();
@@ -60,10 +67,11 @@ impl RingBuf {
   pub fn write(&mut self, buf: &[u8]) -> uint {
     
     let len = self.data.len();
-    
+  
     // Number of bytes we're going to copy
-    let n = cmp::min(len - self.window_size(), buf.len());
-    println!("n: {}", n);
+    // NOTE: subtract 1 to avoid writing full array - we can't disambiguate full/empty!
+    let n = cmp::min(len - self.window_size() - 1, buf.len());
+    println!("write: n: {}, ws: {}", n, self.window_size());
     
 
     // Head of slice we're writing into, wrapped around
@@ -101,15 +109,32 @@ mod test {
  
   use super::RingBuf;
 
-  #[test]
-  fn t1(){
+#[test]
+  fn simple(){
     let mut ring = RingBuf::new(10);
     let mut buf = [0u8, 0u8];
-    println!("writing");
-    println!("data: {}", ring.data);
     assert!(ring.write([1u8, 1u8]) == 2);
-    println!("written");
+    println!("after write: {}", ring);
     assert!(ring.read(buf) == 2);
+    println!("after read: {}", ring);
     assert!(buf == [1u8,1u8]);
+  }
+
+  #[test]
+  fn wrap(){
+    let mut ring = RingBuf::new(4);
+    let mut buf  = [0u8,0u8,0u8,0u8];
+    assert!(ring.write([1u8,2u8,3u8]) == 3);
+    println!("After write1: {}", ring);
+    assert!(ring.read(buf) == 3);
+    println!("After read1: {}", ring);
+    assert!(buf == [1u8, 2u8, 3u8, 0u8]);
+
+    assert!(ring.write([4u8, 5u8, 6u8, 7u8]) == 4);
+    println!("After write2: {}", ring);
+    assert!(ring.read(buf) == 4);
+    println!("After read2: {}", ring);
+    println!("buf: {}", buf.as_slice());
+    assert!(buf == [4u8, 5u8, 6u8, 7u8])
   }
 }
