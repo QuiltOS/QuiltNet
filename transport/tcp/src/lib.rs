@@ -15,12 +15,12 @@ extern crate time;
 extern crate network;
 
 use std::collections::HashMap;
-use std::io::net::ip::{IpAddr, Port, SocketAddr};
+use std::io::net::ip::Port;
 use std::sync::{Arc, RWLock};
 
 use time::{Timespec, get_time};
 
-use network::ipv4::IpState;
+use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
 
@@ -68,7 +68,7 @@ pub struct Table {
 pub struct PerPort {
   // the Option ensures the
   listener:    Option<Arc<RWLock<Listener>>>,
-  connections: RWLock<HashMap<(SocketAddr), (Arc<Connection>)>>,
+  connections: RWLock<HashMap<(ipv4::Addr, Port), (Arc<Connection>)>>,
 }
 
 
