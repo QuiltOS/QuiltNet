@@ -10,14 +10,14 @@ use super::{
 };
 
 pub trait State {
-  fn next<A>(self, &ipv4::State<A>, TcpPacket) -> Connection
+  fn next<A>(self, &::State<A>, TcpPacket) -> Connection
     where A: RoutingTable;
 }
 
-pub fn trans<A>(e: &mut Connection, i: &ipv4::State<A>, p: TcpPacket)
+pub fn trans<A>(e: &mut Connection, s: &::State<A>, p: TcpPacket)
   where A: RoutingTable
 {
   *e = match e {
-    &Closed(ref s) => s.next(i, p),
+    &Closed(ref c) => c.next(s, p),
   }
 }

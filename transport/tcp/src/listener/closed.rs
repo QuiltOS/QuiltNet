@@ -11,8 +11,7 @@ pub struct Closed;
 impl State for Closed
 {
   fn next<A>(self,
-             _ip_state: &ipv4::State<A>,
-             _tcp_state: &Table,
+             state:   &::State<A>,
              _packet: TcpPacket)
              -> Listener
     where A: RoutingTable

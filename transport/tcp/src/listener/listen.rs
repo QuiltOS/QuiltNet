@@ -11,8 +11,7 @@ pub struct Listen;
 impl State for Listen
 {
   fn next<A>(self,
-             _ip_state: &ipv4::State<A>,
-             _tcp_state: &Table,
+             _state:  &::State<A>,
              _packet: TcpPacket)
              -> Listener
     where A: RoutingTable
@@ -20,4 +19,12 @@ impl State for Listen
     // keep on listening
     super::Listen(super::listen::Listen)
   }
+}
+
+impl Listen
+{
+  //fn new<A>(ip_state: &ipv4::State<A>,
+  //          tcp_state:
+
+  
 }

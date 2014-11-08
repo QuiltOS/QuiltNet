@@ -10,7 +10,7 @@ pub struct Closed;
 impl State for Closed
 {
   fn next<A>(self,
-             _ip_state: &ipv4::State<A>,
+             _state:  &::State<A>,
              _packet: TcpPacket)
              -> Connection
     where A: RoutingTable

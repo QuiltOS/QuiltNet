@@ -11,15 +11,17 @@ use super::{
 };
 
 pub trait State {
-  fn next<A>(self, &ipv4::State<A>, &Table, TcpPacket) -> Listener
+  fn next<A>(self, &::State<A>, TcpPacket) -> Listener
     where A: RoutingTable;
 }
 
-pub fn trans<A>(e: &mut Listener, i: &ipv4::State<A>, t: &Table, p: TcpPacket)
+pub fn trans<A>(e: &mut Listener,
+                s: &::State<A>,
+                p: TcpPacket)
   where A: RoutingTable
 {
   *e = match e {
-    &Closed(ref s) => s.next(i, t, p),
-    &Listen(ref s) => s.next(i, t, p),
+    &Closed(ref l) => l.next(s, p),
+    &Listen(ref l) => l.next(s, p),
   }
 }

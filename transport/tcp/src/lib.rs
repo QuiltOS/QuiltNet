@@ -71,7 +71,12 @@ pub type ConAddr = (ipv4::Addr, Port);
 /// means it is important that the tables have `Arc<T>`s and not `Weak<T>`s so
 /// that the connection persists between callback invocations.
 
-pub struct Table(RWLock<HashMap<Port, PerPort>>);
+pub type Table = RWLock<HashMap<Port, PerPort>>;
+
+pub struct State<A> where A: RoutingTable {
+  tcp: Table,
+  ip:  Arc<ipv4::State<A>>,
+}
 
 pub struct PerPort {
   // the Option ensures the
