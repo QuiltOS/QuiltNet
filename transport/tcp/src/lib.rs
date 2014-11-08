@@ -1,5 +1,5 @@
 //#![feature(unboxed_closures)]
-//#![feature(slicing_syntax)]
+#![feature(slicing_syntax)]
 #![feature(phase)]
 
 // for tests
@@ -27,7 +27,8 @@ use network::ipv4::strategy::RoutingTable;
 use listener::Listener;
 //use connection::Connection;
 
-//mod packet;
+mod packet;
+mod ringbuf;
 
 mod listener;
 //mod connection;
