@@ -1,3 +1,6 @@
+use network::ipv4;
+use network::ipv4::strategy::RoutingTable;
+
 use Table;
 use packet::TcpPacket;
 use super::{
@@ -8,12 +11,15 @@ use super::{
 };
 
 pub trait State {
-  fn next(self, &Table, TcpPacket) -> Listener;
+  fn next<A>(self, &ipv4::State<A>, &Table, TcpPacket) -> Listener
+    where A: RoutingTable;
 }
 
-pub fn trans(e: &mut Listener, t: &Table, p: TcpPacket) {
+pub fn trans<A>(e: &mut Listener, i: &ipv4::State<A>, t: &Table, p: TcpPacket)
+  where A: RoutingTable
+{
   *e = match e {
-    &Closed(ref s) => s.next(t, p),
-    &Listen(ref s) => s.next(t, p),
+    &Closed(ref s) => s.next(i, t, p),
+    &Listen(ref s) => s.next(i, t, p),
   }
 }
