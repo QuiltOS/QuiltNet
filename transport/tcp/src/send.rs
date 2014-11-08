@@ -10,8 +10,7 @@ use network::ipv4::{
 use packet;
 
 /*
-
-Can't use this until the trait system gets better
+TODO: Can't use this until the trait system gets better
 
 #[deriving(PartialEq, Eq, Clone, Show)]
 pub enum Error {
