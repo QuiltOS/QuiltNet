@@ -1,5 +1,6 @@
 //#![feature(unboxed_closures)]
 #![feature(slicing_syntax)]
+#![feature(tuple_indexing)]
 #![feature(phase)]
 
 // for tests
@@ -33,7 +34,10 @@ mod ringbuf;
 mod listener;
 //mod connection;
 
+mod receive;
 mod capability;
+
+const PROTOCOL: u8 = 6;
 
 /// Closed state and memory usage:
 ///
@@ -61,10 +65,7 @@ mod capability;
 /// means it is important that the tables have `Arc<T>`s and not `Weak<T>`s so
 /// that the connection persists between callback invocations.
 
-pub struct Table {
-  map: RWLock<HashMap<Port, PerPort>>,
-}
-
+pub struct Table(RWLock<HashMap<Port, PerPort>>);
 
 pub struct PerPort {
   // the Option ensures the

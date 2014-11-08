@@ -1,4 +1,3 @@
-use network::ipv4::Addr;
 use std::io::{
   BufReader,
   BufWriter,
@@ -13,6 +12,9 @@ use std::mem::{transmute, size_of};
 // Length of TCP header in bytes
 const TCP_HDR_LEN : &'static uint = &20u;
 
+use network::ipv4::Addr;
+use network::ipv4::packet;
+
 pub struct TcpPacket {
   pub src_addr: Addr,
   pub dst_addr: Addr,
@@ -21,7 +23,38 @@ pub struct TcpPacket {
   data:     Vec<u8>
 }
 
+#[deriving(PartialEq, PartialOrd, Eq, Ord,
+           Clone, Show)]
+// TODO: I just copied this from IP, feel free to add or remove error cases Anson.
+/// Where there are two fields: expected, then got.
+pub enum BadPacket {
+  TooShort(uint),              // header cannot fit
+
+  BadVersion(u8),              // isn't 4
+  BadPacketLength(uint, u16),  // not what it really is
+
+  HeaderTooLong(uint, uint),   // header declared shorter than min or longer than body
+  HeaderTooShort(uint),        // header declared shorter than min or longer than body
+
+  BadChecksum(u16, u16),
+  BadOptions,
+}
+
 impl TcpPacket {
+
+  pub fn new(ip_packet: packet::V) -> TcpPacket {
+    TcpPacket {
+      src_addr: Addr(0,0,0,0),
+      dst_addr: Addr(0,0,0,0),
+      protocol: super::PROTOCOL,
+      tcp_len: 0,
+      data: vec!(),
+    }
+  }
+
+  pub fn validate(ip_packet: &packet::A) -> Result<(), BadPacket> {
+    Ok(())
+  }
 
   // 4-tuple info
   pub fn get_src_addr(&self) -> Addr {
@@ -30,7 +63,7 @@ impl TcpPacket {
   pub fn get_src_port(&self) -> u16 {
     //TODO:
     0
-  } 
+  }
   pub fn set_src_port(&mut self, port: u16) {
     //TODO:
   }
@@ -79,7 +112,7 @@ impl TcpPacket {
 
   // Other TCP data
   pub fn get_hdr_size(&self) -> u8 { // really u8
-    //TODO: 
+    //TODO:
     0
   }
 
@@ -104,7 +137,7 @@ impl TcpPacket {
 
   // Checksum Ops
   pub fn get_checksum(&self) -> u16 {
-    //TODO: 
+    //TODO:
     0
   }
   pub fn compute_checksum(&self) -> u16 {
