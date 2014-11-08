@@ -10,6 +10,9 @@ use std::io::{
 };
 use std::mem::{transmute, size_of};
 
+// Length of TCP header in bytes
+const TCP_HDR_LEN : &'static uint = &20u;
+
 pub struct TcpPacket {
   pub src_addr: Addr,
   pub dst_addr: Addr,
@@ -114,12 +117,12 @@ impl TcpPacket {
 
   pub fn get_payload(&self) -> &[u8] {
     //TODO:
-    self.data.as_slice()
+    self.data.slice_from_or_fail(TCP_HDR_LEN)
   }
 
   pub fn get_mut_payload(&mut self) -> &mut[u8] {
     //TODO:
-    self.data.as_mut_slice()
+    self.data.slice_from_or_fail_mut(TCP_HDR_LEN)
   }
 
 }
