@@ -1,3 +1,6 @@
+use std::result;
+use std::error::FromError;
+
 use super::{
   packet,
   strategy,
@@ -17,30 +20,32 @@ pub type Result<T> = ::std::result::Result<T, self::Error>;
 
 
 pub fn send
-  <'st, A>
+  <'st, 'clos, A, E>
   (state:              &'st super::State<A>,
    dst:                super::Addr,
    protocol:           u8,
    expected_body_size: Option<u16>,
-   builder:            <'a> |&'a mut packet::V| -> self::Result<()>,
+   builder:            <'a> |&'a mut packet::V|:'clos -> result::Result<(), E>,
    // TODO: make this take a &'a mut packet::A someday
-   awkward:            <'a> |&'a mut packet::V| -> self::Result<()>)
-   -> self::Result<()>
-  where A: strategy::RoutingTable
+   awkward:            <'a> |&'a mut packet::V|:'clos -> result::Result<(), E>)
+   -> result::Result<(), E>
+  where A: strategy::RoutingTable,
+        E: FromError<self::Error>
 {
-  let closure: <'p> |&'p mut packet::V| -> self::Result<&'st super::InterfaceRow> = |packet| {
-    try!(builder(packet));
-    debug!("client built packet: {}", packet);
+  let closure: <'p> |&'p mut packet::V| -> result::Result<&'st super::InterfaceRow, E>
+    = |packet| {
+      try!(builder(packet));
+      debug!("client built packet: {}", packet);
 
-    let row = try!(resolve_route(state, dst));
-    packet.borrow_mut().set_source(row.local_ip);
+      let row = try!(resolve_route(state, dst));
+      packet.borrow_mut().set_source(row.local_ip);
 
-    // TCP needs to hook in here for checksum of "virtual header"
-    // awkward layer violation is awkward
-    try!(awkward(packet));
+      // TCP needs to hook in here for checksum of "virtual header"
+      // awkward layer violation is awkward
+      try!(awkward(packet));
 
-    Ok(row)
-  };
+      Ok(row)
+    };
 
   let (row, packet) = try!(packet::V::new_with_builder(
     dst,
@@ -48,7 +53,9 @@ pub fn send
     expected_body_size,
     closure));
 
-  send_manual(row, packet).map_err(self::External)
+  // final try to do from_error
+  try!(send_manual(row, packet).map_err(self::External));
+  Ok(())
 }
 
 
