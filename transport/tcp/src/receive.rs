@@ -20,16 +20,17 @@ struct Handler { state: Arc<super::Table> }
 impl MyFn<(ipv4::packet::V,), ()> for Handler
 {
   fn call(&self, (packet,):(ipv4::packet::V,)) {
-    handle(&*self.state, packet).unwrap(/* "Failure handling incomming IP Packet" */);
+    handle(&*self.state, packet);
   }
 }
 
 fn handle(state:  &super::Table,
           packet: ipv4::packet::V)
-          -> IoResult<()>
 {
-  try!(TcpPacket::validate(packet.borrow())
-       .map_err(|_| IoError::last_error())); // some random error
+  match TcpPacket::validate(packet.borrow()) {
+    Ok(_)  => (),
+    Err(e) => debug!("TCP packet invalid because {}", e),
+  };
 
   let packet = TcpPacket::new(packet);
   let dst_port = packet.get_dst_port();
@@ -38,7 +39,7 @@ fn handle(state:  &super::Table,
 
   let sub_table = match lock.get(&dst_port) {
     Some(p) => p,
-    None    => return Err(IoError::last_error()),
+    None    => return,
   };
 
   let src_info = (packet.get_src_addr(),
@@ -47,15 +48,14 @@ fn handle(state:  &super::Table,
   match sub_table.connections.read().get(&src_info) {
     Some(connection) => {
       // TODO: handle with connection
-      Ok(())
     },
-    None => { // no existing connection, let's see if we have a listener
-      let listener = match sub_table.listener {
-        Some(ref l) => l,
-        None    => return Err(IoError::last_error()),
-      };
-      // TODO: handle with listener
-      Ok(())
+    // no existing connection, let's see if we have a listener
+    None => match sub_table.listener {
+      None               => return,
+      Some(ref listener) => super::listener::state::trans(
+        &mut *(&*listener).write(),
+        state,
+        packet),
     },
   }
 }

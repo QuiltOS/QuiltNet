@@ -1,3 +1,5 @@
+use Table;
+use packet::TcpPacket;
 use super::{
   Listener,
 
@@ -5,15 +7,13 @@ use super::{
   Listen,
 };
 
-pub struct InputEvent;
-
 pub trait State {
-  fn next(self, InputEvent) -> Listener;
+  fn next(self, &Table, TcpPacket) -> Listener;
 }
 
-pub fn trans<S>(e: &mut Listener, i: InputEvent) {
+pub fn trans(e: &mut Listener, t: &Table, p: TcpPacket) {
   *e = match e {
-    &Closed(ref s) => s.next(i),
-    &Listen(ref s) => s.next(i),
+    &Closed(ref s) => s.next(t, p),
+    &Listen(ref s) => s.next(t, p),
   }
 }
