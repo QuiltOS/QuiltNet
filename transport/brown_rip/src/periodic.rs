@@ -1,11 +1,10 @@
 use std::io::Timer;
-use std::io::net::ip::IpAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use time::{Timespec, get_time};
 
-use network::ipv4::IpState;
+use network::ipv4;
 
 use super::{RIP_INFINITY, RipRow, RipTable};
 use super::comm::propagate;
@@ -15,7 +14,7 @@ const UPDATE_PERIOD:     i64 = 5;
 const EXPIRATION_PERIOD: i64 = 12;
 
 
-pub fn spawn_updater(state: Arc<IpState<RipTable>>) {
+pub fn spawn_updater(state: Arc<ipv4::State<RipTable>>) {
   spawn(proc() {
     let mut timer = Timer::new().unwrap();
     let periodic = timer.periodic(Duration::seconds(UPDATE_PERIOD));
@@ -27,7 +26,7 @@ pub fn spawn_updater(state: Arc<IpState<RipTable>>) {
   })
 }
 
-fn update(state: &IpState<RipTable>) {
+fn update(state: &ipv4::State<RipTable>) {
   let unlocked = state.routes.map.read();
   // propegate the whole damn table!
   let factory = || unlocked.iter().map(|(a,r)| (*a,r));
@@ -39,7 +38,7 @@ fn update(state: &IpState<RipTable>) {
                     state.interfaces.as_slice());
 }
 
-pub fn spawn_garbage_collector(state: Arc<IpState<RipTable>>) {
+pub fn spawn_garbage_collector(state: Arc<ipv4::State<RipTable>>) {
   spawn(proc() {
     let mut timer = Timer::new().unwrap();
     // half the expiration period to ensure nothing lives too long
@@ -52,10 +51,10 @@ pub fn spawn_garbage_collector(state: Arc<IpState<RipTable>>) {
   })
 }
 
-fn collector_garbage(state: &IpState<RipTable>) {
+fn collector_garbage(state: &ipv4::State<RipTable>) {
   let cur_time = get_time();
 
-  let mut bad_keys: Vec<IpAddr> = Vec::new();
+  let mut bad_keys: Vec<ipv4::Addr> = Vec::new();
   { // naked block to make sure lock is released
     let mut bad_rows: Vec<&RipRow> = Vec::new();
 
@@ -67,7 +66,7 @@ fn collector_garbage(state: &IpState<RipTable>) {
       };
       // allowed to forget neighbors, though the neighbor -> interface map
       // will remember them
-      if row.cost == RIP_INFINITY || deadline >= cur_time
+      if row.cost == RIP_INFINITY || deadline <= cur_time
       {
         row.cost = RIP_INFINITY; // dead rows shall be poisonsed
         bad_keys.push(*dst);

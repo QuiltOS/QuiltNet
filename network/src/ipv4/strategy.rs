@@ -1,29 +1,27 @@
-use std::io::net::ip::IpAddr;
 use std::option::Option;
 use std::sync::Arc;
 
-use super::IpState;
 
 pub trait RoutingTable: Send + Sync {
 
   // initialized with the neighbor IPs
-  fn init<I>(i: I) -> Self where I: Iterator<IpAddr>;
+  fn init<I>(i: I) -> Self where I: Iterator<super::Addr>;
 
-  fn lookup(&self, IpAddr) -> Option<IpAddr>;
+  fn lookup(&self, super::Addr) -> Option<super::Addr>;
 
-  fn monitor(state: Arc<IpState<Self>>) -> ();
+  fn monitor(state: Arc<super::State<Self>>) -> ();
 
   fn dump(&self);
 
 }
 
 pub fn init_hack<RT, I>(i: I) -> RT
-  where RT: RoutingTable, I: Iterator<IpAddr>
+  where RT: RoutingTable, I: Iterator<super::Addr>
 {
   RoutingTable::init::<I>(i)
 }
 
-pub fn monitor_hack<RT>(s: Arc<IpState<RT>>) where RT: RoutingTable
+pub fn monitor_hack<RT>(s: Arc<super::State<RT>>) where RT: RoutingTable
 {
   RoutingTable::monitor(s);
 }

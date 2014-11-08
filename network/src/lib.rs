@@ -1,5 +1,6 @@
 //#![feature(unboxed_closures)]
 #![feature(slicing_syntax)]
+#![feature(tuple_indexing)]
 
 // for tests
 //#![feature(globs)]

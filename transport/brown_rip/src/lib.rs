@@ -15,12 +15,11 @@ extern crate time;
 extern crate network;
 
 use std::collections::HashMap;
-use std::io::net::ip::IpAddr;
 use std::sync::{Arc, RWLock};
 
 use time::{Timespec, get_time};
 
-use network::ipv4::IpState;
+use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
 mod comm;
@@ -34,25 +33,25 @@ const RIP_PROTOCOL:    u8  = 200;
 #[deriving(Clone)]
 pub struct RipRow {
   // the next hop is always the same node that told your about the route 
-  pub next_hop:     IpAddr,    // which neighbor to we send the packet too
+  pub next_hop:     ipv4::Addr,    // which neighbor to we send the packet too
   pub time_added:   Timespec,  // Relative to 1970
   pub cost:         u8,        // How many hops
 }
 
 pub struct RipTable {
-  // key: Ip we want to reach, NOT our interface's IP
-  map: RWLock<HashMap<IpAddr, RipRow>>,
+  // key: ipv4:: we want to reach, NOT our interface's IP
+  map: RWLock<HashMap<ipv4::Addr, RipRow>>,
 }
 
 impl RoutingTable for RipTable {
 
-  fn lookup(&self, ip: IpAddr) -> Option<IpAddr> {
+  fn lookup(&self, ip: ipv4::Addr) -> Option<ipv4::Addr> {
     self.map.read().get(&ip).and_then( |table| {
       Some(table.next_hop)
     })
   }
 
-  fn init<I>(elements: I) -> RipTable where I: Iterator<IpAddr> {
+  fn init<I>(elements: I) -> RipTable where I: Iterator<ipv4::Addr> {
     let cur_time = get_time();
     // don't need
     let routes_iter = elements.map(
@@ -66,7 +65,7 @@ impl RoutingTable for RipTable {
     RipTable { map: RWLock::new(FromIterator::from_iter(routes_iter)) }
   }
 
-  fn monitor(state: Arc<IpState<RipTable>>) -> () {
+  fn monitor(state: Arc<ipv4::State<RipTable>>) -> () {
     debug!("In use");
     comm::register(state.clone());
     periodic::spawn_updater(state.clone());

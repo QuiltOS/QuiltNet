@@ -1,4 +1,3 @@
-use std::io::net::ip::{IpAddr, Ipv4Addr};
 use std::io::{
   BufReader,
   BufWriter,
@@ -10,13 +9,15 @@ use std::io::{
 };
 use std::mem::{transmute, size_of};
 
+use network::ipv4;
+
 use super::RIP_MAX_ENTRIES;
 
 #[deriving(PartialEq, Eq, Clone, Show)]
 #[repr(packed)]
 pub struct Entry {
   pub cost:    u32,
-  pub address: IpAddr,
+  pub address: ipv4::Addr,
 }
 
 #[deriving(PartialEq, PartialOrd, Eq, Ord,
@@ -26,19 +27,6 @@ pub struct Entry {
 pub enum Packet<Arr> {
   Request,
   Response(Arr),
-}
-
-#[inline]
-pub fn parse_ip(&[a, b, c, d]: &[u8, ..4]) -> IpAddr {
-  Ipv4Addr(a, b, c, d)
-}
-
-#[inline]
-pub fn write_ip(addr: IpAddr) -> [u8, ..4] {
-  match addr {
-    Ipv4Addr(a, b, c, d) => [a, b, c, d],
-    _                    => panic!("no ipv6 yet"),
-  }
 }
 
 pub fn parse<'a>(buf: &'a [u8]) -> Result<Packet<Entries<'a>>, ()> {
@@ -56,7 +44,7 @@ impl<R> EntryIter<R> where R: Reader {
     let cost                   = try!(r.read_be_u32());
     let mut addr_buf: [u8, ..4] = [0, 0, 0, 0];
     try!(r.read(addr_buf.as_mut_slice()));
-    let address                = parse_ip(&addr_buf);
+    let address                = ipv4::parse_addr(&addr_buf);
     Ok(Entry { cost: cost, address: address })
   }
 }
@@ -126,7 +114,7 @@ pub fn write_response<'a, I>(entries_iter: &'a mut I)
         };
         count += 1;
         try!(m.write_be_u32(cost));
-        try!(m.write(write_ip(address)));
+        try!(m.write(ipv4::write_addr(address)));
       }
       assert!(count > 0); // we don't want to send empty response packets
     }
@@ -203,8 +191,8 @@ mod test {
       assert_eq!(vec.as_slice(), msg);
     }
     {
-      let entries = [Entry { cost: 5,  address: write_ip(Ipv4Addr(1,2,3,4)) },
-                     Entry { cost: 16, address: write_ip(Ipv4Addr(5,4,3,2)) }];
+      let entries = [Entry { cost: 5,  address: ipv4::write_addr(Ipv4Addr(1,2,3,4)) },
+                     Entry { cost: 16, address: ipv4::write_addr(Ipv4Addr(5,4,3,2)) }];
       let msg: &[u8] = &[0,2,0,2,
                          0,0,0,5,  1,2,3,4,
                          0,0,0,16, 5,4,3,2];

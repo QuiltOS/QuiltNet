@@ -1,7 +1,10 @@
 use std::mem::transmute;
 use std::num::Int;
-use std::io::net::ip::{IpAddr, Ipv4Addr};
 use std::vec::Vec;
+
+use super::Addr;
+use super::parse_addr_unsafe;
+use super::write_addr;
 
 #[deriving(PartialEq, PartialOrd, Eq, Ord,
            Clone, Show)]
@@ -9,27 +12,6 @@ pub struct V { buf: Vec<u8> }
 
 pub struct A { buf:    [u8] }
 
-#[deriving(PartialEq, PartialOrd, Eq, Ord,
-           Clone, Show)]
-pub enum BadPacket {
-  TooShort,
-
-  BadVersion,
-  BadLength,
-  BadChecksum,
-  BadOptions,
-}
-
-fn make_header_checksum(header: &[u16]) -> u16 {
-  let sum = header[0..5].iter().fold(0, |a, b| a + *b) +
-    header[6..] .iter().fold(0, |a, b| a + *b);
-  !(sum + (sum >> 12))
-}
-
-pub fn validate(packet: &[u8]) -> Result<(), BadPacket> {
-  if packet.len() < MIN_HDR_LEN_BYTES as uint { return Err(TooShort) }
-  Ok(())
-}
 
 impl V {
   pub fn new(buf: Vec<u8>) -> V {
@@ -37,7 +19,7 @@ impl V {
   }
 
   /// NOT CHECKSUMED!
-  fn new_with_header(ip:                 IpAddr,
+  fn new_with_header(ip:                 Addr,
                      protocol:           u8,
                      expected_body_size: Option<u16>) -> V
   {
@@ -47,10 +29,10 @@ impl V {
     let mut packet = V::new(buf);
     {
       let s = packet.borrow_mut();
-      const SENTINAL8:  u8  = 0b_1100_0011;
-      const SENTINAL16: u16 = 0b_1110_0000_0000_0111;
-      const SENTINAL32: u32 = 0b_1111_0000_0000_0000_0000_0000_0000_1111;
-      *(s.cast_h_mut()) = IpHeaderStruct {
+      const SENTINAL8:  u8  = 0b_1000_0001;
+      const SENTINAL16: u16 = 0b_1100_1000_0000_0011;
+      const SENTINAL32: u32 = 0b_1110_0000_0000_0000_0000_0000_0000_0111;
+      *(s.cast_h_mut()) = Header {
         version_ihl:           SENTINAL8,  // SET LATER
         ///////////////////////////////////// Internet header length
         type_of_service:       SENTINAL8,  // SET LATER
@@ -68,28 +50,23 @@ impl V {
       s.set_header_length(MIN_HDR_LEN_WORDS);
       s.set_type_of_service(Routine, ServiceFlags::empty());
       s.set_flags_fragment_offset(DONT_FRAGMENT, 0);
-      {
-        let u16s: &[u16] = unsafe { transmute(s.as_slice()) };
-        // slice to make sure bod is cut,
-        // and also because length is incorrect from transmute
-        s.set_header_checksum(make_header_checksum(u16s[..12]));
-      }
-      let _ = s.set_destination(ip);
+      s.set_destination(ip);
     }
     packet
   }
 
-  // should be higher ranked liftime on closure, but that causes compiler ICE
-  pub fn new_with_client
-    <'clos, Err>
-    (ip:                 IpAddr,
+  // TODO: Should be higher ranked liftime on closure, but that causes compiler ICE.
+  pub fn new_with_builder
+    <'clos, Err, Accum>
+    (ip:                 Addr,
      protocol:           u8,
      expected_body_size: Option<u16>,
-     client:             |&mut V|:'clos -> Result<(), Err>) -> Result<V, Err>
+     builder:            |&mut V|:'clos -> Result<Accum, Err>)
+     -> Result<(Accum, V), Err>
   {
     let mut packet = V::new_with_header(ip, protocol, expected_body_size);
 
-    try!(client(&mut packet));
+    let accum = try!(builder(&mut packet));
 
     let len = packet.borrow().as_slice().len() as u16;
 
@@ -100,13 +77,10 @@ impl V {
     // now fix header and checksum
     {
       let s = packet.borrow_mut();
-      s.cast_h_mut().total_length = len;
-      let u16s: &[u16] = unsafe { transmute(s.as_slice()) };
-      // slice to make sure bod is cut,
-      // and also because length is incorrect from transmute
-      s.set_header_checksum(make_header_checksum(u16s[..12]));
+      s.cast_h_mut().total_length = len.to_be();
+      s.update_checksum();
     }
-    Ok(packet)
+    Ok((accum, packet))
   }
 
   pub fn as_vec(&self) -> &Vec<u8> { &self.buf }
@@ -144,7 +118,7 @@ pub const MIN_HDR_LEN_WORDS: u8  = 5;
 
 #[repr(packed)]
 #[unstable]
-pub struct IpHeaderStruct {
+pub struct Header {
   pub version_ihl:           u8,   // IP version (= 4)
   /////////////////////////////////// Internet header length
   pub type_of_service:       u8,   // Type of service
@@ -157,12 +131,6 @@ pub struct IpHeaderStruct {
   pub header_checksum:       u16,  // Checksum
   pub source_address:        u32,  // Source Address
   pub destination_address:   u32,  // Destination Address
-}
-
-pub struct IpStruct {
-  pub header:           IpHeaderStruct,
-  // mainly used to make struct a DST, so pointer can be cast
-  pub options_and_body: [u8], // body of packet
 }
 
 #[repr(u8)]
@@ -182,9 +150,6 @@ bitflags! {
     const LOW_DELAY         = 0b000_100_00,
     const HIGH_THROUGHPUT   = 0b000_010_00,
     const HIGH_RELIABILTY   = 0b000_001_00,
-    //const NORMAL_DELAY      = !LowDelay       .bits,
-    //const NORMAL_THROUGHPUT = !HighThroughput .bits,
-    //const NORMAL_RELIABILTY = !HighReliability.bits,
   }
 }
 
@@ -196,6 +161,11 @@ bitflags! {
 }
 
 
+struct CastHelper {
+  header: Header,
+  _rest: [u8], // used to make it a DST
+}
+
 impl A {
 
   pub fn as_slice(&self) -> &[u8] {
@@ -206,20 +176,12 @@ impl A {
     unsafe { transmute(self) }
   }
 
-  pub fn cast(&self) -> &IpStruct {
-    unsafe { transmute(self) }
+  pub fn cast_h(&self) -> &Header {
+    &    unsafe { transmute::<_,&CastHelper>(self) }.header
   }
 
-  pub fn cast_mut(&mut self) -> &mut IpStruct {
-    unsafe { transmute(self) }
-  }
-
-  pub fn cast_h(&self) -> &IpHeaderStruct {
-    &self.cast().header
-  }
-
-  pub fn cast_h_mut(&mut self) -> &mut IpHeaderStruct {
-    &mut self.cast_mut().header
+  pub fn cast_h_mut(&mut self) -> &mut Header {
+    &mut unsafe { transmute::<_,&mut CastHelper>(self) }.header
   }
 
 
@@ -231,22 +193,25 @@ impl A {
     unsafe { transmute(buf) }
   }
 
+
+
   pub fn get_version(&self) -> u8 { self.buf[0] >> 4 }
   pub fn set_version(&mut self, v: u8) {
     const MASK: u8 = 0b1111_0000;
     assert!(v & MASK == 0);
-    self.buf[0] &= MASK;
+    self.buf[0] &= !MASK; // clear lower bits
     self.buf[0] |= v << 4;
   }
 
-  pub fn get_header_length(&self) -> u8 { self.buf[0] & 0x0F }
-  pub fn set_header_length(&mut self, v: u8) {
+  pub fn get_header_length(&self) -> u8 { self.buf[0] & 0b0000_1111 }
+  pub fn set_header_length(&mut self, hl: u8) {
     const MASK: u8 = 0b1111_0000;
-    assert!(v & MASK == 0);
-    self.buf[0] |= v;
+    assert!(hl & MASK == 0);
+    self.buf[0] &= MASK; // clear lower bits
+    self.buf[0] |= hl;
   }
 
-  pub fn hdr_bytes(&self) -> u8 { self.get_header_length() * 4 }
+  pub fn hdr_bytes(&self) -> uint { self.get_header_length() as uint * 4 }
 
   pub fn get_total_length(&    self) -> u16 { Int::from_be(self.cast_h()    .total_length) }
   pub fn set_total_length(&mut self, v: u16)             { self.cast_h_mut().total_length = v.to_be(); }
@@ -268,14 +233,14 @@ impl A {
 
 
   pub fn get_flags_fragment_offset(&self) -> (IpFlags, u16) {
-    let ffo = self.cast_h().flags_fragment_offset;
+    let ffo = Int::from_be(self.cast_h().flags_fragment_offset);
     const MASK: u16 = 0b111_00000_00000000;
     ( unsafe { ::std::mem::transmute(ffo & MASK) },
       ffo & !MASK)
   }
   pub fn set_flags_fragment_offset(&mut self, flags: IpFlags, offset: u16) {
     assert!(0 == (offset & 0b111_00000_00000000));
-    self.cast_h_mut().flags_fragment_offset = flags.bits | offset;
+    self.cast_h_mut().flags_fragment_offset = (flags.bits | offset).to_be();
   }
 
 
@@ -288,36 +253,23 @@ impl A {
   pub fn get_header_checksum(&    self) -> u16 { Int::from_be(self.cast_h()    .header_checksum) }
   pub fn set_header_checksum(&mut self, v: u16)             { self.cast_h_mut().header_checksum = v.to_be(); }
 
-  pub fn get_source(&self) -> IpAddr {
-    Ipv4Addr(self.buf[12], self.buf[13], self.buf[14], self.buf[15])
-  }
-  pub fn set_source(&mut self, ip: IpAddr) -> Result<(), ()> {
-    match ip {
-      Ipv4Addr(a, b, c, d) => {
-        self.buf[12] = a;
-        self.buf[13] = b;
-        self.buf[14] = c;
-        self.buf[15] = d;
-      },
-      _ => return Err(()),
-    }
-    Ok(())
+  pub fn get_source(&self) -> Addr { parse_addr_unsafe(self.buf[12..16]) }
+  pub fn set_source(&mut self, a: Addr) {
+    // TODO: report assign slices lack of doing anything
+    let [a, b, c, d] = write_addr(a);
+    self.buf[12] = a;
+    self.buf[13] = b;
+    self.buf[14] = c;
+    self.buf[15] = d;
   }
 
-  pub fn get_destination(&self) -> IpAddr {
-    Ipv4Addr(self.buf[16], self.buf[17], self.buf[18], self.buf[19])
-  }
-  pub fn set_destination(&mut self, ip: IpAddr) -> Result<(), ()> {
-    match ip {
-      Ipv4Addr(a, b, c, d) => {
-        self.buf[16] = a;
-        self.buf[17] = b;
-        self.buf[18] = c;
-        self.buf[19] = d;
-      },
-      _ => return Err(()),
-    }
-    Ok(())
+  pub fn get_destination(&self) -> Addr { parse_addr_unsafe(self.buf[16..20]) }
+  pub fn set_destination(&mut self, a: Addr) {
+    let [a, b, c, d] = write_addr(a);
+    self.buf[16] = a;
+    self.buf[17] = b;
+    self.buf[18] = c;
+    self.buf[19] = d;
   }
 
   // Eh, todo. Iterator over IpOptions?
@@ -331,14 +283,105 @@ impl A {
     }
   }
 
+  pub fn make_header_checksum(&self) -> u16 {
+    let u16s: &[u16] = unsafe { transmute(self.as_slice()) };
+    // slice to make sure body is excluded,
+    // and also because length is incorrect from transmute
+    make_checksum(u16s[..12])
+  }
+
+  pub fn update_checksum(&mut self) {
+    let cs = self.make_header_checksum();
+    self.set_header_checksum(cs);
+  }
+
   //TODO: this results in when actually run
   //    task '<unknown>' has overflowed its stack
   //    Illegal instruction (core dumped)
   pub fn print(&self) {
     println!("Ip  | ver {} | {} | Tos {} | Len {}  |",
-             self.get_version(), self.get_header_length(), self.cast_h().type_of_service, self.get_total_length());
-    println!("    | FId {}    |   off {} |", self.get_identification(), self.get_flags_fragment_offset().val1());
-    println!("    | ttl {} | proto {} | sum {} |", self.get_time_to_live(), self.get_protocol(), self.get_header_checksum());
-    println!("    | Src {}   | Dst {} |", self.get_source(), self.get_destination());
+             self.get_version(),
+             self.get_header_length(),
+             self.cast_h().type_of_service,
+             self.get_total_length());
+    println!("    | FId {}    |   off {} |",
+             self.get_identification(),
+             self.get_flags_fragment_offset().val1());
+    println!("    | ttl {} | proto {} | sum {} |",
+             self.get_time_to_live(),
+             self.get_protocol(),
+             self.get_header_checksum());
+    println!("    | Src {}   | Dst {} |",
+             self.get_source(),
+             self.get_destination());
   }
+}
+
+
+#[deriving(PartialEq, PartialOrd, Eq, Ord,
+           Clone, Show)]
+/// Where there are two fields: expected, then got.
+pub enum BadPacket {
+  TooShort(uint),              // header cannot fit
+
+  BadVersion(u8),              // isn't 4
+  BadPacketLength(uint, u16),  // not what it really is
+
+  HeaderTooLong(uint, uint),   // header declared shorter than min or longer than body
+  HeaderTooShort(uint),        // header declared shorter than min or longer than body
+  
+  BadChecksum(u16, u16),
+  BadOptions,
+}
+
+pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
+{
+  // have to check this first to avoid out-of-bounds panic on version check
+  if buf.len() < 1 {
+    return Err(TooShort(buf.len()))
+  }
+
+  let packet = A::new(buf);
+
+  // try to do this early as possible in case is other type of packet
+  if packet.get_version() != 4 {
+    return Err(BadVersion(packet.get_version()))
+  };
+
+  // then this so other header indexing doesn't packet
+  if packet.as_slice().len() != packet.get_total_length() as uint {
+    return Err(BadPacketLength(packet.as_slice().len(),
+                               packet.get_total_length()))
+  };
+
+  
+  if packet.hdr_bytes() > packet.as_slice().len()
+  {
+    return Err(HeaderTooLong(packet.hdr_bytes(),
+                             packet.as_slice().len()))
+  };
+    if packet.hdr_bytes() < MIN_HDR_LEN_BYTES as uint
+  {
+    return Err(HeaderTooShort(packet.hdr_bytes()))
+  };
+
+  if packet.make_header_checksum() != packet.get_header_checksum()
+  {
+    return Err(BadChecksum(packet.make_header_checksum(),
+                           packet.get_header_checksum()))
+  };
+
+  Ok(())
+}
+
+
+fn make_checksum(header: &[u16]) -> u16 {
+  // TODO: Factor out singleton iterator
+  let temp: [u16, ..1] = [0]; // for checkum field itself
+  let sum = header[0..5].iter()
+    .chain(temp.iter())
+    .chain(header[6..].iter())
+    .map(|x| *x)
+    .fold(0, |old, cur| Int::from_be(cur) + old);
+  !(sum + (sum >> 12))
 }
