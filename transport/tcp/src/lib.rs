@@ -26,13 +26,13 @@ use network::ipv4::strategy::RoutingTable;
 
 
 use listener::Listener;
-//use connection::Connection;
+use connection::Connection;
 
 mod packet;
 mod ringbuf;
 
 mod listener;
-//mod connection;
+mod connection;
 
 mod receive;
 mod capability;
@@ -72,7 +72,3 @@ pub struct PerPort {
   listener:    Option<RWLock<Listener>>,
   connections: RWLock<HashMap<(ipv4::Addr, Port), (RWLock<Connection>)>>,
 }
-
-
-#[deriving(Clone)]
-pub struct Connection;
