@@ -8,6 +8,7 @@ use std::io::{
   IoResult,
 };
 use std::mem::{transmute, size_of};
+use std::fmt;
 
 use network::ipv4::Addr;
 use network::ipv4::packet;
@@ -191,6 +192,20 @@ impl TcpPacket {
   }
 
 }
+
+
+impl fmt::Show for TcpPacket {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "TCP: <srcAddr: {}, dstAddr: {}>, |srcPort {}|dstPort {}|\n|Seq# {}|\n|Ack# {}|\n|offset {}|ACK {}|SYN {}|FIN {}|window {}|\n|checksum {}|", 
+           self.get_src_addr(), self.get_dst_addr(),
+           self.get_src_port(), self.get_dst_port(),
+           self.get_seq_num(),
+           self.get_ack_num(),
+           self.get_hdr_size(), self.is_ack(), self.is_syn(), self.is_fin(), self.get_window_size(),
+           self.get_checksum())
+  }
+}
+
 
 // Reads int in BE order
 // TODO: make sure endianness is alright: I'm calling Int::from_be on result
