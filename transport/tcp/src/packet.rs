@@ -1,4 +1,4 @@
-use std::io::net::ip::{IpAddr, Ipv4Addr};
+use network::ipv4::Addr;
 use std::io::{
   BufReader,
   BufWriter,
@@ -11,8 +11,8 @@ use std::io::{
 use std::mem::{transmute, size_of};
 
 pub struct TcpPacket {
-  pub src_addr: IpAddr,
-  pub dst_addr: IpAddr,
+  pub src_addr: Addr,
+  pub dst_addr: Addr,
   protocol: u8,
   tcp_len:  u16,
   data:     Vec<u8>
@@ -21,7 +21,7 @@ pub struct TcpPacket {
 impl TcpPacket {
 
   // 4-tuple info
-  pub fn get_src_addr(&self) -> IpAddr {
+  pub fn get_src_addr(&self) -> Addr {
     self.src_addr
   }
   pub fn get_src_port(&self) -> u16 {
@@ -31,7 +31,7 @@ impl TcpPacket {
   pub fn set_src_port(&mut self, port: u16) {
     //TODO:
   }
-  pub fn get_dst_addr(&self) -> IpAddr {
+  pub fn get_dst_addr(&self) -> Addr {
     self.dst_addr
   }
   pub fn get_dst_port(&self) -> u16 {
@@ -112,17 +112,14 @@ impl TcpPacket {
     //TODO:
   }
 
-}
+  pub fn get_payload(&self) -> &[u8] {
+    //TODO:
+    self.get_mut_payload()
+  }
 
-#[inline]
-pub fn parse_ip(&[a, b, c, d]: &[u8, ..4]) -> IpAddr {
-  Ipv4Addr(a, b, c, d)
-}
-
-#[inline]
-pub fn write_ip(addr: IpAddr) -> [u8, ..4] {
-  match addr {
-    Ipv4Addr(a, b, c, d) => [a, b, c, d],
-    _                    => panic!("no ipv6 yet"),
+  pub fn get_mut_payload(&self) -> &mut[u8] {
+    //TODO:
+    let mut payload = [];
+    payload
   }
 }
