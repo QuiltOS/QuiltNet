@@ -277,9 +277,19 @@ impl A {
 
   pub fn get_payload(&self) -> &[u8] {
     if self.get_total_length() as uint > self.buf.len() {
-      self.buf.slice_from(self.hdr_bytes() as uint)
+      self.buf[self.hdr_bytes() as uint..]
     } else {
-      self.buf.slice(self.hdr_bytes() as uint, self.get_total_length() as uint)
+      self.buf[self.hdr_bytes() as uint..self.get_total_length() as uint]
+    }
+  }
+
+  pub fn get_payload_mut(&mut self) -> &mut [u8] {
+    let start = self.hdr_bytes() as uint;
+    if self.get_total_length() as uint > self.buf.len() {
+      self.buf[mut start..]
+    } else {
+      let end = self.get_total_length() as uint;
+      self.buf[mut start..end]
     }
   }
 
@@ -329,7 +339,7 @@ pub enum BadPacket {
 
   HeaderTooLong(uint, uint),   // header declared shorter than min or longer than body
   HeaderTooShort(uint),        // header declared shorter than min or longer than body
-  
+
   BadChecksum(u16, u16),
   BadOptions,
 }
@@ -354,7 +364,7 @@ pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
                                packet.get_total_length()))
   };
 
-  
+
   if packet.hdr_bytes() > packet.as_slice().len()
   {
     return Err(HeaderTooLong(packet.hdr_bytes(),
