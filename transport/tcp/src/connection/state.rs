@@ -7,6 +7,7 @@ use super::{
   Connection,
 
   Closed,
+  Established,
 };
 
 pub trait State {
@@ -17,7 +18,14 @@ pub trait State {
 pub fn trans<A>(e: &mut Connection, s: &::State<A>, p: TcpPacket)
   where A: RoutingTable
 {
-  *e = match e {
-    &Closed(ref c) => c.next(s, p),
+  use std::mem::{uninitialized, swap};
+  
+  let mut blank: Connection = unsafe { uninitialized() };
+
+  swap(e, &mut blank);
+  
+  *e = match blank {
+    Closed(c)      => c.next(s, p),
+    Established(c) => c.next(s, p),
   }
 }

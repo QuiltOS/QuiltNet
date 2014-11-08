@@ -1,3 +1,5 @@
+use misc::interface::{MyFn, /* Handler */};
+
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
@@ -5,6 +7,11 @@ use Table;
 use packet::TcpPacket;
 use super::Listener;
 use super::state::State;
+
+use connection::established::RWHandler;
+
+pub type OnConnectionAttempt = //Handler<Ip>;
+  Box<MyFn<(::ConAddr, ::ConAddr,), Option<[RWHandler, ..2]>> + Send + Sync + 'static>;
 
 pub struct Listen;
 
@@ -23,8 +30,12 @@ impl State for Listen
 
 impl Listen
 {
-  //fn new<A>(ip_state: &ipv4::State<A>,
-  //          tcp_state:
+  fn new<A>(state:   &::State<A>,
+            handler: OnConnectionAttempt)
+            -> Result<(), ()>
+  {
 
+    Ok(())
+  }
   
 }
