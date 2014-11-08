@@ -33,7 +33,10 @@ mod ringbuf;
 mod listener;
 //mod connection;
 
+mod receive;
 mod capability;
+
+const PROTOCOL: u8 = 6;
 
 /// Closed state and memory usage:
 ///

@@ -2,6 +2,8 @@ use std::io::IoResult;
 use std::sync::Arc;
 use std::option::None;
 
+use misc::interface::MyFn;
+
 use network::ipv4::{
   mod,
   control,
@@ -10,8 +12,6 @@ use network::ipv4::{
   InterfaceRow,
   InterfaceTable,
 };
-
-use misc::interface::MyFn;
 
 use super::{RIP_INFINITY, RipTable, RipRow};
 use super::packet::{mod, Request, Response};
