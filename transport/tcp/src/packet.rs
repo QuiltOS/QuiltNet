@@ -45,6 +45,14 @@ impl TcpPacket {
     }
   }
 
+  pub fn hack(ip_packet: &packet::V) -> &TcpPacket {
+    unsafe {transmute(ip_packet) }
+  }
+
+  pub fn hack_mut(ip_packet: &mut packet::V) -> &mut TcpPacket {
+    unsafe {transmute(ip_packet) }
+  }
+
   pub fn validate(ip_packet: &packet::A) -> Result<(), BadPacket> {
     Ok(())
   }
