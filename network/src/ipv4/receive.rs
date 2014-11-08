@@ -1,19 +1,20 @@
 use std::sync::Arc;
 
-use super::packet as packet;
+use super::{
+  packet,
+  strategy,
+  send
+};
 
 use misc::interface::{MyFn, Handler};
 
 use data_link::interface as dl;
 
-use ipv4::{strategy, send};
-use ipv4::{InterfaceRow, IpState};
-
 
 /// Called upon receipt of an IP packet:
 /// If packet is destined for this node, deliver it to appropriate handlers
 /// If packet is destined elsewhere, fix packet headers and forward
-fn receive<A>(state: &IpState<A>, buf: Vec<u8>)
+fn receive<A>(state: &super::State<A>, buf: Vec<u8>)
   where A: strategy::RoutingTable
 {
   debug!("Received packet.");
@@ -37,6 +38,19 @@ fn receive<A>(state: &IpState<A>, buf: Vec<u8>)
     // If there are no handlers (vector is empty), the packet is just dropped
     // TODO: factor out this clone-until-last-time pattern
     let mut iter = handlers.iter().peekable();
+    loop {
+      let handler = match iter.next() {
+        None    => break,
+        Some(h) => h
+      };
+      if iter.is_empty() {
+        (&**handler).call((packet,));
+        break;
+      } else {
+        (&**handler).call((packet.clone(),));
+      }
+    }
+    /*
     match iter.next() {
       None => (),
       Some(mut handler) => loop {
@@ -52,7 +66,7 @@ fn receive<A>(state: &IpState<A>, buf: Vec<u8>)
           }
         }
       }
-    }
+    }*/
   } else {
     debug!("packet is not local! {}", packet);
     // handle errors just for logging purposes
@@ -65,41 +79,39 @@ fn receive<A>(state: &IpState<A>, buf: Vec<u8>)
 
 /// Forwards a packet back into the network after rewriting its headers
 /// Result status is whether packet was able to be forwarded
-fn forward<A>(state: &IpState<A>, mut packet: packet::V) -> send::Result<()>
+fn forward<A>(state: &super::State<A>, mut packet: packet::V) -> send::Result<()>
   where A: strategy::RoutingTable
 {
-  { // decrement TTL
+  { // Decrement TTL
     let ttl = packet.borrow().get_time_to_live() - 1;
     if ttl == 0 { return Ok(()); }
     packet.borrow_mut().set_time_to_live(ttl);
   }
-  { // do something with checksum ?
-
+  { // Update checksum
+    packet.borrow_mut().update_checksum();
   }
-  //// map Error because Fix_headers does not return IoError
-  //try!(fix_headers(&mut packet).map_err(|_| ::std::io::IoError {
-  //  kind:   ::std::io::InvalidInput,
-  //  desc:   "Packet had invalid headers",
-  //  detail: None,
-  //}));
-  send::send(state, packet)
+  let row = try!(send::resolve_route(
+    state,
+    packet.borrow_mut().get_destination()));
+  // Do NOT update src address
+  send::send_manual(row, packet).map_err(send::External)
 }
 
 /// Determine whether packet is destined for this node
-fn is_packet_dst_local<A>(state: &IpState<A>, packet: &packet::V) -> bool
+fn is_packet_dst_local<A>(state: &super::State<A>, packet: &packet::V) -> bool
   where A: strategy::RoutingTable
 {
   let dst = packet.borrow().get_destination();
 
   // TODO: factor out is_neighbor_addr and is_our_addr
   state.interfaces.iter()
-    .any(|&InterfaceRow { local_ip, .. }| local_ip == dst)
+    .any(|&super::InterfaceRow { local_ip, .. }| local_ip == dst)
 }
 
 struct IpDl<A>
   where A: strategy::RoutingTable + Send
 {
-  state: Arc<IpState<A>>,
+  state: Arc<super::State<A>>,
 }
 
 impl<A> MyFn<(dl::Packet,), ()> for IpDl<A>
@@ -111,7 +123,7 @@ impl<A> MyFn<(dl::Packet,), ()> for IpDl<A>
   }
 }
 
-pub fn make_receive_callback<A>(state: Arc<IpState<A>>) -> dl::Handler
+pub fn make_receive_callback<A>(state: Arc<super::State<A>>) -> dl::Handler
   where A: strategy::RoutingTable + Send
 {
   box IpDl { state: state.clone() }
