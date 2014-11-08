@@ -16,7 +16,7 @@ pub mod strategy;
 
 #[deriving(PartialEq, PartialOrd, Eq, Ord,
            Clone, Show, Hash)]
-pub struct Addr(u8, u8, u8, u8);
+pub struct Addr(pub u8, pub u8, pub u8, pub u8);
 
 #[inline]
 pub fn parse_addr(&[a, b, c, d]: &[u8, ..4]) -> Addr {
