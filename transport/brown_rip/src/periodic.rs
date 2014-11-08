@@ -66,7 +66,7 @@ fn collector_garbage(state: &ipv4::State<RipTable>) {
       };
       // allowed to forget neighbors, though the neighbor -> interface map
       // will remember them
-      if row.cost == RIP_INFINITY || deadline >= cur_time
+      if row.cost == RIP_INFINITY || deadline <= cur_time
       {
         row.cost = RIP_INFINITY; // dead rows shall be poisonsed
         bad_keys.push(*dst);
