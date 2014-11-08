@@ -1,34 +1,32 @@
 use std::io::IoResult;
-use std::io::net::ip::IpAddr;
 use std::sync::Arc;
 use std::option::None;
 
 use network::ipv4::{
-  IpState,
+  mod,
+  control,
+  send,
+
   InterfaceRow,
   InterfaceTable,
 };
-use network::ipv4::control;
-use network::ipv4::send::send_manual;
-
-use network::ipv4::packet::V as Ip;
 
 use misc::interface::MyFn;
 
 use super::{RIP_INFINITY, RipTable, RipRow};
 use super::packet::{mod, Request, Response};
 
-struct RipHandler { state: Arc<IpState<RipTable>> }
+struct RipHandler { state: Arc<ipv4::State<RipTable>> }
 
-impl MyFn<(Ip,), ()> for RipHandler {
+impl MyFn<(ipv4::packet::V,), ()> for RipHandler {
 
-  fn call(&self, (packet,):(Ip,)) {
+  fn call(&self, (packet,):(ipv4::packet::V,)) {
     handle(&*self.state, packet).unwrap(/* "Failure handling incomming IP Packet" */);
   }
 
 }
 
-fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
+fn handle(state: &ipv4::State<RipTable>, packet: ipv4::packet::V) -> IoResult<()> {
   let neighbor_addr = packet.borrow().get_source();
   //let interface_addr = packet.borrow().get_destination();
   let data = packet.borrow().get_payload();
@@ -69,7 +67,7 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
 }
 
 /// Registers protocol handler for incomming RIP packets.
-pub fn register(state: Arc<IpState<RipTable>>) {
+pub fn register(state: Arc<ipv4::State<RipTable>>) {
   control::register_protocol_handler(
     &*state,
     super::RIP_PROTOCOL,
@@ -91,8 +89,8 @@ pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
                            neighbors:           &'a InterfaceTable,
                            interfaces:          &'a [InterfaceRow])
                            -> IoResult<()>
-  where I: Iterator<(IpAddr, &'a RipRow)>,
-        J: Iterator<IpAddr>
+  where I: Iterator<(ipv4::Addr, &'a RipRow)>,
+        J: Iterator<ipv4::Addr>
 {
   for neighbor_ip in neighbor_subset
   {
@@ -101,7 +99,7 @@ pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
       Some(&index) => &interfaces[index],
     };
 
-    let entry_builder = |(route_dst, row): (IpAddr, &'a RipRow)| packet::Entry {
+    let entry_builder = |(route_dst, row): (ipv4::Addr, &'a RipRow)| packet::Entry {
       address: route_dst,
       cost: if row.next_hop == neighbor_ip {
         //poison
@@ -115,16 +113,18 @@ pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
 
     while !entries_iter.is_empty() {
 
-      let f = |packet: &mut Ip| {
+      let f = |packet: &mut ipv4::packet::V| {
+        // needs to be set here to `new_with_builder` sets the correct checksum.
+        packet.borrow_mut().set_source(interface_row.local_ip);
         packet::write_response(&mut entries_iter)(packet.as_mut_vec())
       };
 
-      let packet = try!(Ip::new_with_client(
+      let (_, packet) = try!(ipv4::packet::V::new_with_builder(
         neighbor_ip,
         super::RIP_PROTOCOL,
         None,
         f));
-      match send_manual(packet, interface_row) {
+      match send::send_manual(interface_row, packet) {
         Ok(_)  => (),
         Err(e) => debug!("could not propigate to {}, because {}", neighbor_ip, e),
       };
@@ -135,8 +135,8 @@ pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
 
 
 /// Go through a bunch of entries, update the table, propigate changes
-fn update<I>(state: &IpState<RipTable>,
-             neighbor_addr: IpAddr,
+fn update<I>(state: &ipv4::State<RipTable>,
+             neighbor_addr: ipv4::Addr,
              entries_but_neighbor_itself: I)
              -> IoResult<()>
   where I: Iterator<packet::Entry>
