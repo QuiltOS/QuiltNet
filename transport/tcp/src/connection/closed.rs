@@ -15,6 +15,7 @@ impl State for Closed
              -> Connection
     where A: RoutingTable
   {
+    // stay closed
     super::Closed(Closed)
   }
 }

@@ -14,7 +14,7 @@ use network::ipv4::packet;
 
 
 // Length of TCP header in bytes
-const TCP_HDR_LEN : &'static uint = &20u;
+pub const TCP_HDR_LEN: uint = 20;
 
 pub struct TcpPacket {
   ip: packet::V
@@ -49,34 +49,28 @@ impl TcpPacket {
     Ok(())
   }
 
-  /// Returns slice containing TCP packet body 
+  /// Returns slice containing TCP packet
   fn get_tcp(&self) -> &[u8] {
-    let ip_len = self.ip.borrow().get_header_length();
-
-    // Slice from IP header end to TCP header end
-    self.ip.as_vec().slice_from_or_fail(&(ip_len as uint))
+    self.ip.borrow().get_payload()
   }
- 
+
   /// Returns mutable slice containing TCP packet body
   fn get_tcp_mut(&mut self) -> &mut [u8] {
-    let ip_len = self.ip.borrow().get_header_length();
-
-    // Slice from IP header end to TCP header end
-    self.ip.as_mut_vec().slice_from_or_fail_mut(&(ip_len as uint))
+    self.ip.borrow_mut().get_payload_mut()
   }
 
   /// Returns immutable slice containing TCP packet header
   /// NOTE: assumes no TCP options
   fn tcp_hdr(&self) -> &[u8] {
-    self.get_tcp().slice_to_or_fail(TCP_HDR_LEN)
+    self.get_tcp()[..TCP_HDR_LEN]
   }
 
   /// Returns mutable slice containing TCP packet header
   /// NOTE: assumes no TCP options
   fn tcp_hdr_mut(&mut self) -> &mut [u8] {
-    self.get_tcp_mut().slice_to_or_fail_mut(TCP_HDR_LEN)
+    self.get_tcp_mut()[mut ..TCP_HDR_LEN]
   }
-  
+
 
   // 4-tuple info
   pub fn get_src_addr(&self) -> Addr {
@@ -169,15 +163,19 @@ impl TcpPacket {
   pub fn set_checksum(&mut self, checksum: u16) {
     //TODO:
   }
+  pub fn update_checksum(&mut self) {
+    let cs = self.compute_checksum();
+    self.set_checksum(cs);
+  }
 
   /// Returns TCP payload as slice
   pub fn get_payload(&self) -> &[u8] {
-    self.get_tcp().slice_from_or_fail(TCP_HDR_LEN)
+    self.get_tcp()[TCP_HDR_LEN..]
   }
 
   /// Returns TCP payload as mut slice
   pub fn get_mut_payload(&mut self) -> &mut[u8] {
-    self.get_tcp_mut().slice_from_or_fail_mut(TCP_HDR_LEN)
+    self.get_tcp_mut()[mut TCP_HDR_LEN..]
   }
 
 }
