@@ -11,7 +11,7 @@ use network::ipv4::{
 use network::ipv4::control;
 use network::ipv4::send::send_manual;
 
-use network::ipv4::packet2::V as Ip;
+use network::ipv4::packet::V as Ip;
 
 use misc::interface::MyFn;
 
@@ -68,7 +68,7 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
   Ok(())
 }
 
-/// Runs simple debug handler, printing out all packets received for the given protocols
+/// Registers protocol handler for incomming RIP packets.
 pub fn register(state: Arc<IpState<RipTable>>) {
   control::register_protocol_handler(
     &*state,
@@ -146,10 +146,10 @@ fn update<I>(state: &IpState<RipTable>,
   let scratch = [packet::Entry { cost: 0, address: neighbor_addr }];
   let mut entries = scratch.as_slice().iter().map(|x| *x).chain(entries_but_neighbor_itself);
 
-  let mut updated_entries = ::std::collections::hashmap::HashMap::new();
+  let mut updated_entries = ::std::collections::hash_map::HashMap::new();
 
   for packet::Entry { mut cost, address: dst } in entries {
-    use std::collections::hashmap::{Occupied, Vacant};
+    use std::collections::hash_map::{Occupied, Vacant};
 
     // hmm, thoughput or latency?
     let mut unlocked = state.routes.map.write();
@@ -189,7 +189,7 @@ fn update<I>(state: &IpState<RipTable>,
         // accept update from neighbor, or better route
         // don't bother switching what sort of dead route it is
         // don't bother accepting route to self
-        if (update || no_worse) && !dead_route && !to_self
+        if (update || (no_worse && !dead_route)) && !to_self
         {
           let new = mk_new_row();
           debug!("route to {} changed from ({}, {}) to ({}, {})",

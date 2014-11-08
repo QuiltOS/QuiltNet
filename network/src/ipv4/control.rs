@@ -29,5 +29,5 @@ pub fn register_protocol_handler<A>(ip_state: &IpState<A>,
                                     handler: IpHandler)
   where A: strategy::RoutingTable
 {
-  (*ip_state.protocol_handlers.write()).get_mut(proto_number as uint).push(handler);
+  (*ip_state.protocol_handlers.write())[proto_number as uint].push(handler);
 }

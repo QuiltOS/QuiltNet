@@ -13,7 +13,7 @@ extern crate log;
 extern crate misc;
 extern crate interface;
 
-use std::collections::hashmap::{HashMap, Occupied, Vacant};
+use std::collections::hash_map::{HashMap, Occupied, Vacant};
 
 use std::io::IoResult;
 use std::io::net::udp::UdpSocket;

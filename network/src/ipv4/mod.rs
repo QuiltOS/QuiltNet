@@ -1,21 +1,17 @@
-extern crate packet;
-
-use std::collections::hashmap::HashMap;
+use std::collections::hash_map::HashMap;
 use std::io::net::ip::IpAddr;
 use std::sync::{Arc, RWLock};
 
 use misc::interface::{MyFn, /* Handler */};
-
-pub use self::packet::ipv4 as packet2;
 
 use data_link::interface as dl;
 
 use self::strategy::RoutingTable;
 
 pub mod control;
+pub mod packet;
 pub mod send;
 pub mod receive;
-
 pub mod strategy;
 
 // key:    adjacent ip (next hop)
@@ -31,7 +27,7 @@ pub struct InterfaceRow {
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt
 pub type IpHandler = //Handler<Ip>;
-  Box<MyFn<(packet2::V,), ()> + Send + Sync + 'static>;
+  Box<MyFn<(packet::V,), ()> + Send + Sync + 'static>;
 
 pub type ProtocolTable = Vec<Vec<IpHandler>>;
 

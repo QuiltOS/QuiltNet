@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::packet2 as packet;
+use super::packet as packet;
 
 use misc::interface::{MyFn, Handler};
 
