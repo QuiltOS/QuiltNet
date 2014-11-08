@@ -33,7 +33,7 @@ fn handle(state: &IpState<RipTable>, packet: Ip) -> IoResult<()> {
   //let interface_addr = packet.borrow().get_destination();
   let data = packet.borrow().get_payload();
 
-  match state.neighbors.find(&neighbor_addr) {
+  match state.neighbors.get(&neighbor_addr) {
     None    => debug!("Odd, got packet from non-neighbor: {}", neighbor_addr),
     _       => (),
   };
@@ -96,7 +96,7 @@ pub fn propagate<'a, I, J>(route_subset:        ||:'a -> I,
 {
   for neighbor_ip in neighbor_subset
   {
-    let interface_row = match neighbors.find(&neighbor_ip) {
+    let interface_row = match neighbors.get(&neighbor_ip) {
       None         => panic!("Can't propagate to non-neighbor: {}", neighbor_ip),
       Some(&index) => &interfaces[index],
     };

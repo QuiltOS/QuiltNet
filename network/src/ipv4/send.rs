@@ -63,7 +63,7 @@ pub fn send<A>(state: &IpState<A>, packet: packet::V) -> self::Result<()>
     None           => Err(self::NoRoute),
     Some(next_hop) => { // Send packet to next hop towards destination
       debug!("Found route through {}", next_hop);
-      match state.neighbors.find(&next_hop) {
+      match state.neighbors.get(&next_hop) {
         None => panic!("IP: Route's next hop is not a neighbor!"),
         // Tell interface to send packet bytes
         Some(index) => {

@@ -67,7 +67,7 @@ impl Listener
               // maybe it will work next time...
               debug!("OS error when trying to wait for packet: {}", e);
             },
-            Ok((len, src_addr)) => match handlers.read().deref().find(&src_addr) {
+            Ok((len, src_addr)) => match handlers.read().deref().get(&src_addr) {
               None          => continue, // drop that packet!
               Some(&(is_enabled, ref on_recv)) => {
                 debug!("Received packet");
