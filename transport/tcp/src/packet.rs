@@ -79,7 +79,6 @@ impl TcpPacket {
     self.get_tcp_mut()[mut ..TCP_HDR_LEN]
   }
 
-
   // 4-tuple info
   pub fn get_src_addr(&self) -> Addr {
     self.ip.borrow().get_source()
@@ -89,7 +88,7 @@ impl TcpPacket {
     //Int::from_be(get_multibyte(self.tcp_hdr(), 0, 2) as u16)
   }
   pub fn set_src_port(&mut self, port: u16) {
-    //TODO:
+    BufWriter::new(self.tcp_hdr_mut()[mut 0..2]).write_be_u16(port);
   }
   pub fn get_dst_addr(&self) -> Addr {
     self.ip.borrow().get_destination()
@@ -99,7 +98,7 @@ impl TcpPacket {
     //Int::from_be(get_multibyte(self.tcp_hdr(), 2, 2) as u16)
   }
   pub fn set_dst_port(&mut self, port: u16) {
-    //TODO
+    BufWriter::new(self.tcp_hdr_mut()[mut 2..4]).write_be_u16(port);
   }
 
   // Control Flags
@@ -107,26 +106,26 @@ impl TcpPacket {
     self.tcp_hdr()[13] & 16 != 0
   }
   pub fn set_ack(&mut self) {
-    //TODO
+    self.tcp_hdr_mut()[13] |= 16
   }
   // Not sure if this is used
   pub fn is_rst(&self) -> bool {
     self.tcp_hdr()[13] & 4 != 0
   }
   pub fn set_rst(&mut self) {
-    //TODO
+    self.tcp_hdr_mut()[13] |= 4
   }
   pub fn is_syn(&self) -> bool {
     self.tcp_hdr()[13] & 2 != 0
   }
   pub fn set_syn(&mut self) {
-    //TODO
+    self.tcp_hdr_mut()[13] |= 2 
   }
   pub fn is_fin(&self) -> bool {
     self.tcp_hdr()[13] & 1 != 0
   }
   pub fn set_fin(&mut self) {
-    //TODO
+    self.tcp_hdr_mut()[13] |= 1
   }
 
 
@@ -135,8 +134,8 @@ impl TcpPacket {
     BufReader::new(self.tcp_hdr()[14..16]).read_be_u16().unwrap()
     //Int::from_be(get_multibyte(self.tcp_hdr(), 14, 2)) as u16
   }
-  pub fn set_window_size(&mut self) {
-    //TODO
+  pub fn set_window_size(&mut self, window_size: u16) {
+    BufWriter::new(self.tcp_hdr_mut()[mut 14..16]).write_be_u16(window_size);
   }
 
   // AKA data offset: 4 bytes
@@ -150,8 +149,8 @@ impl TcpPacket {
     BufReader::new(self.tcp_hdr()[4..9]).read_be_u32().unwrap()
     //Int::from_be(get_multibyte(self.tcp_hdr(), 4, 4)) as u32
   }
-  pub fn set_seq_num(&mut self, seq_num: u16) {
-    //TODO:
+  pub fn set_seq_num(&mut self, seq_num: u32) {
+    BufWriter::new(self.tcp_hdr_mut()[mut 4..9]).write_be_u32(seq_num);
   }
 
   // Acknowledgement Number Ops
@@ -160,8 +159,8 @@ impl TcpPacket {
     BufReader::new(self.tcp_hdr()[8..13]).read_be_u32().unwrap()
     //Int::from_be(get_multibyte(self.tcp_hdr(), 8, 4)) as u32
   }
-  pub fn set_ack_num(&mut self, ack_num: u16) {
-    //TODO:
+  pub fn set_ack_num(&mut self, ack_num: u32) {
+    BufWriter::new(self.tcp_hdr_mut()[mut 8..13]).write_be_u32(ack_num);
   }
 
   // Checksum Ops
@@ -174,7 +173,7 @@ impl TcpPacket {
     0
   }
   pub fn set_checksum(&mut self, checksum: u16) {
-    //TODO:
+    BufWriter::new(self.tcp_hdr_mut()[mut 16..18]).write_be_u16(checksum);
   }
   pub fn update_checksum(&mut self) {
     let cs = self.compute_checksum();
