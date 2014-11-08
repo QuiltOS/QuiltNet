@@ -53,7 +53,7 @@ fn handle(state:  &super::Table,
     None => match sub_table.listener {
       None               => return,
       Some(ref listener) => super::listener::state::trans(
-        &mut *(&*listener).write(),
+        &mut *listener.write(),
         state,
         packet),
     },

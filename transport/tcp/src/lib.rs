@@ -69,8 +69,8 @@ pub struct Table(RWLock<HashMap<Port, PerPort>>);
 
 pub struct PerPort {
   // the Option ensures the
-  listener:    Option<Arc<RWLock<Listener>>>,
-  connections: RWLock<HashMap<(ipv4::Addr, Port), (Arc<Connection>)>>,
+  listener:    Option<RWLock<Listener>>,
+  connections: RWLock<HashMap<(ipv4::Addr, Port), (RWLock<Connection>)>>,
 }
 
 
