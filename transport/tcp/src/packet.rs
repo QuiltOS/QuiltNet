@@ -114,12 +114,12 @@ impl TcpPacket {
 
   pub fn get_payload(&self) -> &[u8] {
     //TODO:
-    self.get_mut_payload()
+    self.data.as_slice()
   }
 
-  pub fn get_mut_payload(&self) -> &mut[u8] {
+  pub fn get_mut_payload(&mut self) -> &mut[u8] {
     //TODO:
-    let mut payload = [];
-    payload
+    self.data.as_mut_slice()
   }
+
 }
