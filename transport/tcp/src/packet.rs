@@ -9,11 +9,12 @@ use std::io::{
 };
 use std::mem::{transmute, size_of};
 
-// Length of TCP header in bytes
-const TCP_HDR_LEN : &'static uint = &20u;
-
 use network::ipv4::Addr;
 use network::ipv4::packet;
+
+
+// Length of TCP header in bytes
+const TCP_HDR_LEN : &'static uint = &20u;
 
 pub struct TcpPacket {
   pub src_addr: Addr,
