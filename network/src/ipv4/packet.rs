@@ -12,18 +12,6 @@ pub struct V { buf: Vec<u8> }
 
 pub struct A { buf:    [u8] }
 
-#[deriving(PartialEq, PartialOrd, Eq, Ord,
-           Clone, Show)]
-pub enum BadPacket {
-  TooShort,
-
-  BadVersion,
-  BadLength,
-  BadChecksum,
-  BadOptions,
-}
-
-
 
 impl V {
   pub fn new(buf: Vec<u8>) -> V {
@@ -44,7 +32,7 @@ impl V {
       const SENTINAL8:  u8  = 0b_1000_0001;
       const SENTINAL16: u16 = 0b_1100_1000_0000_0011;
       const SENTINAL32: u32 = 0b_1110_0000_0000_0000_0000_0000_0000_0111;
-      *(s.cast_h_mut()) = IpHeaderStruct {
+      *(s.cast_h_mut()) = Header {
         version_ihl:           SENTINAL8,  // SET LATER
         ///////////////////////////////////// Internet header length
         type_of_service:       SENTINAL8,  // SET LATER
@@ -89,7 +77,7 @@ impl V {
     // now fix header and checksum
     {
       let s = packet.borrow_mut();
-      s.cast_h_mut().total_length = len;
+      s.cast_h_mut().total_length = len.to_be();
       s.update_checksum();
     }
     Ok((accum, packet))
@@ -130,7 +118,7 @@ pub const MIN_HDR_LEN_WORDS: u8  = 5;
 
 #[repr(packed)]
 #[unstable]
-pub struct IpHeaderStruct {
+pub struct Header {
   pub version_ihl:           u8,   // IP version (= 4)
   /////////////////////////////////// Internet header length
   pub type_of_service:       u8,   // Type of service
@@ -143,12 +131,6 @@ pub struct IpHeaderStruct {
   pub header_checksum:       u16,  // Checksum
   pub source_address:        u32,  // Source Address
   pub destination_address:   u32,  // Destination Address
-}
-
-pub struct IpStruct {
-  pub header:           IpHeaderStruct,
-  // mainly used to make struct a DST, so pointer can be cast
-  pub options_and_body: [u8], // body of packet
 }
 
 #[repr(u8)]
@@ -179,6 +161,11 @@ bitflags! {
 }
 
 
+struct CastHelper {
+  header: Header,
+  _rest: [u8], // used to make it a DST
+}
+
 impl A {
 
   pub fn as_slice(&self) -> &[u8] {
@@ -189,20 +176,12 @@ impl A {
     unsafe { transmute(self) }
   }
 
-  pub fn cast(&self) -> &IpStruct {
-    unsafe { transmute(self) }
+  pub fn cast_h(&self) -> &Header {
+    &    unsafe { transmute::<_,&CastHelper>(self) }.header
   }
 
-  pub fn cast_mut(&mut self) -> &mut IpStruct {
-    unsafe { transmute(self) }
-  }
-
-  pub fn cast_h(&self) -> &IpHeaderStruct {
-    &self.cast().header
-  }
-
-  pub fn cast_h_mut(&mut self) -> &mut IpHeaderStruct {
-    &mut self.cast_mut().header
+  pub fn cast_h_mut(&mut self) -> &mut Header {
+    &mut unsafe { transmute::<_,&mut CastHelper>(self) }.header
   }
 
 
@@ -220,15 +199,16 @@ impl A {
   pub fn set_version(&mut self, v: u8) {
     const MASK: u8 = 0b1111_0000;
     assert!(v & MASK == 0);
-    self.buf[0] &= MASK;
+    self.buf[0] &= !MASK; // clear lower bits
     self.buf[0] |= v << 4;
   }
 
   pub fn get_header_length(&self) -> u8 { self.buf[0] & 0b0000_1111 }
-  pub fn set_header_length(&mut self, v: u8) {
+  pub fn set_header_length(&mut self, hl: u8) {
     const MASK: u8 = 0b1111_0000;
-    assert!(v & MASK == 0);
-    self.buf[0] |= v;
+    assert!(hl & MASK == 0);
+    self.buf[0] &= MASK; // clear lower bits
+    self.buf[0] |= hl;
   }
 
   pub fn hdr_bytes(&self) -> uint { self.get_header_length() as uint * 4 }
@@ -274,10 +254,23 @@ impl A {
   pub fn set_header_checksum(&mut self, v: u16)             { self.cast_h_mut().header_checksum = v.to_be(); }
 
   pub fn get_source(&self) -> Addr { parse_addr_unsafe(self.buf[12..16]) }
-  pub fn set_source(&mut self, a: Addr)              { self.buf[12..16] = write_addr(a).as_slice(); }
+  pub fn set_source(&mut self, a: Addr) {
+    // TODO: report assign slices lack of doing anything
+    let [a, b, c, d] = write_addr(a);
+    self.buf[12] = a;
+    self.buf[13] = b;
+    self.buf[14] = c;
+    self.buf[15] = d;
+  }
 
   pub fn get_destination(&self) -> Addr { parse_addr_unsafe(self.buf[16..20]) }
-  pub fn set_destination(&mut self, a: Addr)              { self.buf[16..20] = write_addr(a).as_slice(); }
+  pub fn set_destination(&mut self, a: Addr) {
+    let [a, b, c, d] = write_addr(a);
+    self.buf[16] = a;
+    self.buf[17] = b;
+    self.buf[18] = c;
+    self.buf[19] = d;
+  }
 
   // Eh, todo. Iterator over IpOptions?
   //pub fn options(&self) -> ... {  }
@@ -325,27 +318,57 @@ impl A {
 }
 
 
+#[deriving(PartialEq, PartialOrd, Eq, Ord,
+           Clone, Show)]
+/// Where there are two fields: expected, then got.
+pub enum BadPacket {
+  TooShort(uint),              // header cannot fit
+
+  BadVersion(u8),              // isn't 4
+  BadPacketLength(uint, u16),  // not what it really is
+
+  HeaderTooLong(uint, uint),   // header declared shorter than min or longer than body
+  HeaderTooShort(uint),        // header declared shorter than min or longer than body
+  
+  BadChecksum(u16, u16),
+  BadOptions,
+}
+
 pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
 {
+  // have to check this first to avoid out-of-bounds panic on version check
+  if buf.len() < 1 {
+    return Err(TooShort(buf.len()))
+  }
+
   let packet = A::new(buf);
 
+  // try to do this early as possible in case is other type of packet
   if packet.get_version() != 4 {
-    return Err(BadVersion)
+    return Err(BadVersion(packet.get_version()))
   };
 
-  if packet.as_slice().len() < MIN_HDR_LEN_BYTES as uint {
-    return Err(BadLength)
+  // then this so other header indexing doesn't packet
+  if packet.as_slice().len() != packet.get_total_length() as uint {
+    return Err(BadPacketLength(packet.as_slice().len(),
+                               packet.get_total_length()))
   };
 
+  
   if packet.hdr_bytes() > packet.as_slice().len()
-    || packet.get_total_length() as uint != packet.as_slice().len()
   {
-    return Err(TooShort)
+    return Err(HeaderTooLong(packet.hdr_bytes(),
+                             packet.as_slice().len()))
+  };
+    if packet.hdr_bytes() < MIN_HDR_LEN_BYTES as uint
+  {
+    return Err(HeaderTooShort(packet.hdr_bytes()))
   };
 
   if packet.make_header_checksum() != packet.get_header_checksum()
   {
-    return Err(BadChecksum)
+    return Err(BadChecksum(packet.make_header_checksum(),
+                           packet.get_header_checksum()))
   };
 
   Ok(())
