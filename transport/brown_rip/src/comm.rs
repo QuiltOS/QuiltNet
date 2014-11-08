@@ -146,10 +146,10 @@ fn update<I>(state: &IpState<RipTable>,
   let scratch = [packet::Entry { cost: 0, address: neighbor_addr }];
   let mut entries = scratch.as_slice().iter().map(|x| *x).chain(entries_but_neighbor_itself);
 
-  let mut updated_entries = ::std::collections::hashmap::HashMap::new();
+  let mut updated_entries = ::std::collections::hash_map::HashMap::new();
 
   for packet::Entry { mut cost, address: dst } in entries {
-    use std::collections::hashmap::{Occupied, Vacant};
+    use std::collections::hash_map::{Occupied, Vacant};
 
     // hmm, thoughput or latency?
     let mut unlocked = state.routes.map.write();

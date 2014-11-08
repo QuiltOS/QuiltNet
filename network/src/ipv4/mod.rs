@@ -1,4 +1,4 @@
-use std::collections::hashmap::HashMap;
+use std::collections::hash_map::HashMap;
 use std::io::net::ip::IpAddr;
 use std::sync::{Arc, RWLock};
 
