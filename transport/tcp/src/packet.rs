@@ -170,10 +170,12 @@ impl TcpPacket {
     //TODO:
   }
 
+  /// Returns TCP payload as slice
   pub fn get_payload(&self) -> &[u8] {
     self.get_tcp().slice_from_or_fail(TCP_HDR_LEN)
   }
 
+  /// Returns TCP payload as mut slice
   pub fn get_mut_payload(&mut self) -> &mut[u8] {
     self.get_tcp_mut().slice_from_or_fail_mut(TCP_HDR_LEN)
   }
