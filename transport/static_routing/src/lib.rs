@@ -31,7 +31,7 @@ pub struct StaticTable {
 impl RoutingTable for StaticTable {
 
   fn lookup(&self, ip: IpAddr) -> Option<IpAddr> {
-    self.map.read().find(&ip).map(|x| *x)
+    self.map.read().get(&ip).map(|x| *x)
   }
   
   fn init<I>(elements: I) -> StaticTable where I: Iterator<IpAddr> {

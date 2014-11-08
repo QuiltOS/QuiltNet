@@ -47,7 +47,7 @@ pub struct RipTable {
 impl RoutingTable for RipTable {
 
   fn lookup(&self, ip: IpAddr) -> Option<IpAddr> {
-    self.map.read().find(&ip).and_then( |table| {
+    self.map.read().get(&ip).and_then( |table| {
       Some(table.next_hop)
     })
   }
