@@ -17,6 +17,7 @@ impl State for Closed
              -> Listener
     where A: RoutingTable
   {
-    super::Listen(super::listen::Listen)
+    // stay closed
+    super::Closed(Closed)
   }
 }

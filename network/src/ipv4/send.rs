@@ -22,7 +22,9 @@ pub fn send
    dst:                super::Addr,
    protocol:           u8,
    expected_body_size: Option<u16>,
-   builder:            <'a> |&'a mut packet::V| -> self::Result<()>)
+   builder:            <'a> |&'a mut packet::V| -> self::Result<()>,
+   // TODO: make this take a &'a mut packet::A someday
+   awkward:            <'a> |&'a mut packet::V| -> self::Result<()>)
    -> self::Result<()>
   where A: strategy::RoutingTable
 {
@@ -32,6 +34,11 @@ pub fn send
 
     let row = try!(resolve_route(state, dst));
     packet.borrow_mut().set_source(row.local_ip);
+
+    // TCP needs to hook in here for checksum of "virtual header"
+    // awkward layer violation is awkward
+    try!(awkward(packet));
+
     Ok(row)
   };
 

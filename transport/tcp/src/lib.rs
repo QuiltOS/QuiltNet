@@ -31,13 +31,19 @@ use connection::Connection;
 mod packet;
 mod ringbuf;
 
+mod send;
+mod receive;
+
 mod listener;
 mod connection;
 
-mod receive;
-mod capability;
+
+pub mod capability;
 
 const PROTOCOL: u8 = 6;
+
+/// Address of one end of a connection
+pub type ConAddr = (ipv4::Addr, Port);
 
 /// Closed state and memory usage:
 ///
@@ -70,5 +76,5 @@ pub struct Table(RWLock<HashMap<Port, PerPort>>);
 pub struct PerPort {
   // the Option ensures the
   listener:    Option<RWLock<Listener>>,
-  connections: RWLock<HashMap<(ipv4::Addr, Port), (RWLock<Connection>)>>,
+  connections: RWLock<HashMap<ConAddr, RWLock<Connection>>>,
 }
