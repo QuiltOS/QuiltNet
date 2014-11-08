@@ -85,7 +85,8 @@ impl TcpPacket {
     self.ip.borrow().get_source()
   }
   pub fn get_src_port(&self) -> u16 {
-    Int::from_be(get_multibyte(self.tcp_hdr(), 0, 2) as u16)
+    BufReader::new(self.tcp_hdr()[0..2]).read_be_u16().unwrap()
+    //Int::from_be(get_multibyte(self.tcp_hdr(), 0, 2) as u16)
   }
   pub fn set_src_port(&mut self, port: u16) {
     //TODO:
@@ -94,7 +95,8 @@ impl TcpPacket {
     self.ip.borrow().get_destination()
   }
   pub fn get_dst_port(&self) -> u16 {
-    Int::from_be(get_multibyte(self.tcp_hdr(), 2, 2) as u16)
+    BufReader::new(self.tcp_hdr()[2..4]).read_be_u16().unwrap()
+    //Int::from_be(get_multibyte(self.tcp_hdr(), 2, 2) as u16)
   }
   pub fn set_dst_port(&mut self, port: u16) {
     //TODO
@@ -130,7 +132,8 @@ impl TcpPacket {
 
   // Recv Window size
   pub fn get_window_size(&self) -> u16 {
-    Int::from_be(get_multibyte(self.tcp_hdr(), 14, 2)) as u16
+    BufReader::new(self.tcp_hdr()[14..16]).read_be_u16().unwrap()
+    //Int::from_be(get_multibyte(self.tcp_hdr(), 14, 2)) as u16
   }
   pub fn set_window_size(&mut self) {
     //TODO
@@ -144,7 +147,8 @@ impl TcpPacket {
   // Sequence Number Ops
   pub fn get_seq_num(&self) -> u32 {
     // assert!(self.is_seq())
-    Int::from_be(get_multibyte(self.tcp_hdr(), 4, 4)) as u32
+    BufReader::new(self.tcp_hdr()[4..9]).read_be_u32().unwrap()
+    //Int::from_be(get_multibyte(self.tcp_hdr(), 4, 4)) as u32
   }
   pub fn set_seq_num(&mut self, seq_num: u16) {
     //TODO:
@@ -153,7 +157,8 @@ impl TcpPacket {
   // Acknowledgement Number Ops
   pub fn get_ack_num(&self) -> u32 {
     assert!(self.is_ack());
-    Int::from_be(get_multibyte(self.tcp_hdr(), 8, 4)) as u32
+    BufReader::new(self.tcp_hdr()[8..13]).read_be_u32().unwrap()
+    //Int::from_be(get_multibyte(self.tcp_hdr(), 8, 4)) as u32
   }
   pub fn set_ack_num(&mut self, ack_num: u16) {
     //TODO:
@@ -161,7 +166,8 @@ impl TcpPacket {
 
   // Checksum Ops
   pub fn get_checksum(&self) -> u16 {
-    Int::from_be(get_multibyte(self.tcp_hdr(), 16, 2)) as u16
+    BufReader::new(self.tcp_hdr()[16..18]).read_be_u16().unwrap()
+    //Int::from_be(get_multibyte(self.tcp_hdr(), 16, 2)) as u16
   }
   pub fn compute_checksum(&self) -> u16 {
     //TODO:
@@ -224,7 +230,6 @@ mod test {
     assert!(get_multibyte(b, 0, 2) == 2672i);
     assert!(get_multibyte(b, 0, 3) == 684033i);
     assert!(get_multibyte(b, 0, 4) == 175112571);
-    assert!(false);
   }
 
 }
