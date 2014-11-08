@@ -24,9 +24,9 @@ use time::{Timespec, get_time};
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
-
 use listener::Listener;
 use connection::Connection;
+
 
 mod packet;
 mod ringbuf;
@@ -37,8 +37,8 @@ mod receive;
 mod listener;
 mod connection;
 
-
 pub mod capability;
+
 
 const PROTOCOL: u8 = 6;
 
