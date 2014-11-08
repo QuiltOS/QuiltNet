@@ -17,11 +17,7 @@ use network::ipv4::packet;
 const TCP_HDR_LEN : &'static uint = &20u;
 
 pub struct TcpPacket {
-  pub src_addr: Addr,
-  pub dst_addr: Addr,
-  protocol: u8,
-  tcp_len:  u16,
-  data:     Vec<u8>
+  ip: packet::V
 }
 
 #[deriving(PartialEq, PartialOrd, Eq, Ord,
@@ -45,11 +41,7 @@ impl TcpPacket {
 
   pub fn new(ip_packet: packet::V) -> TcpPacket {
     TcpPacket {
-      src_addr: Addr(0,0,0,0),
-      dst_addr: Addr(0,0,0,0),
-      protocol: super::PROTOCOL,
-      tcp_len: 0,
-      data: vec!(),
+      ip: ip_packet
     }
   }
 
@@ -57,9 +49,38 @@ impl TcpPacket {
     Ok(())
   }
 
+  /// Returns slice containing TCP packet body 
+  fn get_tcp(&self) -> &[u8] {
+    let ip_len = self.ip.borrow().get_header_length();
+
+    // Slice from IP header end to TCP header end
+    self.ip.as_vec().slice_from_or_fail(&(ip_len as uint))
+  }
+ 
+  /// Returns mutable slice containing TCP packet body
+  fn get_tcp_mut(&mut self) -> &mut [u8] {
+    let ip_len = self.ip.borrow().get_header_length();
+
+    // Slice from IP header end to TCP header end
+    self.ip.as_mut_vec().slice_from_or_fail_mut(&(ip_len as uint))
+  }
+
+  /// Returns immutable slice containing TCP packet header
+  /// NOTE: assumes no TCP options
+  fn tcp_hdr(&self) -> &[u8] {
+    self.get_tcp().slice_to_or_fail(TCP_HDR_LEN)
+  }
+
+  /// Returns mutable slice containing TCP packet header
+  /// NOTE: assumes no TCP options
+  fn tcp_hdr_mut(&mut self) -> &mut [u8] {
+    self.get_tcp_mut().slice_to_or_fail_mut(TCP_HDR_LEN)
+  }
+  
+
   // 4-tuple info
   pub fn get_src_addr(&self) -> Addr {
-    self.src_addr
+    self.ip.borrow().get_source()
   }
   pub fn get_src_port(&self) -> u16 {
     //TODO:
@@ -69,7 +90,7 @@ impl TcpPacket {
     //TODO:
   }
   pub fn get_dst_addr(&self) -> Addr {
-    self.dst_addr
+    self.ip.borrow().get_destination()
   }
   pub fn get_dst_port(&self) -> u16 {
     //TODO:
@@ -150,13 +171,11 @@ impl TcpPacket {
   }
 
   pub fn get_payload(&self) -> &[u8] {
-    //TODO:
-    self.data.slice_from_or_fail(TCP_HDR_LEN)
+    self.get_tcp().slice_from_or_fail(TCP_HDR_LEN)
   }
 
   pub fn get_mut_payload(&mut self) -> &mut[u8] {
-    //TODO:
-    self.data.slice_from_or_fail_mut(TCP_HDR_LEN)
+    self.get_tcp_mut().slice_from_or_fail_mut(TCP_HDR_LEN)
   }
 
 }
