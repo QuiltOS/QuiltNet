@@ -8,6 +8,7 @@ use super::{
 
   Closed,
   SynSent,
+  SynReceived,
   Established,
 };
 
@@ -28,6 +29,7 @@ pub fn trans<A>(e: &mut Connection, s: &::State<A>, p: TcpPacket)
   *e = match blank {
     Closed         => Closed,
     SynSent    (c) => c.next(s, p),
+    SynReceived(c) => c.next(s, p),
     Established(c) => c.next(s, p),
   }
 }

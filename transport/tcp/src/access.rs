@@ -7,11 +7,10 @@ use std::sync::{
   RWLockWriteGuard,
 };
 
-use network::ipv4;
-use network::ipv4::strategy::RoutingTable;
+use send;
 
 #[inline]
-pub fn get_subtable
+pub fn get_per_port
   <'s>
   (tcp_table:  &'s RWLockReadGuard<'s, ::Table>,
    local_port: Port)
@@ -19,10 +18,11 @@ pub fn get_subtable
 {
   match tcp_table.get(&local_port) {
     Some(st) => Ok(st),
-    Non      => Err(())
+    None     => Err(())
   }
 }
 
+#[inline]
 pub fn reserve_per_port_mut
   <'s>
   (tcp_table:  &'s mut RWLockWriteGuard<'s, ::Table>,
@@ -38,6 +38,7 @@ pub fn reserve_per_port_mut
   }
 }
 
+#[inline]
 pub fn reserve_connection_mut
   <'s>
   (subtable:    &'s mut RWLockWriteGuard<'s, ::SubTable>,

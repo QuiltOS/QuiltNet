@@ -16,14 +16,14 @@ use super::state::State;
 
 
 pub type RWHandler =
-  Box<MyFn<SynSent, Connection> + Send + Sync + 'static>;
+  Box<MyFn<SynReceived, Connection> + Send + Sync + 'static>;
 
-pub struct SynSent {
+pub struct SynReceived {
   can_read:  RWHandler,
   can_write: RWHandler,
 }
 
-impl State for SynSent
+impl State for SynReceived
 {
   fn next<A>(self,
              _state:  &::State<A>,
@@ -32,21 +32,22 @@ impl State for SynSent
     where A: RoutingTable
   {
     // stay established
-    super::SynSent(self)
+    super::SynReceived(self)
   }
 }
 
-impl SynSent
+impl SynReceived
 {
-  pub fn active_new<A>(state:     &::State<A>,
-                       us:        Port,
-                       them:      ::ConAddr,
-                       can_read:  RWHandler,
-                       can_write: RWHandler)
-                       -> send::Result<()>
+  pub fn passive_new<A>(state:     &::State<A>,
+                        us:        ::ConAddr, // already expects specific port
+                        them:      ::ConAddr,
+                        can_read:  RWHandler,
+                        can_write: RWHandler)
+                        -> send::Result<()>
   {
-    let mut lock0 = state.tcp.write();
-    let per_port = access::reserve_per_port_mut(&mut lock0, us);
+    let mut lock0 = state.tcp.read();
+    let per_port = access::get_per_port(&mut lock0, us.1)
+      .ok().expect("packet should not reach listener if listener doesn't exist");
 
     let mut lock1 = per_port.connections.write();
     let conn = access::reserve_connection_mut(&mut lock1, them);
@@ -56,10 +57,10 @@ impl SynSent
 
     match *lock {
       super::Closed => (),
-      _             => return Err(send::ConnectionAlreadyExists),
+      _ => panic!("packet should never reach listener if connection exists"),
     };
 
-    debug!("1/3 handshake with {} on our port {}", them, us);
+    debug!("2/3 handshake with {} on our port {}", them, us);
     Ok(())
   }
 }

@@ -9,11 +9,10 @@ use network::ipv4::{
 
 use packet;
 
-/*
-TODO: Can't use this until the trait system gets better
-
 #[deriving(PartialEq, Eq, Clone, Show)]
 pub enum Error {
+  ConnectionAlreadyExists,
+  ListenerAlreadyExists,
   RouteBrokeConnection, // new route has different src IP so we are fucked
   External(send::Error),
 }
@@ -25,7 +24,6 @@ impl FromError<ipv4::send::Error> for Error {
     External(e)
   }
 }
-*/
 
 pub fn send
   <'ip, 'clos, A, E>
@@ -34,7 +32,8 @@ pub fn send
    src:                super::ConAddr,
    dst:                super::ConAddr,
    expected_body_size: Option<u16>,
-   builder:            <'a> |&'a mut packet::TcpPacket|:'clos -> result::Result<(), E>)
+   builder:            <'a> |&'a mut packet::TcpPacket|:'clos -> result::Result<(), E>,
+   upcaster:           |self::Error| -> E)
    -> result::Result<(), E>
   where A: strategy::RoutingTable,
         E: FromError<send::Error>, // + FromError<self::Error>,
@@ -54,9 +53,7 @@ pub fn send
     let packet = packet::TcpPacket::hack_mut(packet);
 
     if packet.get_src_addr() != src.0 {
-      //TODO use TCP-specific error
-      try!(Err(send::NoRoute))
-      //try!(Err(RouteBrokeConnection))
+      return Err(upcaster(RouteBrokeConnection))
     };
 
     packet.update_checksum();
