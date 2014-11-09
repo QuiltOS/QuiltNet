@@ -14,7 +14,6 @@ extern crate misc;
 
 extern crate network;
 
-
 use std::collections::HashMap;
 use std::sync::{Arc, RWLock};
 
@@ -25,6 +24,13 @@ pub struct StaticTable {
   // key:   Ip we want to reach, NOT our interface's IP
   // value: Ip of neighbor we want to send to
   map: RWLock<HashMap<ipv4::Addr, ipv4::Addr>>,
+}
+
+impl std::fmt::Show for StaticTable 
+{
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    self.map.read().fmt(f)
+  }
 }
 
 impl RoutingTable for StaticTable {

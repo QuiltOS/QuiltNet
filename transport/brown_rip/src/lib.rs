@@ -30,7 +30,7 @@ const RIP_INFINITY:    u8  = 16;
 const RIP_MAX_ENTRIES: u16 = 64;
 const RIP_PROTOCOL:    u8  = 200;
 
-#[deriving(Clone)]
+#[deriving(Show, Clone)]
 pub struct RipRow {
   // the next hop is always the same node that told your about the route 
   pub next_hop:     ipv4::Addr,    // which neighbor to we send the packet too
