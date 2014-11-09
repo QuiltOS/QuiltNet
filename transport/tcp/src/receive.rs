@@ -33,7 +33,10 @@ fn handle<A>(state:  &::State<A>,
 {
   match TcpPacket::validate(packet.borrow()) {
     Ok(_)  => (),
-    Err(e) => debug!("TCP packet invalid because {}", e),
+    Err(e) => {
+      debug!("TCP packet invalid because {}", e);
+      return;
+    },
   };
 
   let packet = TcpPacket::new(packet);

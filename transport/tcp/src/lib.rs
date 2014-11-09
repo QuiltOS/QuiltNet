@@ -30,6 +30,7 @@ use connection::Connection;
 
 mod packet;
 mod ringbuf;
+mod access;
 
 mod send;
 mod receive;
@@ -71,14 +72,16 @@ pub type ConAddr = (ipv4::Addr, Port);
 /// means it is important that the tables have `Arc<T>`s and not `Weak<T>`s so
 /// that the connection persists between callback invocations.
 
-pub type Table = RWLock<HashMap<Port, PerPort>>;
+pub type Table = HashMap<Port, PerPort>;
 
 pub struct State<A> where A: RoutingTable {
-  tcp: Table,
+  tcp: RWLock<Table>,
   ip:  Arc<ipv4::State<A>>,
 }
 
+pub type SubTable = HashMap<ConAddr, RWLock<Connection>>;
+
 pub struct PerPort {
   listener:    RWLock<Listener>,
-  connections: RWLock<HashMap<ConAddr, RWLock<Connection>>>,
+  connections: RWLock<SubTable>,
 }

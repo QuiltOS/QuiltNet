@@ -8,6 +8,7 @@ use misc::interface::{MyFn, /* Handler */};
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
+use access;
 use Table;
 use packet::TcpPacket;
 use super::Listener;
@@ -44,14 +45,7 @@ impl Listen
                 -> Result<(), ()>
   {
     let mut lock = state.tcp.write();
-
-    let per_port = match (*lock).entry(local_port) {
-      Vacant(entry)   => entry.set(::PerPort { // allocate blank
-        listener:    RWLock::new(super::Closed),
-        connections: RWLock::new(HashMap::new()),
-      }),
-      Occupied(entry) => entry.into_mut(),
-    };
+    let per_port = access::reserve_per_port_mut(&mut lock, local_port);
 
     //lock.downgrade(); // TODO: get us a read lock instead
     let mut lock = per_port.listener.write(); // get listener read lock
