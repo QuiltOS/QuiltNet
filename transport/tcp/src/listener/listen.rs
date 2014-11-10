@@ -10,6 +10,7 @@ use network::ipv4::strategy::RoutingTable;
 
 use access;
 use Table;
+use packet;
 use packet::TcpPacket;
 use super::Listener;
 use super::state::State;
@@ -35,7 +36,8 @@ impl State for Listen
     let us   = (packet.get_dst_addr(), packet.get_dst_port());
     let them = (packet.get_src_addr(), packet.get_src_port());
 
-    if !( packet.is_syn() && ! packet.is_ack() ) {
+    if !( packet.flags().contains(packet::SYN) && ! packet.flags().contains(packet::ACK) )
+    {
       debug!("Listener on {} got non-syn or ack packet from {}. This is not how you make an introduction....",
              us.1, them);
       return super::Listen(self); // TODO: Macro to make early return less annoying
@@ -71,12 +73,11 @@ impl Listen
     //lock.downgrade(); // TODO: get us a read lock instead
     let mut lock = per_port.listener.write(); // get listener read lock
 
-    match *lock {
-      super::Closed => (),
+    *lock = match *lock {
+      super::Closed => super::Listen(Listen { handler: handler }),
       _             => return Err(()),
-    }
+    };
 
-    *lock = super::Listen(Listen { handler: handler });
     Ok(())
   }
 }

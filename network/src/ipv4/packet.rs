@@ -135,21 +135,21 @@ pub struct Header {
 
 #[repr(u8)]
 pub enum Precedence {
-  NetworkControl      = 0b111_00000,
-  InternetworkControl = 0b110_00000,
-  CriticEpc           = 0b101_00000,
-  FlashOverride       = 0b100_00000,
-  Flash               = 0b011_00000,
-  Immediate           = 0b010_00000,
-  Priority            = 0b001_00000,
-  Routine             = 0b000_00000,
+  NetworkControl      = 0b_111_00000,
+  InternetworkControl = 0b_110_00000,
+  CriticEpc           = 0b_101_00000,
+  FlashOverride       = 0b_100_00000,
+  Flash               = 0b_011_00000,
+  Immediate           = 0b_010_00000,
+  Priority            = 0b_001_00000,
+  Routine             = 0b_000_00000,
 }
 
 bitflags! {
   flags ServiceFlags: u8 {
-    const LOW_DELAY         = 0b000_100_00,
-    const HIGH_THROUGHPUT   = 0b000_010_00,
-    const HIGH_RELIABILTY   = 0b000_001_00,
+    const LOW_DELAY       = 0b000_100_00,
+    const HIGH_THROUGHPUT = 0b000_010_00,
+    const HIGH_RELIABILTY = 0b000_001_00,
   }
 }
 

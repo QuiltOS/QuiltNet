@@ -1,4 +1,5 @@
 use std::result;
+use std::io::net::ip::Port;
 use std::error::FromError;
 
 use network::ipv4::{
@@ -29,20 +30,25 @@ pub fn send
   <'ip, 'clos, A, E>
   (ip_state:           &'ip ipv4::State<A>,
    //connection:         &'tcp Connection,
-   src:                super::ConAddr,
+   src_addr:           Option<ipv4::Addr>,
+   src_port:           Port,
    dst:                super::ConAddr,
    expected_body_size: Option<u16>,
-   builder:            <'a> |&'a mut packet::TcpPacket|:'clos -> result::Result<(), E>,
-   upcaster:           |self::Error| -> E)
+   upcaster:           |self::Error| -> E,
+   builder:            <'a> |&'a mut packet::TcpPacket|:'clos -> result::Result<(), E>)
    -> result::Result<(), E>
   where A: strategy::RoutingTable,
         E: FromError<send::Error>, // + FromError<self::Error>,
 {
   let tcp_builder: <'p> |&'p mut ipv4::packet::V| -> result::Result<(), E> = | packet |
   {
+    // make room for TCP header
+    let new_len = packet.as_vec().len() + packet::TCP_HDR_LEN;
+    unsafe { packet.as_mut_vec().set_len(new_len) };
+
     let packet = packet::TcpPacket::hack_mut(packet);
 
-    packet.set_src_port(src.1);
+    packet.set_src_port(src_port);
     packet.set_dst_port(dst.1);
 
     builder(packet)
@@ -52,8 +58,11 @@ pub fn send
   {
     let packet = packet::TcpPacket::hack_mut(packet);
 
-    if packet.get_src_addr() != src.0 {
-      return Err(upcaster(RouteBrokeConnection))
+    match src_addr {
+      Some(addr) => if addr != packet.get_src_addr() {
+        return Err(upcaster(RouteBrokeConnection))
+      },
+      _ => ()
     };
 
     packet.update_checksum();

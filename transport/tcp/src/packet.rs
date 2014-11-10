@@ -38,12 +38,21 @@ pub enum BadPacket {
   BadOptions,
 }
 
+bitflags! {
+  flags Flags: u8 {
+    const URG = 0b_00_100000,
+    const ACK = 0b_00_010000,
+    const PSH = 0b_00_001000,
+    const RST = 0b_00_000100,
+    const SYN = 0b_00_000010,
+    const FIN = 0b_00_000001,
+  }
+}
+
 impl TcpPacket {
 
   pub fn new(ip_packet: packet::V) -> TcpPacket {
-    TcpPacket {
-      ip: ip_packet
-    }
+    TcpPacket { ip: ip_packet }
   }
 
   pub fn hack(ip_packet: &packet::V) -> &TcpPacket {
@@ -102,31 +111,14 @@ impl TcpPacket {
     BufWriter::new(self.tcp_hdr_mut()[mut 2..4]).write_be_u16(port);
   }
 
+
   // Control Flags
-  pub fn is_ack(&self) -> bool {
-    self.tcp_hdr()[13] & 16 != 0
+  pub fn flags(&self) -> Flags {
+    const MASK: u8 = 0b_00_111111;
+    Flags { bits: self.tcp_hdr()[13] & MASK }
   }
-  pub fn set_ack(&mut self) {
-    self.tcp_hdr_mut()[13] |= 16
-  }
-  // Not sure if this is used
-  pub fn is_rst(&self) -> bool {
-    self.tcp_hdr()[13] & 4 != 0
-  }
-  pub fn set_rst(&mut self) {
-    self.tcp_hdr_mut()[13] |= 4
-  }
-  pub fn is_syn(&self) -> bool {
-    self.tcp_hdr()[13] & 2 != 0
-  }
-  pub fn set_syn(&mut self) {
-    self.tcp_hdr_mut()[13] |= 2 
-  }
-  pub fn is_fin(&self) -> bool {
-    self.tcp_hdr()[13] & 1 != 0
-  }
-  pub fn set_fin(&mut self) {
-    self.tcp_hdr_mut()[13] |= 1
+  pub fn flags_mut(&mut self) -> &mut Flags{
+    unsafe { transmute(&mut self.tcp_hdr_mut()[13]) }
   }
 
 
@@ -156,7 +148,7 @@ impl TcpPacket {
 
   // Acknowledgement Number Ops
   pub fn get_ack_num(&self) -> u32 {
-    assert!(self.is_ack());
+    assert!(self.flags().contains(ACK));
     BufReader::new(self.tcp_hdr()[8..13]).read_be_u32().unwrap()
     //Int::from_be(get_multibyte(self.tcp_hdr(), 8, 4)) as u32
   }
@@ -196,12 +188,14 @@ impl TcpPacket {
 
 impl fmt::Show for TcpPacket {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "TCP: <srcAddr: {}, dstAddr: {}>, |srcPort {}|dstPort {}|\n|Seq# {}|\n|Ack# {}|\n|offset {}|ACK {}|SYN {}|FIN {}|window {}|\n|checksum {}|", 
+    write!(f, "TCP: <srcAddr: {}, dstAddr: {}>, |srcPort {}|dstPort {}|\n|Seq# {}|\n|Ack# {}|\n|offset {}|ACK {}|SYN {}|FIN {}|window {}|\n|checksum {}|",
            self.get_src_addr(), self.get_dst_addr(),
            self.get_src_port(), self.get_dst_port(),
            self.get_seq_num(),
            self.get_ack_num(),
-           self.get_hdr_size(), self.is_ack(), self.is_syn(), self.is_fin(), self.get_window_size(),
+           self.get_hdr_size(),
+           self.flags().contains(ACK), self.flags().contains(SYN), self.flags().contains(FIN),
+           self.get_window_size(),
            self.get_checksum())
   }
 }
@@ -229,7 +223,7 @@ mod test {
     let b = [1u8]; // 0x1 == 1
     assert!(get_multibyte(b, 0, 1) == 1i);
   }
-  
+
   #[test]
   fn short(){
     let b = [1u8, 255u8]; // 0x1_11111111 == 511

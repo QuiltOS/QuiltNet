@@ -9,6 +9,7 @@ use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
 use access;
+use packet;
 use packet::TcpPacket;
 use send;
 use super::Connection;
@@ -30,6 +31,14 @@ impl State for SynReceived
   {
     let us   = (packet.get_dst_addr(), packet.get_dst_port());
     let them = (packet.get_src_addr(), packet.get_src_port());
+
+    if !packet.flags().contains(packet::ACK)
+    {
+      debug!("Listener on {} got non-ack packet from {}. Make a friendship just to wreck it client?",
+             us.1, them);
+      return super::Closed; // TODO: Macro to make early return less annoying
+    };
+    debug!("Done 3/3 handshake with {} on {}", them, us);
 
     // Become established
     super::Established(super::established::new(us,
@@ -54,10 +63,32 @@ pub fn passive_new<A>(state:     &::State<A>,
   //lock.downgrade(); // TODO: get us a read lock instead
   let mut lock = conn.write();
 
-  *lock = match *lock {
-    super::Closed => super::SynReceived(SynReceived { future_handlers: handlers }),
+  match *lock {
+    super::Closed => (),
     _ => panic!("Packet should never reach listener if connection exists"),
   };
 
-  debug!("Done with 2/3 handshake with {} on our port {}", them, us.1);
+  // TODO: Report ICE if this signature is removed
+  let builder: <'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet| {
+    use packet::{SYN, ACK};
+    *packet.flags_mut() = SYN | ACK;
+    Ok(())
+  };
+
+  // TODO: Should we keep track of a failure to respond?
+  match send::send(&*state.ip,
+                   Some(us.0),
+                   us.1,
+                   them,
+                   Some(0),
+                   |x| x,
+                   builder)
+  {
+    Ok(_)  => (),
+    Err(_) => return,
+  };
+
+  *lock = super::SynReceived(SynReceived { future_handlers: handlers });
+
+  debug!("Attempt 2/3 handshake with {} on our port {}", them, us.1);
 }
