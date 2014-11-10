@@ -14,53 +14,50 @@ use send;
 use super::Connection;
 use super::state::State;
 
-
-pub type RWHandler =
-  Box<MyFn<SynReceived, Connection> + Send + Sync + 'static>;
+use connection::established::RWHandler;
 
 pub struct SynReceived {
-  can_read:  RWHandler,
-  can_write: RWHandler,
+  future_handlers: super::established::RWHandlerPair,
 }
 
 impl State for SynReceived
 {
   fn next<A>(self,
              _state:  &::State<A>,
-             _packet: TcpPacket)
+             packet: TcpPacket)
              -> Connection
     where A: RoutingTable
   {
-    // stay established
-    super::SynReceived(self)
+    let us   = (packet.get_dst_addr(), packet.get_dst_port());
+    let them = (packet.get_src_addr(), packet.get_src_port());
+
+    // Become established
+    super::Established(super::established::new(us,
+                                               them,
+                                               self.future_handlers))
   }
 }
 
-impl SynReceived
+pub fn passive_new<A>(state:     &::State<A>,
+                      us:        ::ConAddr, // already expects specific port
+                      them:      ::ConAddr,
+                      handlers:  super::established::RWHandlerPair)
+  where A: RoutingTable
 {
-  pub fn passive_new<A>(state:     &::State<A>,
-                        us:        ::ConAddr, // already expects specific port
-                        them:      ::ConAddr,
-                        can_read:  RWHandler,
-                        can_write: RWHandler)
-                        -> send::Result<()>
-  {
-    let mut lock0 = state.tcp.read();
-    let per_port = access::get_per_port(&mut lock0, us.1)
-      .ok().expect("packet should not reach listener if listener doesn't exist");
+  let mut lock0 = state.tcp.read();
+  let per_port = access::get_per_port(&mut lock0, us.1)
+    .ok().expect("Packet should not reach listener if listener doesn't exist");
 
-    let mut lock1 = per_port.connections.write();
-    let conn = access::reserve_connection_mut(&mut lock1, them);
+  let mut lock1 = per_port.connections.write();
+  let conn = access::reserve_connection_mut(&mut lock1, them);
 
-    //lock.downgrade(); // TODO: get us a read lock instead
-    let mut lock = conn.write();
+  //lock.downgrade(); // TODO: get us a read lock instead
+  let mut lock = conn.write();
 
-    match *lock {
-      super::Closed => (),
-      _ => panic!("packet should never reach listener if connection exists"),
-    };
+  *lock = match *lock {
+    super::Closed => super::SynReceived(SynReceived { future_handlers: handlers }),
+    _ => panic!("Packet should never reach listener if connection exists"),
+  };
 
-    debug!("2/3 handshake with {} on our port {}", them, us);
-    Ok(())
-  }
+  debug!("Done with 2/3 handshake with {} on our port {}", them, us.1);
 }

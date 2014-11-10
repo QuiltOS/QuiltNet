@@ -14,11 +14,11 @@ use packet::TcpPacket;
 use super::Listener;
 use super::state::State;
 
-use connection::established::RWHandler;
+use connection::established::RWHandlerPair;
 
-pub type OnConnectionAttempt = //Handler<Ip>;
-  // us, them
-  Box<MyFn<(Port, ::ConAddr,), Option<[RWHandler, ..2]>> + Send + Sync + 'static>;
+pub type OnConnectionAttempt = Box<MyFn<(::ConAddr /* us */, ::ConAddr /* them */,),
+                                         Option<RWHandlerPair>>
+                                   + Send + Sync + 'static>;
 
 pub struct Listen {
   handler: OnConnectionAttempt,
@@ -27,11 +27,32 @@ pub struct Listen {
 impl State for Listen
 {
   fn next<A>(self,
-             _state:  &::State<A>,
-             _packet: TcpPacket)
+             state:  &::State<A>,
+             packet: TcpPacket)
              -> Listener
     where A: RoutingTable
   {
+    let us   = (packet.get_dst_addr(), packet.get_dst_port());
+    let them = (packet.get_src_addr(), packet.get_src_port());
+
+    if !( packet.is_syn() && ! packet.is_ack() ) {
+      debug!("Listener on {} got non-syn or ack packet from {}. This is not how you make an introduction....",
+             us.1, them);
+      return super::Listen(self); // TODO: Macro to make early return less annoying
+    };
+
+    if packet.get_payload().len() != 0 {
+      debug!("Listener on {} got non-empty packet from {}. Slow down, we just met....", us.1, them);
+      return super::Listen(self);
+    };
+
+    debug!("Done with 1/3 handshake with {} on our port {}", them, us.1);
+
+    let handler_pair = match self.handler.call((us, them)) {
+      Some(hs) => hs,
+      None     => return super::Listen(self),
+    };
+    ::connection::syn_received::passive_new(state, us, them, handler_pair);
     // keep on listening
     super::Listen(self)
   }

@@ -16,9 +16,18 @@ use super::state::State;
 pub type RWHandler =
   Box<MyFn<Established, Connection> + Send + Sync + 'static>;
 
+pub struct RWHandlerPair {
+  /// to be called whenever a message arrives
+  on_receive:  RWHandler,
+  /// to be called whenever the free space in
+  /// the outgoing buffer _becomes_ non-empty
+  can_send:    RWHandler,
+}
+
 pub struct Established {
-  can_read:  RWHandler,
-  can_write: RWHandler,
+  // This is the one bit of information not kept tracked of by our key
+  our_addr: ipv4::Addr,
+  handlers: RWHandlerPair,
 }
 
 impl State for Established
@@ -34,7 +43,15 @@ impl State for Established
   }
 }
 
-impl Established
+pub fn new(//state:     &::State<A>,
+           us:        ::ConAddr,
+           them:      ::ConAddr,
+           handlers:  RWHandlerPair)
+           -> Established
 {
-
+  debug!("established connection on our addr {} to server {}", us, them);
+  Established {
+    our_addr: us.0,
+    handlers: handlers,
+  }
 }
