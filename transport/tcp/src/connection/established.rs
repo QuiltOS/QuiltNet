@@ -49,7 +49,7 @@ pub fn new(//state:     &::State<A>,
            handlers:  RWHandlerPair)
            -> Established
 {
-  debug!("established connection on our addr {} to server {}", us, them);
+  debug!("Established connection on our addr {} to server {}", us, them);
   Established {
     our_addr: us.0,
     handlers: handlers,
