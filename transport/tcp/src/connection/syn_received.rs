@@ -45,8 +45,8 @@ impl State for SynReceived
     let est = established::new(us,
                                them,
                                self.future_handler);
-    // first CanSend let's them know connection was made
-    est.invoke_handler(established::CanSend)
+    // first CanRead let's them know connection was made
+    est.invoke_handler(established::CanRead)
   }
 }
 

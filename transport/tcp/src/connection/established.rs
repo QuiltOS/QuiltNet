@@ -13,8 +13,8 @@ use super::Connection;
 use super::state::State;
 
 pub enum Situation {
-  Received,
-  CanSend,
+  CanRead,
+  CanWrite,
 }
 
 pub type Handler =
