@@ -12,22 +12,18 @@ use packet::TcpPacket;
 use super::Connection;
 use super::state::State;
 
-
-pub type RWHandler =
-  Box<Fn<Established, Connection> + Send + Sync + 'static>;
-
-pub struct RWHandlerPair {
-  /// to be called whenever a message arrives
-  on_receive:  RWHandler,
-  /// to be called whenever the free space in
-  /// the outgoing buffer _becomes_ non-empty
-  can_send:    RWHandler,
+pub enum Situation {
+  Received,
+  CanSend,
 }
+
+pub type Handler =
+  Box<FnMut<(Established, Situation), Connection> + Send + Sync + 'static>;
 
 pub struct Established {
   // This is the one bit of information not kept tracked of by our key
   our_addr: ipv4::Addr,
-  handlers: RWHandlerPair,
+  handler: Handler,
 }
 
 impl State for Established
@@ -43,15 +39,15 @@ impl State for Established
   }
 }
 
-pub fn new(//state:     &::State<A>,
-           us:        ::ConAddr,
-           them:      ::ConAddr,
-           handlers:  RWHandlerPair)
+pub fn new(//state:   &::State<A>,
+           us:      ::ConAddr,
+           them:    ::ConAddr,
+           handler: Handler)
            -> Established
 {
   debug!("Established connection on our addr {} to server {}", us, them);
   Established {
     our_addr: us.0,
-    handlers: handlers,
+    handler: handler,
   }
 }

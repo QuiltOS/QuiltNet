@@ -15,10 +15,10 @@ use send;
 use super::Connection;
 use super::state::State;
 
-use connection::established::RWHandler;
+use connection::established;
 
 pub struct SynSent {
-  future_handlers: super::established::RWHandlerPair,
+  future_handler: established::Handler,
 }
 
 impl State for SynSent
@@ -62,16 +62,16 @@ impl State for SynSent
     debug!("Attempt 3/3 handshake with {} on {}", them, us);
 
     // Become established
-    super::Established(super::established::new(us,
-                                               them,
-                                               self.future_handlers))
+    super::Established(established::new(us,
+                                        them,
+                                        self.future_handler))
   }
 }
 
-pub fn active_new<A>(state:     &::State<A>,
-                     us:        Port,
-                     them:      ::ConAddr,
-                     handlers:  super::established::RWHandlerPair)
+pub fn active_new<A>(state:   &::State<A>,
+                     us:      Port,
+                     them:    ::ConAddr,
+                     handler: established::Handler)
                      -> send::Result<()>
   where A: RoutingTable
 {
@@ -107,7 +107,7 @@ pub fn active_new<A>(state:     &::State<A>,
 
   // don't bother really reserving port until at least the first
   // message was sent
-  *lock = super::SynSent(SynSent { future_handlers: handlers });
+  *lock = super::SynSent(SynSent { future_handler: handler });
 
   debug!("Attempt 1/3 handshake with {} on our port {}", them, us);
   Ok(())

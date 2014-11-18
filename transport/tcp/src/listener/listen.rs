@@ -15,10 +15,10 @@ use packet::TcpPacket;
 use super::Listener;
 use super::state::State;
 
-use connection::established::RWHandlerPair;
+use connection::established;
 
 pub type OnConnectionAttempt = Box<Fn<(::ConAddr /* us */, ::ConAddr /* them */,),
-                                         Option<RWHandlerPair>>
+                                      Option<established::Handler>>
                                    + Send + Sync + 'static>;
 
 pub struct Listen {

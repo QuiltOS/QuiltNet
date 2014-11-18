@@ -15,10 +15,11 @@ use send;
 use super::Connection;
 use super::state::State;
 
-use connection::established::RWHandler;
+use connection::established;
+
 
 pub struct SynReceived {
-  future_handlers: super::established::RWHandlerPair,
+  future_handler: established::Handler,
 }
 
 impl State for SynReceived
@@ -41,16 +42,16 @@ impl State for SynReceived
     debug!("Done 3/3 handshake with {} on {}", them, us);
 
     // Become established
-    super::Established(super::established::new(us,
-                                               them,
-                                               self.future_handlers))
+    super::Established(established::new(us,
+                                        them,
+                                        self.future_handler))
   }
 }
 
-pub fn passive_new<A>(state:     &::State<A>,
-                      us:        ::ConAddr, // already expects specific port
-                      them:      ::ConAddr,
-                      handlers:  super::established::RWHandlerPair)
+pub fn passive_new<A>(state:   &::State<A>,
+                      us:      ::ConAddr, // already expects specific port
+                      them:    ::ConAddr,
+                      handler: established::Handler)
   where A: RoutingTable
 {
   let mut lock0 = state.tcp.read();
@@ -88,7 +89,7 @@ pub fn passive_new<A>(state:     &::State<A>,
     Err(_) => return,
   };
 
-  *lock = super::SynReceived(SynReceived { future_handlers: handlers });
+  *lock = super::SynReceived(SynReceived { future_handler: handler });
 
   debug!("Attempt 2/3 handshake with {} on our port {}", them, us.1);
 }
