@@ -3,7 +3,7 @@ use std::collections::hash_map::{Occupied, Vacant};
 use std::io::net::ip::Port;
 use std::sync::RWLock;
 
-use misc::interface::{MyFn, /* Handler */};
+use misc::interface::{Fn, /* Handler */};
 
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
@@ -17,7 +17,7 @@ use super::state::State;
 
 use connection::established::RWHandlerPair;
 
-pub type OnConnectionAttempt = Box<MyFn<(::ConAddr /* us */, ::ConAddr /* them */,),
+pub type OnConnectionAttempt = Box<Fn<(::ConAddr /* us */, ::ConAddr /* them */,),
                                          Option<RWHandlerPair>>
                                    + Send + Sync + 'static>;
 

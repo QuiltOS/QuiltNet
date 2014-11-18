@@ -1,7 +1,7 @@
 use std::collections::hash_map::HashMap;
 use std::sync::{Arc, RWLock};
 
-use misc::interface::{MyFn, /* Handler */};
+use misc::interface::{Fn, /* Handler */};
 
 use data_link::interface as dl;
 
@@ -47,7 +47,7 @@ pub struct InterfaceRow {
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt
 pub type Handler = //Handler<Ip>;
-  Box<MyFn<(packet::V,), ()> + Send + Sync + 'static>;
+  Box<Fn<(packet::V,), ()> + Send + Sync + 'static>;
 
 pub type ProtocolTable = Vec<Vec<Handler>>;
 

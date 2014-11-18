@@ -3,7 +3,7 @@ use std::collections::hash_map::{Occupied, Vacant};
 use std::io::net::ip::Port;
 use std::sync::RWLock;
 
-use misc::interface::{MyFn, /* Handler */};
+use misc::interface::{Fn, /* Handler */};
 
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
@@ -14,7 +14,7 @@ use super::state::State;
 
 
 pub type RWHandler =
-  Box<MyFn<Established, Connection> + Send + Sync + 'static>;
+  Box<Fn<Established, Connection> + Send + Sync + 'static>;
 
 pub struct RWHandlerPair {
   /// to be called whenever a message arrives

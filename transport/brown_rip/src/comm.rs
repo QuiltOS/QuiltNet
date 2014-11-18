@@ -2,7 +2,7 @@ use std::io::IoResult;
 use std::sync::Arc;
 use std::option::None;
 
-use misc::interface::MyFn;
+use misc::interface::Fn;
 
 use network::ipv4::{
   mod,
@@ -18,9 +18,9 @@ use super::packet::{mod, Request, Response};
 
 struct RipHandler { state: Arc<ipv4::State<RipTable>> }
 
-impl MyFn<(ipv4::packet::V,), ()> for RipHandler {
+impl Fn<(ipv4::packet::V,), ()> for RipHandler {
 
-  fn call(&self, (packet,):(ipv4::packet::V,)) {
+  extern "rust-call" fn call(&self, (packet,):(ipv4::packet::V,)) {
     handle(&*self.state, packet).unwrap(/* "Failure handling incomming IP Packet" */);
   }
 

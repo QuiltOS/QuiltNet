@@ -4,7 +4,7 @@ use std::io::{
 };
 use std::sync::Arc;
 
-use misc::interface::MyFn;
+use misc::interface::Fn;
 
 use network::ipv4::{
   mod,
@@ -19,10 +19,10 @@ struct Handler<A>  where A: RoutingTable {
   state: Arc<super::State<A>>,
 }
 
-impl<A> MyFn<(ipv4::packet::V,), ()> for Handler<A>
+impl<A> Fn<(ipv4::packet::V,), ()> for Handler<A>
   where A: RoutingTable
 {
-  fn call(&self, (packet,):(ipv4::packet::V,)) {
+  extern "rust-call" fn call(&self, (packet,):(ipv4::packet::V,)) {
     handle(&*self.state, packet);
   }
 }

@@ -6,7 +6,7 @@ use super::{
   send
 };
 
-use misc::interface::{MyFn, Handler};
+use misc::interface::{Fn, Handler};
 
 use data_link::interface as dl;
 
@@ -114,10 +114,10 @@ struct IpDl<A>
   state: Arc<super::State<A>>,
 }
 
-impl<A> MyFn<(dl::Packet,), ()> for IpDl<A>
+impl<A> Fn<(dl::Packet,), ()> for IpDl<A>
   where A: strategy::RoutingTable + Send
 {
-  fn call(&self, args: (dl::Packet,)) {
+  extern "rust-call" fn call(&self, args: (dl::Packet,)) {
     let (packet,) = args;
     receive(&*self.state, packet);
   }

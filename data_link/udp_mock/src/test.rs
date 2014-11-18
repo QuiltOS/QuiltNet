@@ -6,7 +6,7 @@ use std::sync::{Arc, Barrier};
 use std::str::from_utf8;
 use std::string::String;
 
-use misc::interface::{MyFn, SenderClosure, Nop};
+use misc::interface::{Fn, SenderClosure, Nop};
 
 use super::*;
 
@@ -68,7 +68,7 @@ struct TestCallback {
     barrier: Arc<Barrier>,
 }
 
-impl MyFn<(::Packet,), ()> for TestCallback {
+impl Fn<(::Packet,), ()> for TestCallback {
 
     fn call(&self, args: (::Packet,)) {
         let (packet,) = args;
