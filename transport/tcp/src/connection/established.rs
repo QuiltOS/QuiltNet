@@ -20,6 +20,7 @@ pub enum Situation {
 pub type Handler =
   Box<FnMut<(Established, Situation), Connection> + Send + Sync + 'static>;
 
+// especially must be private because we cheat on whether the fields exist
 pub struct Established {
   // This is the one bit of information not kept tracked of by our key
   our_addr: ipv4::Addr,
@@ -36,6 +37,29 @@ impl State for Established
   {
     // stay established
     super::Established(self)
+  }
+}
+
+impl Established
+{
+  pub fn invoke_handler(mut self, situ: Situation) -> super::Connection
+  {
+    use std::mem::{uninitialized, swap};
+
+    let mut handler: Handler = unsafe { uninitialized() };
+
+    // 1st swap
+    swap(&mut self.handler, &mut handler);
+
+    let mut con: super::Connection = handler.call_mut((self, situ));
+
+    match con {
+      // 2nd swap
+      super::Established(ref mut e) => swap(&mut e.handler, &mut handler),
+      _ => (),
+    };
+
+    con
   }
 }
 

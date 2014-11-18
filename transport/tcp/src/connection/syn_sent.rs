@@ -62,9 +62,11 @@ impl State for SynSent
     debug!("Attempt 3/3 handshake with {} on {}", them, us);
 
     // Become established
-    super::Established(established::new(us,
-                                        them,
-                                        self.future_handler))
+        let est = established::new(us,
+                               them,
+                                   self.future_handler);
+    // first CanSend let's them know connection was made
+    est.invoke_handler(established::CanSend)
   }
 }
 
