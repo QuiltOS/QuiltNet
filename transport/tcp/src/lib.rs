@@ -88,6 +88,10 @@ impl<A> State<A> where A: RoutingTable
       tcp: RWLock::new(HashMap::new())
     }
   }
+
+  pub fn dump_tcp(&self) {
+    //TODO: Print tcp state (not ip state)
+  }
 }
 
 pub type SubTable = HashMap<ConAddr, RWLock<Connection>>;
