@@ -76,7 +76,18 @@ pub type Table = HashMap<Port, PerPort>;
 
 pub struct State<A> where A: RoutingTable {
   tcp: RWLock<Table>,
-  ip:  Arc<ipv4::State<A>>,
+  pub ip:  Arc<ipv4::State<A>>, // not TCP's responsibility to hide this
+}
+
+impl<A> State<A> where A: RoutingTable
+{
+  pub fn new(ip: Arc<ipv4::State<A>>) -> self::State<A>
+  {
+    State {
+      ip: ip,
+      tcp: RWLock::new(HashMap::new())
+    }
+  }
 }
 
 pub type SubTable = HashMap<ConAddr, RWLock<Connection>>;
