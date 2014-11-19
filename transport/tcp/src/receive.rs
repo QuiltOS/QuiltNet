@@ -56,16 +56,20 @@ fn handle<A>(state:  &::State<A>,
                   packet.get_src_port());
 
   match sub_table.connections.read().get(&src_info) {
-    // existing connetion found!
-    Some(connection) => super::connection::state::trans(
-      &mut *connection.write(),
-      state,
-      packet),
-    // no existing connection, let's see if we have a listener
-    None => super::listener::state::trans(
-      &mut *sub_table.listener.write(),
-      state,
-      packet),
+    Some(connection) => {
+      debug!("existing connection found to handle this! (might be closed)");
+      super::connection::state::trans(
+        &mut *connection.write(),
+        state,
+        packet)
+    },
+    None => {
+      debug!("no existing connection, let's see if we have a listener");
+      super::listener::state::trans(
+        &mut *sub_table.listener.write(),
+        state,
+        packet)
+    },
   }
 }
 

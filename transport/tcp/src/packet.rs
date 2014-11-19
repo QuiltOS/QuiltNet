@@ -148,7 +148,7 @@ impl TcpPacket {
 
   // Acknowledgement Number Ops
   pub fn get_ack_num(&self) -> u32 {
-    assert!(self.flags().contains(ACK));
+    // assert!(self.flags().contains(ACK));
     BufReader::new(self.tcp_hdr()[8..13]).read_be_u32().unwrap()
     //Int::from_be(get_multibyte(self.tcp_hdr(), 8, 4)) as u32
   }
