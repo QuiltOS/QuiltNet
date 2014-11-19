@@ -17,8 +17,8 @@ use super::state::State;
 
 use connection::established;
 
-pub type OnConnectionAttempt = Box<Fn<(::ConAddr /* us */, ::ConAddr /* them */,),
-                                      Option<established::Handler>>
+pub type OnConnectionAttempt = Box<FnMut<(::ConAddr /* us */, ::ConAddr /* them */,),
+                                         Option<established::Handler>>
                                    + Send + Sync + 'static>;
 
 pub struct Listen {
@@ -27,7 +27,7 @@ pub struct Listen {
 
 impl State for Listen
 {
-  fn next<A>(self,
+  fn next<A>(mut self,
              state:  &::State<A>,
              packet: TcpPacket)
              -> Listener
@@ -50,7 +50,7 @@ impl State for Listen
 
     debug!("Done with 1/3 handshake with {} on our port {}", them, us.1);
 
-    let handler_pair = match self.handler.call((us, them)) {
+    let handler_pair = match self.handler.call_mut((us, them)) {
       Some(hs) => hs,
       None     => return super::Listen(self),
     };
@@ -60,24 +60,22 @@ impl State for Listen
   }
 }
 
-impl Listen
+pub fn passive_new<A>(state:      &::State<A>,
+                      handler:    OnConnectionAttempt,
+                      local_port: Port)
+                      -> Result<(), ()>
+  where A: RoutingTable
 {
-  pub fn new<A>(state:      &::State<A>,
-                handler:    OnConnectionAttempt,
-                local_port: Port)
-                -> Result<(), ()>
-  {
-    let mut lock = state.tcp.write();
-    let per_port = access::reserve_per_port_mut(&mut lock, local_port);
+  let mut lock = state.tcp.write();
+  let per_port = access::reserve_per_port_mut(&mut lock, local_port);
 
-    //lock.downgrade(); // TODO: get us a read lock instead
-    let mut lock = per_port.listener.write(); // get listener read lock
+  //lock.downgrade(); // TODO: get us a read lock instead
+  let mut lock = per_port.listener.write(); // get listener read lock
 
-    *lock = match *lock {
-      super::Closed => super::Listen(Listen { handler: handler }),
-      _             => return Err(()),
-    };
+  *lock = match *lock {
+    super::Closed => super::Listen(Listen { handler: handler }),
+    _             => return Err(()),
+  };
 
-    Ok(())
-  }
+  Ok(())
 }

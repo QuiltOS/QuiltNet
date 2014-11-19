@@ -9,6 +9,7 @@ use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
 use connection;
+use listener;
 use send;
 
 
@@ -28,34 +29,74 @@ use send;
 // TODO: clonable capabilities
 
 
-/*
+
+
+
+
+type FugginComplex = (::ConAddr, ::ConAddr, Sender<connection::established::Handler>);
+
 /// Capability that gives synchronous access to a Listener
 struct L<A>
   where A: RoutingTable
 {
-  local_port:       Port,
-
-  state:          Arc<super::State<A>>,
-
-  pub candidates: Receiver<C<A>>,
+  us:           Port,
+  state:        Arc<super::State<A>>,
+  pub requests: Receiver<FugginComplex>
 }
 
-struct AcceptorFn(pub Sender<C<A>>);
-
-impl self::L
+impl<A> L<A>
+  where A: RoutingTable
 {
   pub fn new(state:      Arc<super::State<A>>,
-             local_port: Port) -> self::L
+             us:         Port)
+             -> send::Result<L<A>>
   {
-    let (tx, rx) = channel::<C<A>>();
-    self::L {
-      local_port: local_port,
+    let (tx, rx) = channel::<FugginComplex>();
+
+    let handler = {
+      // TODO: this mutex is not necessary
+      let request = Mutex::new(tx);
+      box move |&mut: us: ::ConAddr, them: ::ConAddr| {
+        let (tx, rx) = channel();
+        request.lock().send((us, them, tx));
+        Some(rx.recv())
+      }
+    };
+
+    Ok(self::L {
+      us: us,
       state: state,
-      canidates: rx,
+      requests: rx,
+    })
+  }
+
+  pub fn accept(self) -> C<A> {
+    let (us, them, reply) = self.requests.recv();
+
+    let (handler, rd_rx, wt_rx) = make_con_handler();
+
+    // give them the stuff to make a connection
+    reply.send(handler);
+
+    // block on first CanRead---to signify that connection is established
+    rd_rx.recv();
+
+    C { us: us.1,
+        them: them,
+
+        state: self.state.clone(),
+
+        can_read:  rd_rx,
+        can_write: wt_rx,
     }
   }
 }
-*/
+
+
+
+
+
+
 
 /// Capability that gives synchronous access to a Connection
 struct C<A>
@@ -65,9 +106,33 @@ struct C<A>
   them:      ::ConAddr,
 
   state:     Arc<super::State<A>>,
-  
+
   can_read:  Receiver<()>,
   can_write: Receiver<()>,
+}
+
+fn make_con_handler() -> (connection::established::Handler, Receiver<()>, Receiver<()>)
+{
+  use connection::established::Established;
+  use connection::established::{Situation, CanRead, CanWrite};
+
+
+  let (rd_tx, rd_rx) = channel::<()>();
+  let (wt_tx, wt_rx) = channel::<()>();
+
+  let handler = {
+    // TODO: this mutex is not necessary
+    let rd = Mutex::new(rd_tx);
+    let wt = Mutex::new(wt_tx);
+    box move |&mut: est: Established, situ: Situation| {
+      match situ {
+        CanRead  => rd.lock().send(()),
+        CanWrite => wt.lock().send(()),
+      };
+      connection::Established(est)
+    }
+  };
+  (handler, rd_rx, wt_rx)
 }
 
 impl<A> C<A>
@@ -78,30 +143,13 @@ impl<A> C<A>
                  them:    ::ConAddr)
                  -> send::Result<C<A>>
   {
-    use connection::established::Established;
-    use connection::established::{Situation, CanRead, CanWrite};
-    
-    let (rd_tx, rd_rx) = channel::<()>();
-    let (wt_tx, wt_rx) = channel::<()>();
-    
-    let handler = {
-      // TODO: this mutex is not necessary 
-      let rd = Mutex::new(rd_tx);
-      let wt = Mutex::new(wt_tx);
-      box move |&mut : est: Established, situ: Situation| {
-        match situ {
-          CanRead  => rd.lock().send(()),
-          CanWrite => wt.lock().send(()),
-        };
-        connection::Established(est)
-      }
-    };
-    
+    let (handler, rd_rx, wt_rx) = make_con_handler();
+
     try!(connection::syn_sent::active_new(&*state, us, them, handler));
 
     // block on first CanRead---to signify that connection is established
     rd_rx.recv();
-    
+
     Ok(C { us: us,
            them: them,
 
