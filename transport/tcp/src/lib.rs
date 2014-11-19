@@ -75,18 +75,20 @@ pub type ConAddr = (ipv4::Addr, Port);
 pub type Table = HashMap<Port, PerPort>;
 
 pub struct State<A> where A: RoutingTable {
-  tcp: RWLock<Table>,
-  pub ip:  Arc<ipv4::State<A>>, // not TCP's responsibility to hide this
+  tcp:        RWLock<Table>,
+  pub ip: Arc<ipv4::State<A>>, // not TCP's responsibility to hide this
 }
 
 impl<A> State<A> where A: RoutingTable
 {
-  pub fn new(ip: Arc<ipv4::State<A>>) -> self::State<A>
+  pub fn init_and_register(ip: Arc<ipv4::State<A>>) -> Arc<self::State<A>>
   {
-    State {
+    let ptr = Arc::new(State {
       ip: ip,
       tcp: RWLock::new(HashMap::new())
-    }
+    });
+    receive::register(&ptr);
+    ptr
   }
 
   pub fn dump_tcp(&self) {

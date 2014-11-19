@@ -36,18 +36,18 @@ use send;
 type FugginComplex = (::ConAddr, ::ConAddr, Sender<connection::established::Handler>);
 
 /// Capability that gives synchronous access to a Listener
-struct L<A>
+pub struct L<A>
   where A: RoutingTable
 {
-  us:           Port,
-  state:        Arc<super::State<A>>,
-  pub requests: Receiver<FugginComplex>
+  us:       Port,
+  state:    Arc<super::State<A>>,
+  requests: Receiver<FugginComplex>
 }
 
 impl<A> L<A>
   where A: RoutingTable
 {
-  pub fn new(state:      Arc<super::State<A>>,
+  pub fn new(state:      &Arc<super::State<A>>,
              us:         Port)
              -> send::Result<L<A>>
   {
@@ -65,7 +65,7 @@ impl<A> L<A>
 
     Ok(self::L {
       us: us,
-      state: state,
+      state: state.clone(),
       requests: rx,
     })
   }
@@ -99,7 +99,7 @@ impl<A> L<A>
 
 
 /// Capability that gives synchronous access to a Connection
-struct C<A>
+pub struct C<A>
   where A: RoutingTable
 {
   us:        Port, // TODO: change to ::ConAddr,
@@ -138,14 +138,14 @@ fn make_con_handler() -> (connection::established::Handler, Receiver<()>, Receiv
 impl<A> C<A>
   where A: RoutingTable
 {
-  pub fn connect(state:   Arc<super::State<A>>,
+  pub fn connect(state:   &Arc<super::State<A>>,
                  us:      Port,
                  them:    ::ConAddr)
                  -> send::Result<C<A>>
   {
     let (handler, rd_rx, wt_rx) = make_con_handler();
 
-    try!(connection::syn_sent::active_new(&*state, us, them, handler));
+    try!(connection::syn_sent::active_new(&**state, us, them, handler));
 
     // block on first CanRead---to signify that connection is established
     rd_rx.recv();
@@ -153,7 +153,7 @@ impl<A> C<A>
     Ok(C { us: us,
            them: them,
 
-           state: state,
+           state: state.clone(),
 
            can_read:  rd_rx,
            can_write: wt_rx,

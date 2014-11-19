@@ -70,7 +70,7 @@ fn handle<A>(state:  &::State<A>,
 }
 
 /// Registers protocol handler for incomming RIP packets.
-pub fn register<A>(state: Arc<super::State<A>>)
+pub fn register<A>(state: &Arc<super::State<A>>)
   where A: RoutingTable
 {
   control::register_protocol_handler(
