@@ -1,5 +1,7 @@
 reference
 data
+tools
+
 Cargo.lock
 /*/target
 /*/*/target
