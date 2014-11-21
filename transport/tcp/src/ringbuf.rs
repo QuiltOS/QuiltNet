@@ -2,7 +2,7 @@ use std::cmp;
 use std::slice::bytes::copy_memory;
 
 #[deriving(Show)]
-struct RingBuf {
+pub struct RingBuf {
   tail : uint, // Back of unconsumed, valid data
   head : uint,     // Front of unconsumed, valid data
   data : Vec<u8>,

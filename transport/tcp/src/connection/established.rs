@@ -12,6 +12,8 @@ use packet::TcpPacket;
 use super::Connection;
 use super::state::State;
 
+use super::tcb::TCB;
+
 pub enum Situation {
   CanRead,
   CanWrite,
@@ -25,6 +27,7 @@ pub struct Established {
   // This is the one bit of information not kept tracked of by our key
   our_addr: ipv4::Addr,
   handler: Handler,
+  tcb: TCB,
 }
 
 impl State for Established
@@ -35,6 +38,7 @@ impl State for Established
              -> Connection
     where A: RoutingTable
   {
+
     // stay established
     Connection::Established(self)
   }
@@ -73,5 +77,7 @@ pub fn new(//state:   &::State<A>,
   Established {
     our_addr: us.0,
     handler: handler,
+    //TODO: initialize TCB with seq number state from handshake
+    tcb: TCB::new()
   }
 }

@@ -11,6 +11,7 @@ use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
 pub mod state;
+pub mod tcb;
 
 pub mod syn_sent;
 pub mod syn_received;
