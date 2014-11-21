@@ -8,12 +8,9 @@ use misc::interface::{Fn, /* Handler */};
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
-use access;
 use Table;
 use packet;
 use packet::TcpPacket;
-use super::Listener;
-use super::state::State;
 use connection::established::{
   mod,
   Established
@@ -23,16 +20,15 @@ pub type OnConnectionAttempt = Box<FnMut<(::ConAddr /* us */, ::ConAddr /* them 
                                          Option<established::Handler>>
                                    + Send + Sync + 'static>;
 
-pub struct Listen {
+pub struct Listener {
   handler: OnConnectionAttempt,
 }
 
-impl State for Listen
+impl Listener
 {
-  fn next<A>(mut self,
-             state:  &::State<A>,
-             packet: TcpPacket)
-             -> Listener
+  fn handle<A>(&mut self,
+               state:  &::State<A>,
+               packet: TcpPacket)
     where A: RoutingTable
   {
     let us   = (packet.get_dst_addr(), packet.get_dst_port());
@@ -42,23 +38,36 @@ impl State for Listen
     {
       debug!("Listener on {} got non-syn or ack packet from {}. This is not how you make an introduction....",
              us.1, them);
-      return Listener::Listen(self); // TODO: Macro to make early return less annoying
+      return;
     };
 
     if packet.get_payload().len() != 0 {
       debug!("Listener on {} got non-empty packet from {}. Slow down, we just met....", us.1, them);
-      return Listener::Listen(self);
+      return;
     };
 
     debug!("Done with 1/3 handshake with {} on our port {}", them, us.1);
 
     let handler_pair = match self.handler.call_mut((us, them)) {
       Some(hs) => hs,
-      None     => return Listener::Listen(self),
+      None     => return,
     };
     ::connection::syn_received::passive_new(state, us, them, handler_pair);
     // keep on listening
-    Listener::Listen(self)
+  }
+}
+
+pub fn trans<A>(listener: &mut Option<Listener>,
+                state:    &::State<A>,
+                packet:   TcpPacket)
+  where A: RoutingTable
+{
+  match listener {
+    &None    => debug!("Sorry, no listener to receive this packet"),
+    &Some(ref mut l) => {
+      debug!("Listener found!");
+      l.handle(state, packet)
+    }
   }
 }
 
@@ -68,15 +77,15 @@ pub fn passive_new<A>(state:      &::State<A>,
                       -> Result<(), ()>
   where A: RoutingTable
 {
-  let mut lock = state.tcp.write();
-  let per_port = access::reserve_per_port_mut(&mut lock, local_port);
-
-  //lock.downgrade(); // TODO: get us a read lock instead
+  let per_port = ::PerPort::get_or_init(&state.tcp, local_port);
   let mut lock = per_port.listener.write(); // get listener read lock
 
   *lock = match *lock {
-    Listener::Closed => Listener::Listen(Listen { handler: handler }),
-    _                => return Err(()),
+    None => Some(Listener { handler: handler }),
+    _    => {
+      debug!("Oh no, listener already exists here");
+      return Err(());
+    },
   };
 
   Ok(())

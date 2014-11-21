@@ -45,17 +45,18 @@ fn handle<A>(state:  &::State<A>,
 
   let dst_port = packet.get_dst_port();
 
-  let lock = state.tcp.read();
-
-  let sub_table = match lock.get(&dst_port) {
+  let sub_table = match state.tcp.get(&dst_port) {
     Some(p) => p,
-    None    => return,
+    None    => {
+      debug!("no sub-table--definitely no listener or connection to handle this")
+      return;
+    },
   };
 
   let src_info = (packet.get_src_addr(),
                   packet.get_src_port());
 
-  match sub_table.connections.read().get(&src_info) {
+  match sub_table.connections.get(&src_info) {
     Some(connection) => {
       debug!("existing connection found to handle this! (might be closed)");
       super::connection::state::trans(
@@ -65,7 +66,7 @@ fn handle<A>(state:  &::State<A>,
     },
     None => {
       debug!("no existing connection, let's see if we have a listener");
-      super::listener::state::trans(
+      super::listener::trans(
         &mut *sub_table.listener.write(),
         state,
         packet)
