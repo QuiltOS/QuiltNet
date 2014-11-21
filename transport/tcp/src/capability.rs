@@ -8,7 +8,10 @@ use std::comm::{
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
-use connection;
+use connection::{
+  mod,
+  Connection,
+};
 use listener;
 use send;
 
@@ -114,7 +117,7 @@ pub struct C<A>
 fn make_con_handler() -> (connection::established::Handler, Receiver<()>, Receiver<()>)
 {
   use connection::established::Established;
-  use connection::established::{Situation, CanRead, CanWrite};
+  use connection::established::Situation;
 
 
   let (rd_tx, rd_rx) = channel::<()>();
@@ -126,10 +129,10 @@ fn make_con_handler() -> (connection::established::Handler, Receiver<()>, Receiv
     let wt = Mutex::new(wt_tx);
     box move |&mut: est: Established, situ: Situation| {
       match situ {
-        CanRead  => rd.lock().send(()),
-        CanWrite => wt.lock().send(()),
+        Situation::CanRead  => rd.lock().send(()),
+        Situation::CanWrite => wt.lock().send(()),
       };
-      connection::Established(est)
+      Connection::Established(est)
     }
   };
   (handler, rd_rx, wt_rx)

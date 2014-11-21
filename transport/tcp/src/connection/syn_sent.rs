@@ -11,11 +11,18 @@ use network::ipv4::strategy::RoutingTable;
 use access;
 use packet;
 use packet::TcpPacket;
-use send;
+use send::{
+  mod,
+  Error,
+};
 use super::Connection;
 use super::state::State;
 
-use connection::established;
+use connection::established::{
+  mod,
+  Established,
+  Situation,
+};
 
 pub struct SynSent {
   future_handler: established::Handler,
@@ -36,12 +43,12 @@ impl State for SynSent
     {
       debug!("Listener on {} got non- syn+ack packet from {}. Why do you let me down server...",
              us.1, them);
-      return super::Closed; // TODO: Macro to make early return less annoying
+      return Connection::Closed; // TODO: Macro to make early return less annoying
     };
     debug!("Done 2/3 handshake with {} on {}", them, us);
 
 
-    let builder: <'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet| {
+    let builder: for<'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet| {
       use packet::SYN;
       *packet.flags_mut() = SYN;
       Ok(())
@@ -56,7 +63,7 @@ impl State for SynSent
                      builder)
     {
       Ok(_)  => (),
-      Err(_) => return super::Closed, // TODO: Call conn failure continuation
+      Err(_) => return Connection::Closed, // TODO: Call conn failure continuation
     };
 
     debug!("Attempt 3/3 handshake with {} on {}", them, us);
@@ -66,7 +73,7 @@ impl State for SynSent
                                them,
                                    self.future_handler);
     // first CanRead lets them know connection was made
-    est.invoke_handler(established::CanRead)
+    est.invoke_handler(Situation::CanRead)
   }
 }
 
@@ -87,13 +94,13 @@ pub fn active_new<A>(state:   &::State<A>,
   let mut lock = conn.write();
 
   match *lock {
-    super::Closed => (),
-    _             => return Err(send::ConnectionAlreadyExists),
+    Connection::Closed => (),
+    _             => return Err(Error::ConnectionAlreadyExists),
   };
 
   debug!("Confirmed no existing connection on our port {} to server {}", us, them);
 
-  let builder: <'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet| {
+  let builder: for<'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet| {
     use packet::SYN;
     *packet.flags_mut() = SYN;
     Ok(())
@@ -109,7 +116,7 @@ pub fn active_new<A>(state:   &::State<A>,
 
   // don't bother really reserving port until at least the first
   // message was sent
-  *lock = super::SynSent(SynSent { future_handler: handler });
+  *lock = Connection::SynSent(SynSent { future_handler: handler });
 
   debug!("Attempt 1/3 handshake with {} on our port {}", them, us);
   Ok(())

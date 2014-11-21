@@ -3,14 +3,7 @@ use network::ipv4::strategy::RoutingTable;
 
 use Table;
 use packet::TcpPacket;
-use super::{
-  Connection,
-
-  Closed,
-  SynSent,
-  SynReceived,
-  Established,
-};
+use super::Connection;
 
 pub trait State {
   fn next<A>(self, &::State<A>, TcpPacket) -> Connection
@@ -27,9 +20,9 @@ pub fn trans<A>(e: &mut Connection, s: &::State<A>, p: TcpPacket)
   swap(e, &mut blank);
 
   *e = match blank {
-    Closed         => Closed,
-    SynSent    (c) => c.next(s, p),
-    SynReceived(c) => c.next(s, p),
-    Established(c) => c.next(s, p),
+    Connection::Closed         => Connection::Closed,
+    Connection::SynSent    (c) => c.next(s, p),
+    Connection::SynReceived(c) => c.next(s, p),
+    Connection::Established(c) => c.next(s, p),
   }
 }

@@ -94,7 +94,8 @@ fn forward<A>(state: &super::State<A>, mut packet: packet::V) -> send::Result<()
     state,
     packet.borrow_mut().get_destination()));
   // Do NOT update src address
-  send::send_manual(row, packet).map_err(send::External)
+  try!(send::send_manual(row, packet));
+  Ok(())
 }
 
 /// Determine whether packet is destined for this node

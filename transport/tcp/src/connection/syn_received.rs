@@ -11,12 +11,18 @@ use network::ipv4::strategy::RoutingTable;
 use access;
 use packet;
 use packet::TcpPacket;
-use send;
+use send::{
+  mod,
+  Error,
+};
 use super::Connection;
 use super::state::State;
 
-use connection::established;
-
+use connection::established::{
+  mod,
+  Established,
+  Situation,
+};
 
 pub struct SynReceived {
   future_handler: established::Handler,
@@ -37,7 +43,7 @@ impl State for SynReceived
     {
       debug!("Listener on {} got non-ack packet from {}. Make a friendship just to wreck it client?",
              us.1, them);
-      return super::Closed; // TODO: Macro to make early return less annoying
+      return Connection::Closed; // TODO: Macro to make early return less annoying
     };
     debug!("Done 3/3 handshake with {} on {}", them, us);
 
@@ -46,7 +52,7 @@ impl State for SynReceived
                                them,
                                self.future_handler);
     // first CanRead let's them know connection was made
-    est.invoke_handler(established::CanRead)
+    est.invoke_handler(Situation::CanRead)
   }
 }
 
@@ -72,12 +78,12 @@ pub fn passive_new<A>(state:   &::State<A>,
   let mut lock = conn.write();
 
   match *lock {
-    super::Closed => (),
+    Connection::Closed => (),
     _ => panic!("Packet should never reach listener if connection exists"),
   };
 
   // TODO: Report ICE if this signature is removed
-  let builder: <'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet| {
+  let builder: for<'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet| {
     use packet::{SYN, ACK};
     *packet.flags_mut() = SYN | ACK;
     Ok(())
@@ -96,7 +102,7 @@ pub fn passive_new<A>(state:   &::State<A>,
     Err(_) => return,
   };
 
-  *lock = super::SynReceived(SynReceived { future_handler: handler });
+  *lock = Connection::SynReceived(SynReceived { future_handler: handler });
 
   debug!("Attempt 2/3 handshake with {} on our port {}", them, us.1);
 }

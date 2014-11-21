@@ -48,7 +48,7 @@ impl V {
       };
       s.set_version(4);
       s.set_header_length(MIN_HDR_LEN_WORDS);
-      s.set_type_of_service(Routine, ServiceFlags::empty());
+      s.set_type_of_service(Precedence::Routine, ServiceFlags::empty());
       s.set_flags_fragment_offset(DONT_FRAGMENT, 0);
       s.set_destination(ip);
     }
@@ -348,37 +348,37 @@ pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
 {
   // have to check this first to avoid out-of-bounds panic on version check
   if buf.len() < 1 {
-    return Err(TooShort(buf.len()))
+    return Err(BadPacket::TooShort(buf.len()))
   }
 
   let packet = A::new(buf);
 
   // try to do this early as possible in case is other type of packet
   if packet.get_version() != 4 {
-    return Err(BadVersion(packet.get_version()))
+    return Err(BadPacket::BadVersion(packet.get_version()))
   };
 
   // then this so other header indexing doesn't packet
   if packet.as_slice().len() != packet.get_total_length() as uint {
-    return Err(BadPacketLength(packet.as_slice().len(),
-                               packet.get_total_length()))
+    return Err(BadPacket::BadPacketLength(packet.as_slice().len(),
+                                          packet.get_total_length()))
   };
 
 
   if packet.hdr_bytes() > packet.as_slice().len()
   {
-    return Err(HeaderTooLong(packet.hdr_bytes(),
-                             packet.as_slice().len()))
+    return Err(BadPacket::HeaderTooLong(packet.hdr_bytes(),
+                                        packet.as_slice().len()))
   };
     if packet.hdr_bytes() < MIN_HDR_LEN_BYTES as uint
   {
-    return Err(HeaderTooShort(packet.hdr_bytes()))
+    return Err(BadPacket::HeaderTooShort(packet.hdr_bytes()))
   };
 
   if packet.make_header_checksum() != packet.get_header_checksum()
   {
-    return Err(BadChecksum(packet.make_header_checksum(),
-                           packet.get_header_checksum()))
+    return Err(BadPacket::BadChecksum(packet.make_header_checksum(),
+                                      packet.get_header_checksum()))
   };
 
   Ok(())
