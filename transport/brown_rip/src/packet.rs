@@ -61,7 +61,7 @@ fn parse_helper<'a>(buf: &'a [u8]) -> IoResult<Packet<Entries<'a>>>
 {
   let mut r = BufReader::new(buf);
   match try!(r.read_be_u16()) {
-    1 => Ok(Request),
+    1 => Ok(Packet::Request),
     2 => {
       let count = try!(r.read_be_u16());
       // ought to be static
@@ -74,7 +74,7 @@ fn parse_helper<'a>(buf: &'a [u8]) -> IoResult<Packet<Entries<'a>>>
         Equal   => (),
       }
 
-      Ok(Response(EntryIter(r)))
+      Ok(Packet::Response(EntryIter(r)))
     },
     _ => Err(IoError::last_error()), // some random error
   }
@@ -114,7 +114,7 @@ pub fn write_response<'a, I>(entries_iter: &'a mut I)
         };
         count += 1;
         try!(m.write_be_u32(cost));
-        try!(m.write(ipv4::write_addr(address)));
+        try!(m.write(&ipv4::write_addr(address)));
       }
       assert!(count > 0); // we don't want to send empty response packets
     }

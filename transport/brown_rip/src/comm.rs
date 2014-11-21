@@ -14,7 +14,7 @@ use network::ipv4::{
 };
 
 use super::{RIP_INFINITY, RipTable, RipRow};
-use super::packet::{mod, Request, Response};
+use super::packet::{mod, Packet};
 
 struct RipHandler { state: Arc<ipv4::State<RipTable>> }
 
@@ -37,7 +37,7 @@ fn handle(state: &ipv4::State<RipTable>, packet: ipv4::packet::V) -> IoResult<()
   };
 
   match packet::parse(data) {
-    Ok(Request) => {
+    Ok(Packet::Request) => {
       debug!("Got request from {}", neighbor_addr);
 
       // TODO: factor out singleton iterator
@@ -57,7 +57,7 @@ fn handle(state: &ipv4::State<RipTable>, packet: ipv4::packet::V) -> IoResult<()
 
       try!(update(state, neighbor_addr, empty_iter));
     },
-    Ok(Response(entries)) => {
+    Ok(Packet::Response(entries)) => {
       debug!("Got response from {}", neighbor_addr);
       try!(update(state, neighbor_addr, entries));
     },

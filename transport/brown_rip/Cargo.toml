@@ -8,6 +8,8 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 [lib]
 name = "brown_rip"
 
+[dependencies.time]
+url = "http://github.com/rust-lang/time"
 
 [dependencies.rust-net-misc]
 path = "../../misc"
