@@ -22,7 +22,7 @@ pub type Result<T> = ::std::result::Result<T, self::Error>;
 
 impl FromError<ipv4::send::Error> for Error {
   fn from_error(e: ipv4::send::Error) -> Error {
-    External(e)
+    Error::External(e)
   }
 }
 
@@ -35,12 +35,12 @@ pub fn send
    dst:                super::ConAddr,
    expected_body_size: Option<u16>,
    upcaster:           |self::Error| -> E,
-   builder:            <'a> |&'a mut packet::TcpPacket|:'clos -> result::Result<(), E>)
+   builder:            for<'a> |&'a mut packet::TcpPacket|:'clos -> result::Result<(), E>)
    -> result::Result<(), E>
   where A: strategy::RoutingTable,
-        E: FromError<send::Error>, // + FromError<self::Error>,
+        E: FromError<send::Error>,
 {
-  let tcp_builder: <'p> |&'p mut ipv4::packet::V| -> result::Result<(), E> = | packet |
+  let tcp_builder: for<'p> |&'p mut ipv4::packet::V| -> result::Result<(), E> = | packet |
   {
     // make room for TCP header
     let new_len = packet.as_vec().len() + packet::TCP_HDR_LEN;
@@ -54,13 +54,13 @@ pub fn send
     builder(packet)
   };
 
-  let awkward_checksum_fixer: <'p> |&'p mut ipv4::packet::V| -> result::Result<(), E> = | packet |
+  let awkward_checksum_fixer: for<'p> |&'p mut ipv4::packet::V| -> result::Result<(), E> = | packet |
   {
     let packet = packet::TcpPacket::hack_mut(packet);
 
     match src_addr {
       Some(addr) => if addr != packet.get_src_addr() {
-        return Err(upcaster(RouteBrokeConnection))
+        return Err(upcaster(Error::RouteBrokeConnection))
       },
       _ => ()
     };

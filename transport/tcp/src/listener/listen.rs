@@ -14,8 +14,10 @@ use packet;
 use packet::TcpPacket;
 use super::Listener;
 use super::state::State;
-
-use connection::established;
+use connection::established::{
+  mod,
+  Established
+};
 
 pub type OnConnectionAttempt = Box<FnMut<(::ConAddr /* us */, ::ConAddr /* them */,),
                                          Option<established::Handler>>
@@ -40,23 +42,23 @@ impl State for Listen
     {
       debug!("Listener on {} got non-syn or ack packet from {}. This is not how you make an introduction....",
              us.1, them);
-      return super::Listen(self); // TODO: Macro to make early return less annoying
+      return Listener::Listen(self); // TODO: Macro to make early return less annoying
     };
 
     if packet.get_payload().len() != 0 {
       debug!("Listener on {} got non-empty packet from {}. Slow down, we just met....", us.1, them);
-      return super::Listen(self);
+      return Listener::Listen(self);
     };
 
     debug!("Done with 1/3 handshake with {} on our port {}", them, us.1);
 
     let handler_pair = match self.handler.call_mut((us, them)) {
       Some(hs) => hs,
-      None     => return super::Listen(self),
+      None     => return Listener::Listen(self),
     };
     ::connection::syn_received::passive_new(state, us, them, handler_pair);
     // keep on listening
-    super::Listen(self)
+    Listener::Listen(self)
   }
 }
 
@@ -73,8 +75,8 @@ pub fn passive_new<A>(state:      &::State<A>,
   let mut lock = per_port.listener.write(); // get listener read lock
 
   *lock = match *lock {
-    super::Closed => super::Listen(Listen { handler: handler }),
-    _             => return Err(()),
+    Listener::Closed => Listener::Listen(Listen { handler: handler }),
+    _                => return Err(()),
   };
 
   Ok(())

@@ -36,13 +36,13 @@ impl State for Established
     where A: RoutingTable
   {
     // stay established
-    super::Established(self)
+    Connection::Established(self)
   }
 }
 
 impl Established
 {
-  pub fn invoke_handler(mut self, situ: Situation) -> super::Connection
+  pub fn invoke_handler(mut self, situ: Situation) -> Connection
   {
     use std::mem::{uninitialized, swap};
 
@@ -51,11 +51,11 @@ impl Established
     // 1st swap
     swap(&mut self.handler, &mut handler);
 
-    let mut con: super::Connection = handler.call_mut((self, situ));
+    let mut con: Connection = handler.call_mut((self, situ));
 
     match con {
       // 2nd swap
-      super::Established(ref mut e) => swap(&mut e.handler, &mut handler),
+      Connection::Established(ref mut e) => swap(&mut e.handler, &mut handler),
       _ => (),
     };
 

@@ -3,12 +3,7 @@ use network::ipv4::strategy::RoutingTable;
 
 use Table;
 use packet::TcpPacket;
-use super::{
-  Listener,
-
-  Closed,
-  Listen,
-};
+use super::Listener;
 
 pub trait State {
   fn next<A>(self, &::State<A>, TcpPacket) -> Listener
@@ -27,7 +22,7 @@ pub fn trans<A>(e: &mut Listener,
   swap(e, &mut blank);
 
   *e = match blank {
-    Closed    => Closed,
-    Listen(l) => l.next(s, p),
+    Listener::Closed    => Listener::Closed,
+    Listener::Listen(l) => l.next(s, p),
   }
 }

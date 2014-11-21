@@ -7,6 +7,9 @@ use std::sync::{
   RWLockWriteGuard,
 };
 
+use listener::Listener;
+use connection::Connection;
+
 use send;
 
 #[inline]
@@ -31,7 +34,7 @@ pub fn reserve_per_port_mut
 {
   match tcp_table.entry(local_port) {
     Vacant(entry)   => entry.set(::PerPort { // allocate blank
-      listener:    RWLock::new(::listener::Closed),
+      listener:    RWLock::new(Listener::Closed),
       connections: RWLock::new(HashMap::new()),
     }),
     Occupied(entry) => entry.into_mut(),
@@ -41,12 +44,12 @@ pub fn reserve_per_port_mut
 #[inline]
 pub fn reserve_connection_mut
   <'s>
-  (subtable:    &'s mut RWLockWriteGuard<'s, ::SubTable>,
+  (subtable:     &'s mut RWLockWriteGuard<'s, ::SubTable>,
    foreign_addr: ::ConAddr)
-   -> &'s mut RWLock<::connection::Connection>
+   -> &'s mut RWLock<Connection>
 {
   match subtable.entry(foreign_addr) {
-    Vacant(entry)   => entry.set(RWLock::new(::connection::Closed)),
+    Vacant(entry)   => entry.set(RWLock::new(Connection::Closed)),
     Occupied(entry) => entry.into_mut(),
   }
 }

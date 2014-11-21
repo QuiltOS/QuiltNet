@@ -3,7 +3,7 @@ pub enum Next<State, Input> {
   Continue(Transitions<State, Input>),
 }
 
-pub type Transitions<State, Input> = fn<'a>(&'a mut State, Input) -> Next<State, Input>;
+pub type Transitions<State, Input> = for<'a> fn(&'a mut State, Input) -> Next<State, Input>;
 
 pub struct StateMachine<State, Input> {
   state:       State,
@@ -25,8 +25,8 @@ impl<S, I> StateMachine<S, I> {
   // returns false if terminating
   pub fn next(&mut self, input: I) -> bool {
     match (self.transitions)(&mut self.state, input) {
-      Terminate        => false,
-      Continue(new_ts) => {
+      Next::Terminate        => false,
+      Next::Continue(new_ts) => {
         self.transitions = new_ts;
         true
       },

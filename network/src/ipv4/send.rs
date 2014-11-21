@@ -16,6 +16,12 @@ pub enum Error {
   External(dl::Error),
 }
 
+impl FromError<dl::Error> for Error {
+  fn from_error(e: dl::Error) -> Error {
+    Error::External(e)
+  }
+}
+
 pub type Result<T> = ::std::result::Result<T, self::Error>;
 
 
@@ -25,14 +31,14 @@ pub fn send
    dst:                super::Addr,
    protocol:           u8,
    expected_body_size: Option<u16>,
-   builder:            <'a> |&'a mut packet::V|:'clos -> result::Result<(), E>,
+   builder:            for<'a> |&'a mut packet::V|:'clos -> result::Result<(), E>,
    // TODO: make this take a &'a mut packet::A someday
-   awkward:            <'a> |&'a mut packet::V|:'clos -> result::Result<(), E>)
+   awkward:            for<'a> |&'a mut packet::V|:'clos -> result::Result<(), E>)
    -> result::Result<(), E>
   where A: strategy::RoutingTable,
-        E: FromError<self::Error>
+        E: FromError<self::Error>,
 {
-  let closure: <'p> |&'p mut packet::V| -> result::Result<&'st super::InterfaceRow, E>
+  let closure: for<'p> |&'p mut packet::V| -> result::Result<&'st super::InterfaceRow, E>
     = |packet| {
       try!(builder(packet));
       debug!("client built packet: {}", packet);
@@ -54,7 +60,7 @@ pub fn send
     closure));
 
   // final try to do from_error
-  try!(send_manual(row, packet).map_err(self::External));
+  try!(send_manual(row, packet).map_err(|e| Error::External(e)));
   Ok(())
 }
 
@@ -66,7 +72,7 @@ pub fn resolve_route<'st, A>(state: &'st super::State<A>,
   where A: strategy::RoutingTable
 {
   match state.routes.lookup(dst) {
-    None           => Err(self::NoRoute),
+    None           => Err(self::Error::NoRoute),
     Some(next_hop) => { // Send packet to next hop towards destination
       debug!("Found route through {}", next_hop);
       match state.neighbors.get(&next_hop) {
