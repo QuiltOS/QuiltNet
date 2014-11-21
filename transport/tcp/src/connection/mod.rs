@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
+use std::default::Default;
 use std::io::net::ip::Port;
 use std::sync::{
   RWLock,
@@ -22,4 +23,11 @@ pub enum Connection {
   SynSent(syn_sent::SynSent),
   SynReceived(syn_received::SynReceived),
   Established(established::Established),
+}
+
+impl Default for Connection
+{
+  fn default() -> Connection {
+    Connection::Closed
+  }
 }

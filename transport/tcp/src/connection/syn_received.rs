@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
+use std::default::Default;
 use std::io::net::ip::Port;
 use std::sync::RWLock;
 
@@ -8,13 +9,8 @@ use misc::interface::{Fn, /* Handler */};
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
-use access;
-use packet;
-use packet::TcpPacket;
-use send::{
-  mod,
-  Error,
-};
+use packet::{mod, TcpPacket};
+use send::{mod, Error,};
 use super::Connection;
 use super::state::State;
 
@@ -67,16 +63,11 @@ pub fn passive_new<A>(state:   &::State<A>,
                       handler: established::Handler)
   where A: RoutingTable
 {
-  let mut lock0 = state.tcp.read();
-  let per_port = access::get_per_port(&mut lock0, us.1)
-    .ok().expect("Packet should not reach listener if listener doesn't exist");
+  let per_port = ::PerPort::get_or_init(&state.tcp, us.1);
+  let conn = per_port.connections.get_or_init(them,
+                                              || RWLock::new(Default::default()));
 
-  let mut lock1 = per_port.connections.write();
-  let conn = access::reserve_connection_mut(&mut lock1, them);
-
-  //lock.downgrade(); // TODO: get us a read lock instead
   let mut lock = conn.write();
-
   match *lock {
     Connection::Closed => (),
     _ => panic!("Packet should never reach listener if connection exists"),

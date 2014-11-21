@@ -1,3 +1,7 @@
+// in the short run this is not important
+#![no_warn(unused_imports)]
+
+#![feature(default_type_params)]
 #![feature(unboxed_closures)]
 #![feature(slicing_syntax)]
 #![feature(tuple_indexing)]
@@ -16,6 +20,7 @@ extern crate time;
 extern crate network;
 
 use std::collections::HashMap;
+use std::default::Default;
 use std::io::net::ip::Port;
 use std::sync::{Arc, RWLock};
 
@@ -24,13 +29,15 @@ use time::{Timespec, get_time};
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
+use concurrent_hash_map::ConcurrentHashMap;
 use listener::Listener;
 use connection::Connection;
 
 
 mod packet;
+mod concurrent_hash_map;
 mod ringbuf;
-mod access;
+//mod access;
 
 mod send;
 mod receive;
@@ -72,10 +79,10 @@ pub type ConAddr = (ipv4::Addr, Port);
 /// means it is important that the tables have `Arc<T>`s and not `Weak<T>`s so
 /// that the connection persists between callback invocations.
 
-pub type Table = HashMap<Port, PerPort>;
+pub type Table = ConcurrentHashMap<Port, PerPort>;
 
 pub struct State<A> where A: RoutingTable {
-  tcp:        RWLock<Table>,
+  tcp:    Table,
   pub ip: Arc<ipv4::State<A>>, // not TCP's responsibility to hide this
 }
 
@@ -84,8 +91,8 @@ impl<A> State<A> where A: RoutingTable
   pub fn init_and_register(ip: Arc<ipv4::State<A>>) -> Arc<self::State<A>>
   {
     let ptr = Arc::new(State {
-      ip: ip,
-      tcp: RWLock::new(HashMap::new())
+      ip:  ip,
+      tcp: ConcurrentHashMap::new(),
     });
     receive::register(&ptr);
     ptr
@@ -96,9 +103,29 @@ impl<A> State<A> where A: RoutingTable
   }
 }
 
-pub type SubTable = HashMap<ConAddr, RWLock<Connection>>;
+pub type SubTable = ConcurrentHashMap<ConAddr, RWLock<Connection>>;
 
 pub struct PerPort {
-  listener:    RWLock<Listener>,
-  connections: RWLock<SubTable>,
+  listener:    RWLock<Option<Listener>>,
+  connections: SubTable,
+}
+
+impl Default for PerPort
+{
+  fn default() -> PerPort {
+    PerPort {
+      listener:    RWLock::new(Default::default()),
+      connections: ConcurrentHashMap::new(),
+    }
+  }
+}
+
+impl PerPort
+{
+  pub fn get_or_init(tcp: &Table, us:  Port) -> Arc<PerPort>
+  {
+    tcp.get_or_init(
+      us,
+      || Default::default())
+  }
 }
