@@ -13,6 +13,7 @@ use packet::{mod, TcpPacket};
 use send::{mod, Error,};
 use super::Connection;
 use super::state::State;
+use super::syn_received;
 
 use connection::established::{
   mod,
@@ -34,6 +35,15 @@ impl State for SynSent
   {
     let us   = (packet.get_dst_addr(), packet.get_dst_port());
     let them = (packet.get_src_addr(), packet.get_src_port());
+
+    if !packet.flags().contains(packet::ACK | packet::SYN)
+    {
+      debug!("Double Connection on {} from {}? All the way!", us.1, them);
+      return match syn_received::handshake_2(state, us, them, self.future_handler) {
+        Ok(con) => con,
+        Err(_)  => Connection::Closed,
+      }
+    }
 
     if !packet.flags().contains(packet::ACK | packet::SYN)
     {
@@ -65,9 +75,9 @@ impl State for SynSent
     debug!("Attempt 3/3 handshake with {} on {}", them, us);
 
     // Become established
-        let est = established::new(us,
+    let est = established::new(us,
                                them,
-                                   self.future_handler);
+                               self.future_handler);
     // first CanRead lets them know connection was made
     est.invoke_handler(Situation::CanRead)
   }

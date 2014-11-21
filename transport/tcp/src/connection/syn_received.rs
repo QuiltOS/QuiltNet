@@ -73,6 +73,20 @@ pub fn passive_new<A>(state:   &::State<A>,
     _ => panic!("Packet should never reach listener if connection exists"),
   };
 
+  match handshake_2(state, us, them, handler) {
+    Ok(con) => *lock = con,
+    Err(_)  => (),
+  };
+}
+
+/// Factored out for bidirectional connection
+pub fn handshake_2<A>(state:   &::State<A>,
+                      us:      ::ConAddr, // already expects specific port
+                      them:    ::ConAddr,
+                      handler: established::Handler)
+                      -> send::Result<Connection>
+  where A: RoutingTable
+{
   // TODO: Report ICE if this signature is removed
   let builder: for<'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet| {
     use packet::{SYN, ACK};
@@ -81,19 +95,15 @@ pub fn passive_new<A>(state:   &::State<A>,
   };
 
   // TODO: Should we keep track of a failure to respond?
-  match send::send(&*state.ip,
-                   Some(us.0),
-                   us.1,
-                   them,
-                   Some(0),
-                   |x| x,
-                   builder)
-  {
-    Ok(_)  => (),
-    Err(_) => return,
-  };
-
-  *lock = Connection::SynReceived(SynReceived { future_handler: handler });
+  try!(send::send(&*state.ip,
+                  Some(us.0),
+                  us.1,
+                  them,
+                  Some(0),
+                  |x| x,
+                  builder));
 
   debug!("Attempt 2/3 handshake with {} on our port {}", them, us.1);
+
+  Ok(Connection::SynReceived(SynReceived { future_handler: handler }))
 }
