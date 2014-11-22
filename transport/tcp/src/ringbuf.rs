@@ -33,7 +33,7 @@ impl RingBuf {
 
     // Number of bytes we're going to copy
     let n = cmp::min(self.window_size(), buf.len());
-    println!("read: n: {}, ws: {}", n, self.window_size());
+    //println!("read: n: {}, ws: {}", n, self.window_size());
 
     // Head of slice we're reading from, wrapped around
     let read_head = (self.tail + n) % self.data.len();
@@ -71,7 +71,7 @@ impl RingBuf {
     // Number of bytes we're going to copy
     // NOTE: subtract 1 to avoid writing full array - we can't disambiguate full/empty!
     let n = cmp::min(len - self.window_size() - 1, buf.len());
-    println!("write: n: {}, ws: {}", n, self.window_size());
+    //println!("write: n: {}, ws: {}", n, self.window_size());
 
 
     // Head of slice we're writing into, wrapped around
@@ -89,8 +89,7 @@ impl RingBuf {
       copy_memory(self.data.slice_mut(0, write_head), buf[first_slice_len..n] );
 
     } else {
-      println!("straight copy");
-
+      
       // Copy straight until head
       copy_memory(self.data.slice_mut(self.head, write_head), buf);
 
