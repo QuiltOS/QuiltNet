@@ -11,14 +11,16 @@ use network::ipv4::strategy::RoutingTable;
 use Table;
 use packet;
 use packet::TcpPacket;
+
+use connection::handshaking::Handshaking;
 use connection::established::{
   mod,
-  Established
+  Established,
 };
 
 pub type OnConnectionAttempt = Box<FnMut<(::ConAddr /* us */, ::ConAddr /* them */,),
                                          Option<established::Handler>>
-                                   + Send + Sync + 'static>;
+                               + Send + Sync + 'static>;
 
 pub struct Listener {
   handler: OnConnectionAttempt,
@@ -52,7 +54,15 @@ impl Listener
       Some(hs) => hs,
       None     => return,
     };
-    ::connection::syn_received::passive_new(state, us, them, handler_pair);
+    let _ = Handshaking::new(state,
+                             us.1,
+                             them,
+
+                             false,
+                             true,
+                             Some(packet.get_seq_num()),
+                             Some(us.0),
+                             handler_pair);
     // keep on listening
   }
 }

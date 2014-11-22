@@ -10,7 +10,6 @@ use network::ipv4::strategy::RoutingTable;
 
 use packet::TcpPacket;
 use super::Connection;
-use super::state::State;
 
 use super::tcb::TCB;
 
@@ -30,12 +29,7 @@ pub struct Established {
   tcb: TCB,
 }
 
-// TODO
-// In Background
-// - Timers for retransmission
-// - 
-
-impl State for Established
+impl super::State for Established
 {
   fn next<A>(self,
              _state:  &::State<A>,
@@ -65,6 +59,7 @@ impl Established
   {
     use std::mem::{uninitialized, swap};
 
+    debug!("Established connection is invoking its handler");
     let mut handler: Handler = unsafe { uninitialized() };
 
     // 1st swap
@@ -80,19 +75,21 @@ impl Established
 
     con
   }
-}
 
-pub fn new(//state:   &::State<A>,
-           us:      ::ConAddr,
-           them:    ::ConAddr,
-           handler: Handler)
-           -> Established
-{
-  debug!("Established connection on our addr {} to server {}", us, them);
-  Established {
-    our_addr: us.0,
-    handler: handler,
-    //TODO: initialize TCB with seq number state from handshake
-    tcb: TCB::new()
+  pub fn new(//state:   &::State<A>,
+    us:      ::ConAddr,
+    them:    ::ConAddr,
+    handler: Handler)
+    -> Connection
+  {
+    debug!("Established connection on our addr {} to server {}", us, them);
+    let est = Established {
+      our_addr: us.0,
+      handler: handler,
+      //TODO: initialize TCB with seq number state from handshake
+      tcb: TCB::new()
+    };
+    // first CanRead let's them know connection was made
+    est.invoke_handler(Situation::CanRead)
   }
 }

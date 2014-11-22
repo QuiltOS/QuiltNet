@@ -12,7 +12,6 @@ use network::ipv4::strategy::RoutingTable;
 use packet::{mod, TcpPacket};
 use send::{mod, Error,};
 use super::Connection;
-use super::state::State;
 
 use connection::established::{
   mod,
@@ -21,15 +20,34 @@ use connection::established::{
 };
 
 pub struct SynReceived {
+  init_seq_num:   u32,
   future_handler: established::Handler,
 }
 
-impl State for SynReceived
+impl super::State for SynReceived
 {
   fn next<A>(self,
-             _state:  &::State<A>,
+             state:  &::State<A>,
              packet: TcpPacket)
              -> Connection
+    where A: RoutingTable
+  {
+    match self.next_raii(state, packet)
+    {
+      Ok(con) => con,
+      Err(_)  => Connection::Closed,
+    }
+  }
+}
+
+
+
+impl SynReceived
+{
+  fn next_raii<A>(self,
+                  _state:  &::State<A>,
+                  packet: TcpPacket)
+                  -> send::Result<Connection>
     where A: RoutingTable
   {
     let us   = (packet.get_dst_addr(), packet.get_dst_port());
@@ -39,52 +57,59 @@ impl State for SynReceived
     {
       debug!("Listener on {} got non-ack packet from {}. Make a friendship just to wreck it client?",
              us.1, them);
-      return Connection::Closed; // TODO: Macro to make early return less annoying
+      return Err(Error::BadHandshake)
     };
     debug!("Done 3/3 handshake with {} on {}", them, us);
 
     // Become established
-    let est = established::new(us,
-                               them,
-                               self.future_handler);
-    // first CanRead let's them know connection was made
-    est.invoke_handler(Situation::CanRead)
+    Ok(Established::new(us,
+                        them,
+                        self.future_handler))
+  }
+
+
+
+  pub fn passive_new<A>(state:       &::State<A>,
+                        us:          ::ConAddr, // already expects specific port
+                        them:        ::ConAddr,
+                        init_seq_no: u32,
+                        handler:     established::Handler)
+    where A: RoutingTable
+  {
+    let per_port = ::PerPort::get_or_init(&state.tcp, us.1);
+    let conn = per_port.connections.get_or_init(them,
+                                                || RWLock::new(Default::default()));
+
+    let mut lock = conn.write();
+    match *lock {
+      Connection::Closed => (),
+      _ => panic!("Packet should never reach listener if connection exists"),
+    };
+
+    match handshake_2(state, us, them) {
+      Err(_)  => (),
+      Ok(con) => *lock = SynReceived::raw_new(init_seq_no, handler),
+    };
+  }
+
+  /// Used to implement double connect, otherwise use `passive_new`
+  pub fn raw_new(init_seq_no: u32,
+                 handler:     established::Handler)
+                 -> Connection
+  {
+    Connection::SynReceived(SynReceived {
+      init_seq_num:   init_seq_no,
+      future_handler: handler,
+    })
   }
 }
 
-impl SynReceived
-{
 
-}
 
-pub fn passive_new<A>(state:   &::State<A>,
-                      us:      ::ConAddr, // already expects specific port
-                      them:    ::ConAddr,
-                      handler: established::Handler)
-  where A: RoutingTable
-{
-  let per_port = ::PerPort::get_or_init(&state.tcp, us.1);
-  let conn = per_port.connections.get_or_init(them,
-                                              || RWLock::new(Default::default()));
-
-  let mut lock = conn.write();
-  match *lock {
-    Connection::Closed => (),
-    _ => panic!("Packet should never reach listener if connection exists"),
-  };
-
-  match handshake_2(state, us, them, handler) {
-    Ok(con) => *lock = con,
-    Err(_)  => (),
-  };
-}
-
-/// Factored out for bidirectional connection
-pub fn handshake_2<A>(state:   &::State<A>,
-                      us:      ::ConAddr, // already expects specific port
-                      them:    ::ConAddr,
-                      handler: established::Handler)
-                      -> send::Result<Connection>
+fn handshake_2<A>(state:   &::State<A>,
+                  us:      ::ConAddr, // already expects specific port
+                  them:    ::ConAddr)
+                  -> send::Result<()>
   where A: RoutingTable
 {
   // TODO: Report ICE if this signature is removed
@@ -104,6 +129,5 @@ pub fn handshake_2<A>(state:   &::State<A>,
                   builder));
 
   debug!("Attempt 2/3 handshake with {} on our port {}", them, us.1);
-
-  Ok(Connection::SynReceived(SynReceived { future_handler: handler }))
+  Ok(())
 }

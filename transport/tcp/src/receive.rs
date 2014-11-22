@@ -59,7 +59,7 @@ fn handle<A>(state:  &::State<A>,
   match sub_table.connections.get(&src_info) {
     Some(connection) => {
       debug!("existing connection found to handle this! (might be closed)");
-      super::connection::state::trans(
+      super::connection::trans(
         &mut *connection.write(),
         state,
         packet)
