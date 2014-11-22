@@ -49,6 +49,7 @@ impl Established
   {
     use std::mem::{uninitialized, swap};
 
+    debug!("Established connection is invoking its handler");
     let mut handler: Handler = unsafe { uninitialized() };
 
     // 1st swap
