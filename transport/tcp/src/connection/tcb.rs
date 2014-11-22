@@ -6,8 +6,8 @@ const TCP_RECV_WND : uint = 1u << 10u;
 pub struct TCB {
 
   // Buffers
-  recv_buf : RingBuf, // TODO: abstraction over RingBuf needed?
-  send_buf : RingBuf,
+  //recv_buf : RingBuf, // TODO: abstraction over RingBuf needed?
+  //send_buf : RingBuf,
 
   // State Variables
   // TODO: sizes of all these
@@ -28,8 +28,8 @@ pub struct TCB {
 impl TCB {
   pub fn new() -> TCB {
     TCB {
-      recv_buf : RingBuf::new(TCP_BUF_SIZE),
-      send_buf : RingBuf::new(TCP_BUF_SIZE),
+      //recv_buf : RingBuf::new(TCP_BUF_SIZE),
+      //send_buf : RingBuf::new(TCP_BUF_SIZE),
 
       // TODO: How to initialize these?
       send_UNA : 0u,
