@@ -148,7 +148,7 @@ impl<A> C<A>
   {
     let (handler, rd_rx, wt_rx) = make_con_handler();
 
-    try!(connection::syn_sent::active_new(&**state, us, them, handler));
+    try!(connection::syn_sent::SynSent::active_new(&**state, us, them, handler));
 
     // block on first CanRead---to signify that connection is established
     rd_rx.recv();

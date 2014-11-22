@@ -15,6 +15,7 @@ pub enum Error {
   ConnectionAlreadyExists,
   ListenerAlreadyExists,
   RouteBrokeConnection, // new route has different src IP so we are fucked
+  BadHandshake,
   External(send::Error),
 }
 

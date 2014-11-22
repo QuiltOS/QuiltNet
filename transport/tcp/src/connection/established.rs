@@ -65,19 +65,21 @@ impl Established
 
     con
   }
-}
 
-pub fn new(//state:   &::State<A>,
-           us:      ::ConAddr,
-           them:    ::ConAddr,
-           handler: Handler)
-           -> Established
-{
-  debug!("Established connection on our addr {} to server {}", us, them);
-  Established {
-    our_addr: us.0,
-    handler: handler,
-    //TODO: initialize TCB with seq number state from handshake
-    tcb: TCB::new()
+  pub fn new(//state:   &::State<A>,
+    us:      ::ConAddr,
+    them:    ::ConAddr,
+    handler: Handler)
+    -> Connection
+  {
+    debug!("Established connection on our addr {} to server {}", us, them);
+    let est = Established {
+      our_addr: us.0,
+      handler: handler,
+      //TODO: initialize TCB with seq number state from handshake
+      tcb: TCB::new()
+    };
+    // first CanRead let's them know connection was made
+    est.invoke_handler(Situation::CanRead)
   }
 }

@@ -11,14 +11,19 @@ use network::ipv4::strategy::RoutingTable;
 use Table;
 use packet;
 use packet::TcpPacket;
+
+use connection::syn_received::{
+  mod,
+  SynReceived,
+};
 use connection::established::{
   mod,
-  Established
+  Established,
 };
 
 pub type OnConnectionAttempt = Box<FnMut<(::ConAddr /* us */, ::ConAddr /* them */,),
                                          Option<established::Handler>>
-                                   + Send + Sync + 'static>;
+                               + Send + Sync + 'static>;
 
 pub struct Listener {
   handler: OnConnectionAttempt,
@@ -52,7 +57,11 @@ impl Listener
       Some(hs) => hs,
       None     => return,
     };
-    ::connection::syn_received::passive_new(state, us, them, handler_pair);
+    ::connection::syn_received::SynReceived::passive_new(state,
+                                                         us,
+                                                         them,
+                                                         packet.get_seq_num(),
+                                                         handler_pair);
     // keep on listening
   }
 }
