@@ -16,15 +16,13 @@ use packet::TcpPacket;
 
 pub mod tcb;
 
-pub mod syn_sent;
-pub mod syn_received;
+pub mod handshaking;
 pub mod established;
 
 
 pub enum Connection {
   Closed,
-  SynSent(syn_sent::SynSent),
-  SynReceived(syn_received::SynReceived),
+  Handshaking(handshaking::Handshaking),
   Established(established::Established),
 }
 
@@ -52,8 +50,7 @@ pub fn trans<A>(e: &mut Connection, s: &::State<A>, p: TcpPacket)
 
   *e = match blank {
     Connection::Closed         => Connection::Closed,
-    Connection::SynSent    (c) => c.next(s, p),
-    Connection::SynReceived(c) => c.next(s, p),
+    Connection::Handshaking(c) => c.next(s, p),
     Connection::Established(c) => c.next(s, p),
   }
 }

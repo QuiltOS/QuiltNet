@@ -12,10 +12,7 @@ use Table;
 use packet;
 use packet::TcpPacket;
 
-use connection::syn_received::{
-  mod,
-  SynReceived,
-};
+use connection::handshaking::Handshaking;
 use connection::established::{
   mod,
   Established,
@@ -57,11 +54,15 @@ impl Listener
       Some(hs) => hs,
       None     => return,
     };
-    ::connection::syn_received::SynReceived::passive_new(state,
-                                                         us,
-                                                         them,
-                                                         packet.get_seq_num(),
-                                                         handler_pair);
+    let _ = Handshaking::new(state,
+                             us.1,
+                             them,
+
+                             false,
+                             true,
+                             Some(packet.get_seq_num()),
+                             Some(us.0),
+                             handler_pair);
     // keep on listening
   }
 }
