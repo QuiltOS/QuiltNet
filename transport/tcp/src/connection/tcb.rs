@@ -1,47 +1,64 @@
 use ringbuf::RingBuf;
+use packet::TcpPacket;
+use super::manager::recv::RecvMgr;
+use super::manager::send::SendMgr;
 
-const TCP_BUF_SIZE : uint = 1u << 32u;
-const TCP_RECV_WND : uint = 1u << 10u;
 
+/// Encapsulates all connection state and data structures
+/// TODO: build this once socket is opened so you can accumulate 
+/// synchronization state during handshake!
+/// TODO: move all send/recv specific state into send/recvMgr
 pub struct TCB {
 
   // Buffers
-  recv_buf : RingBuf, // TODO: abstraction over RingBuf needed?
-  send_buf : RingBuf,
+  recv_mgr : RecvMgr, 
+  send_mgr : SendMgr,
 
-  // State Variables
-  // TODO: sizes of all these
-  send_UNA : uint,   // Oldest unacknowledged sequence number
-  send_NXT : uint,   // Next Sequence Number to be Sent
-  send_WND : uint,   // Send Window Size
-  //send_UP  : uint, // send urgent pointer
-  send_WL1 : uint,   // Seq number for last window update
-  send_WL2 : uint,   // Ack number for last window update
-  send_ISN : uint,   // Send Initial Sequence Number
-
-  recv_NXT : uint,   // Expected next sequence number received
-  recv_WND : uint,   // Recv Window Size
-  //recv_UP  : uint, // Recv Urgent Pointer
-  recv_ISN : uint,   // Recv Initial Sequence Number
 }
 
 impl TCB {
+  //TODO: pass in connection state vars
+  // recvISN, sendISN
   pub fn new() -> TCB {
     TCB {
-      recv_buf : RingBuf::new(TCP_BUF_SIZE),
-      send_buf : RingBuf::new(TCP_BUF_SIZE),
-
-      // TODO: How to initialize these?
-      send_UNA : 0u,
-      send_NXT : 0u,
-      send_WND : 0u,
-      send_WL1 : 0u,
-      send_WL2 : 0u,
-      send_ISN : 0u, //TODO: randomly generate
-
-      recv_NXT : 0u,
-      recv_WND : TCP_RECV_WND,
-      recv_ISN : 0u, //TODO: randomly generate?
+      recv_mgr : RecvMgr::new(),
+      send_mgr : SendMgr::new(),
     }
   }
+
+  // ******** TCP Module API ***********************************//
+
+  /// Receive logic for TCP packet
+  /// TODO: return type? - maybe hint for ACK response
+  pub fn recv(&self, packet: TcpPacket, notify_read:  || -> (), notify_write: || -> ()) {
+    self.recv_mgr.recv(packet, notify_read, notify_write)
+  }
+
+  /// Send logic for TCP Packets 
+  fn send_packet(&self, packet: TcpPacket, notify: || -> ()) {
+  }
+
+  // ********* Userland API ************************************//
+
+  /// Read as many bytes as we can into buf from received TCP data
+  /// until we get to n bytes, starting from the next unconsumed 
+  /// sequence number.
+  ///
+  /// Returns the number of bytes read
+  pub fn read(&self, buf: &mut [u8], n: uint) -> uint {
+    self.recv_mgr.read(buf, n)
+  }
+
+
+  /// Write as many bytes as we can into our TCP send buffer
+  /// from buf, starting with `start`
+  ///
+  /// Returning the number of bytes we were able to successfully write
+  /// NOTE: this is less than n when 
+  ///               n > (SND.UNA + SND.WND ) - SND.NXT
+  /// TODO: all the things              
+  pub fn send(&self, buf: &[u8], start: u32, n: uint) -> uint {
+    self.send_mgr.send(buf, start, n)
+  }
+
 }

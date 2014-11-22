@@ -30,6 +30,11 @@ pub struct Established {
   tcb: TCB,
 }
 
+// TODO
+// In Background
+// - Timers for retransmission
+// - 
+
 impl State for Established
 {
   fn next<A>(self,
@@ -38,6 +43,16 @@ impl State for Established
              -> Connection
     where A: RoutingTable
   {
+
+    // TODO Check if control packet -> transition to close
+
+    // TODO
+    // Handle as received data:
+    //  If enitrely outside window, discard
+    //  If we can add to window, do this
+    //    If this means application can read more, signal by calling CanRead
+
+    // self.tcb.recv(_packet, CanRead);
 
     // stay established
     Connection::Established(self)

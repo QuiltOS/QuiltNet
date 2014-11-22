@@ -11,6 +11,7 @@ use std::sync::{
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
+pub mod manager;
 pub mod state;
 pub mod tcb;
 
