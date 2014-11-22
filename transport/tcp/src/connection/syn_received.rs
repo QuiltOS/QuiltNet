@@ -12,7 +12,6 @@ use network::ipv4::strategy::RoutingTable;
 use packet::{mod, TcpPacket};
 use send::{mod, Error,};
 use super::Connection;
-use super::state::State;
 
 use connection::established::{
   mod,
@@ -25,7 +24,7 @@ pub struct SynReceived {
   future_handler: established::Handler,
 }
 
-impl State for SynReceived
+impl super::State for SynReceived
 {
   fn next<A>(self,
              state:  &::State<A>,

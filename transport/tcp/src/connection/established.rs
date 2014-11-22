@@ -10,7 +10,6 @@ use network::ipv4::strategy::RoutingTable;
 
 use packet::TcpPacket;
 use super::Connection;
-use super::state::State;
 
 use super::tcb::TCB;
 
@@ -30,7 +29,7 @@ pub struct Established {
   tcb: TCB,
 }
 
-impl State for Established
+impl super::State for Established
 {
   fn next<A>(self,
              _state:  &::State<A>,

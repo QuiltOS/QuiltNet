@@ -11,12 +11,15 @@ use std::sync::{
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
-pub mod state;
+use Table;
+use packet::TcpPacket;
+
 pub mod tcb;
 
 pub mod syn_sent;
 pub mod syn_received;
 pub mod established;
+
 
 pub enum Connection {
   Closed,
@@ -29,5 +32,28 @@ impl Default for Connection
 {
   fn default() -> Connection {
     Connection::Closed
+  }
+}
+
+
+pub trait State {
+  fn next<A>(self, &::State<A>, TcpPacket) -> Connection
+    where A: RoutingTable;
+}
+
+pub fn trans<A>(e: &mut Connection, s: &::State<A>, p: TcpPacket)
+  where A: RoutingTable
+{
+  use std::mem::{uninitialized, swap};
+
+  let mut blank: Connection = unsafe { uninitialized() };
+
+  swap(e, &mut blank);
+
+  *e = match blank {
+    Connection::Closed         => Connection::Closed,
+    Connection::SynSent    (c) => c.next(s, p),
+    Connection::SynReceived(c) => c.next(s, p),
+    Connection::Established(c) => c.next(s, p),
   }
 }

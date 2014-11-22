@@ -13,7 +13,6 @@ use packet::{mod, TcpPacket};
 use send::{mod, Error,};
 
 use super::Connection;
-use super::state::State;
 use super::syn_received::{
   mod,
   SynReceived,
@@ -28,7 +27,7 @@ pub struct SynSent {
   future_handler: established::Handler,
 }
 
-impl State for SynSent
+impl super::State for SynSent
 {
   fn next<A>(self,
              state:  &::State<A>,
