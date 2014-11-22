@@ -1,18 +1,28 @@
-use packet::TcpPacket;
-use super::TCP_BUF_SIZE;
+use std::collections::BinaryHeap;
 
-const TCP_RECV_WND_INIT : uint = TCP_BUF_SIZE;
+use packet::{TcpPacket, ACK, SYN};
+use super::super::tcb::{TCP_BUF_SIZE, TcbState};
 
+
+// Checks if n in (s, e] (mod 2^32)
+#[inline]
+fn mod_in_interval(s: u32, e: u32, n: u32) -> bool {
+  if e < s {
+
+    // interval is wrapped around
+    s < n || n <= e
+  } else {
+
+    // Plain old interval
+    s < n && n <= e
+  }
+}
+
+//TODO: move all this into TCB, too much shared state and dependencies b/w Recv/Send logic
 pub struct RecvMgr {
 
-  recv_NXT : uint,   // Expected next sequence number received
-  recv_WND : uint,   // Recv Window Size
-  //recv_UP  : uint, // Recv Urgent Pointer
-  recv_ISN : uint,   // Recv Initial Sequence Number
-  
-  // TODO: make PriorityQueue
   // Queue of received packets whose data has not been consumed yet
-  packets: Vec<TcpPacket>,
+  packets: BinaryHeap<TcpPacket>,
 
   // Offset to start reading from within the first packet on the queue
   packet_offset: uint,
@@ -21,8 +31,17 @@ pub struct RecvMgr {
 impl RecvMgr {
   
   //****** Kernel API **********//
-  pub fn recv(&self, packet: TcpPacket, notify_read: || -> (), notify_write: || -> ()) {
-    //TODO: add packet to packets
+  pub fn recv(&self, tcb_state: &mut TcbState, packet: &TcpPacket, notify_read: || -> (), notify_write: || -> ()) {
+    if self.recv_acceptable(tcb_state, packet) {
+
+      //TODO: add packet to packets
+      //TODO: if packet contains NXT, call notify_read
+      //TODO: if ACK > SND.UNA, update UNA = ACK, call notify_write
+
+    } else {
+
+    }
+
     //notify_read called if: we receive new packet overlapping RCV.NXT, moving our RCV.WND
     //notify_write called if: we receive an ACK that moves our SND.WND
   }
@@ -37,15 +56,35 @@ impl RecvMgr {
     0u
   }
 
+  fn recv_acceptable(&self, tcb_state: &TcbState, packet: &TcpPacket) -> bool {
+    //TODO: checks for acceptability
+    // ACK num in SND window
+    // SEQ num in RCV window
+    // ???
+
+  // Check if 'acceptable ack'
+  // NOTE Should we trash packet if not? Still might be valid data
+  if packet.flags().contains(ACK){
+
+    // Check SND.UNA < SEG.ACK =< SND.NXT
+    return mod_in_interval(tcb_state.send_UNA, packet.get_ack_num(), tcb_state.send_NXT)
+  } else {
+    //TODO
+    return true
+  }
+
+  //TODO: check if packet overlaps acceptable receive window of sequenc numbers 
+
+
+  }
+
   //TODO: all the things
   pub fn new() -> RecvMgr {
     RecvMgr {
-      packets: vec!(),
+      packets: BinaryHeap::new(),
       packet_offset: 0,
-      recv_NXT : 0u,
-      recv_WND : TCP_RECV_WND_INIT,
-      recv_ISN : 0u, // TODO: get from handshake
     }
   }
 
 }
+

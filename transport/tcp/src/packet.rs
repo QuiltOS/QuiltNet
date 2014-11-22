@@ -17,6 +17,7 @@ use network::ipv4::packet;
 // Length of TCP header in bytes
 pub const TCP_HDR_LEN: uint = 20;
 
+#[deriving(PartialEq, Eq, Clone)]
 pub struct TcpPacket {
   ip: packet::V
 }
@@ -185,6 +186,18 @@ impl TcpPacket {
 
 }
 
+// For purposes of sorting by sequence number
+impl Ord for TcpPacket {
+  fn cmp(&self, other: &TcpPacket) -> Ordering {
+    self.get_seq_num().cmp(&other.get_seq_num())
+  } 
+}
+
+impl PartialOrd for TcpPacket {
+  fn partial_cmp(&self, other: &TcpPacket) -> Option<Ordering> {
+    Some(self.cmp(other))
+  } 
+}
 
 impl fmt::Show for TcpPacket {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
