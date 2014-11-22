@@ -127,8 +127,7 @@ fn handshake_1<A>(state:   &::State<A>,
   where A: RoutingTable
 {
   let builder: for<'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet| {
-    use packet::SYN;
-    *packet.flags_mut() = SYN;
+    *packet.flags_mut() = packet::SYN;
     Ok(())
   };
   
@@ -155,8 +154,7 @@ fn handshake_3<A>(state:   &::State<A>,
   where A: RoutingTable
 {
   let builder: for<'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet| {
-    use packet::SYN;
-    *packet.flags_mut() = SYN;
+    *packet.flags_mut() = packet::ACK;
     Ok(())
   };
 
