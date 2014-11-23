@@ -16,6 +16,9 @@ pub struct RecvMgr {
 
   // Next sequence number that the user will consume
   pub usr_NXT: u32,
+
+  // Virtual size of buffer
+  pub size: u16, 
 }
 
 impl RecvMgr {
@@ -96,7 +99,15 @@ impl RecvMgr {
         }
       }
   }
-  
+
+  /// Returns sequence number of last byte of contiguous block of data starting at usr_NXT
+  /// NOTE: could pop off all intermediate packets and put them in a user-dedicated buffer
+  ///   -> This would make additions faster in the case of a lazy user who never reads
+  /// TODO: use the iterator abstraction we should use for the above
+  pub fn shift_nxt(&mut self) -> u32 {
+    0u32  
+  }
+
   /// Returns a new RecvMgr, complete with:
   /// - An empty priority queue, ready to sort TcpPackets based on beginning sequence number
   /// - Pointer to the next sequence number the user will consume, starting at 0
@@ -105,6 +116,7 @@ impl RecvMgr {
       packets: BinaryHeap::new(),
       packet_offset: 0,
       usr_NXT: 0u32,
+      size: TCP_BUF_SIZE,
     }
   }
 
