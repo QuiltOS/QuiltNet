@@ -2,7 +2,6 @@ use ringbuf::RingBuf;
 use packet::{TcpPacket, ACK};
 use super::manager::recv::RecvMgr;
 use super::manager::send::SendMgr;
-use std::rand::{task_rng, Rng};
 
 pub const TCP_BUF_SIZE : u32 = 1u32 << 16u;
 pub const TCP_RECV_WND_INIT : u32 = TCP_BUF_SIZE;
@@ -28,24 +27,17 @@ pub struct TcbState {
 
 impl TcbState {
   
-  fn generate_isn() -> u32 {
-    let mut rng = task_rng();
-    rng.gen::<u32>()
-  }
-
-  /// Returns initialized TcbState with randomly generated
-  /// Initial Sequence Number
-  pub fn new() -> TcbState {
+  pub fn new(our_isn: u32, their_isn: u32) -> TcbState {
     TcbState {
         recv_NXT : 0u32,
         recv_WND : TCP_RECV_WND_INIT,
-        recv_ISN : 0u32, // TODO: get from handshake
+        recv_ISN : their_isn, 
         send_UNA : 0u32,
         send_NXT : 0u32,
         send_WND : 0u32,
         send_WL1 : 0u32,
         send_WL2 : 0u32,
-        send_ISN : TcbState::generate_isn()
+        send_ISN : our_isn 
     }
   }
 }
@@ -66,13 +58,13 @@ pub struct TCB {
 impl TCB {
   //TODO: pass in connection state vars
   // recvISN, sendISN
-  pub fn new() -> TCB {
+  pub fn new(our_isn: u32, their_isn: u32) -> TCB {
     TCB {
       recv_mgr : RecvMgr::new(),
       send_mgr : SendMgr::new(),
 
       // TODO: make sure init is consistent with how handshake inits state 
-      state    : TcbState::new(),
+      state    : TcbState::new(our_isn, their_isn),
     }
   }
 
@@ -81,7 +73,11 @@ impl TCB {
   /// Receive logic for TCP packet
   /// TODO: return type? - maybe hint for ACK response
   pub fn recv(&mut self, packet: &TcpPacket, notify_read:  || -> (), notify_write: || -> ()) {
-    //self.recv_mgr.recv(&mut self.state, packet, notify_read, notify_write)
+    // If ACK
+    //  - Is acceptable?
+    //    -> if (send_WL1 < SEG.SEQ) or (send_WL1 == SEG.SEQ && 
+    //    ->  
+    //  - Else trash
   }
 
   /// Send logic for TCP Packets 
@@ -97,6 +93,7 @@ impl TCB {
   /// Returns the number of bytes read
   pub fn read(&mut self, buf: &mut [u8], n: uint) -> uint {
     self.recv_mgr.read(buf, n)
+    //TODO: update recv_WND += n
   }
 
 

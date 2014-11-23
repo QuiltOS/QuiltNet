@@ -79,6 +79,8 @@ impl Established
   pub fn new(//state:   &::State<A>,
     us:      ::ConAddr,
     them:    ::ConAddr,
+    our_isn: u32,
+    their_isn: u32,
     handler: Handler)
     -> Connection
   {
@@ -87,7 +89,7 @@ impl Established
       our_addr: us.0,
       handler: handler,
       //TODO: initialize TCB with seq number state from handshake
-      tcb: TCB::new()
+      tcb: TCB::new(our_isn, their_isn)
     };
     // first CanRead let's them know connection was made
     est.invoke_handler(Situation::CanRead)

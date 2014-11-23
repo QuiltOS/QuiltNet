@@ -3,6 +3,7 @@ use std::collections::hash_map::{Occupied, Vacant};
 use std::default::Default;
 use std::io::net::ip::Port;
 use std::sync::RWLock;
+use std::rand::{task_rng, Rng};
 
 use misc::interface::{Fn, /* Handler */};
 
@@ -74,8 +75,11 @@ impl Handshaking
     Ok(if (self.want || self.owe) == false {
       debug!("{} to {} free!!!!", them, us);
       // Become established
+      // TODO: pass handshake params to TCB
       Established::new(us,
                        them,
+                       self.our_number,
+                       self.their_number.unwrap(),
                        self.future_handler)
     } else {
       debug!("{} to {} not free", them, us);
@@ -108,7 +112,7 @@ impl Handshaking
     let mut potential = Handshaking {
       want:           want,
       owe:            owe,
-      our_number:     0, // TODO make random
+      our_number:     Handshaking::generate_isn(), // TODO make random
       their_number:   their_number,
       our_ip:         our_ip,
       future_handler: future_handler,
@@ -166,4 +170,13 @@ impl Handshaking
     debug!("Attempt handshake with {} on our port {}", them, us);
     Ok(())
   }
+
+
+  /// Generates a pseudorandom u32 - used to set ISN
+  fn generate_isn() -> u32 {
+    let mut rng = task_rng();
+    rng.gen::<u32>()
+
+  }
 }
+
