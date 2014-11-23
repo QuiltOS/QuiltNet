@@ -57,10 +57,13 @@ impl Established
 {
   pub fn invoke_handler(mut self, situ: Situation) -> Connection
   {
-    use std::mem::{uninitialized, swap};
+    use std::mem::swap;
 
     debug!("Established connection is invoking its handler");
-    let mut handler: Handler = unsafe { uninitialized() };
+    let mut handler: Handler = box move |&mut: _, _| {
+      debug!("I am a dummy closure used by swap, don't call me!!!");
+      panic!();
+    };
 
     // 1st swap
     swap(&mut self.handler, &mut handler);
