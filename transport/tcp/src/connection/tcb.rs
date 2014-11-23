@@ -71,7 +71,7 @@ impl TCB {
       recv_mgr : RecvMgr::new(),
       send_mgr : SendMgr::new(),
 
-      // TODO: how to init these
+      // TODO: make sure init is consistent with how handshake inits state 
       state    : TcbState::new(),
     }
   }
@@ -85,7 +85,7 @@ impl TCB {
   }
 
   /// Send logic for TCP Packets 
-  fn send_packet(&self, packet: TcpPacket, notify: || -> ()) {
+  fn send_packet(&self, packet: TcpPacket) {
   }
 
   // ********* Userland API ************************************//

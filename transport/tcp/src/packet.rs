@@ -89,7 +89,7 @@ impl TcpPacket {
     self.get_tcp_mut()[mut ..TCP_HDR_LEN]
   }
 
-
+  /// Returns length of the TCP body
   pub fn get_body_len(&self) -> u32 {
     (self.get_tcp().len() - TCP_HDR_LEN) as u32
   } 

@@ -1,10 +1,11 @@
 use std::collections::BinaryHeap;
 use std::io::BufWriter;
+use std::fmt;
 
 use packet::{TcpPacket, ACK, SYN};
 use super::super::tcb::{TCP_BUF_SIZE, TcbState, mod_in_interval};
 
-//TODO: move all this into TCB, too much shared state and dependencies b/w Recv/Send logic
+#[deriving(Show)]
 pub struct RecvMgr {
 
   // Queue of received packets whose data has not been consumed yet
@@ -14,13 +15,16 @@ pub struct RecvMgr {
   packet_offset: u32,
 
   // Next sequence number that the user will consume
-  usr_NXT: u32,
+  pub usr_NXT: u32,
 }
 
 impl RecvMgr {
   
+  //****** Methods Kernel Calls//
 
   // Adds packet to receive queue
+  // TODO: return boolean to tell us whether usr_NXT is overlapped, so we can notify canRead?
+  #[inline]
   pub fn add_packet(&mut self, packet: TcpPacket) { 
     self.packets.push(packet);
   }
@@ -104,4 +108,11 @@ impl RecvMgr {
     }
   }
 
+}
+
+/// Pretty Print Impl for BinaryHeap for debug
+impl fmt::Show for BinaryHeap<TcpPacket> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "RecvQueue: {}", self.clone().into_sorted_vec())
+  }
 }
