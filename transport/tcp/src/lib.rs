@@ -1,8 +1,9 @@
-// in the short run this is not important
-#![no_warn(unused_imports)]
+// in the short run these are not important
+#![allow(unused_imports)]
+#![allow(dead_code)]
 
 #![feature(default_type_params)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures)] // still broken
 #![feature(slicing_syntax)]
 #![feature(tuple_indexing)]
 #![feature(phase)]

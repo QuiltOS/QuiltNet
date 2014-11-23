@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::io::net::ip::Port;
-use std::sync::RWLock;
+use std::sync::{Weak, RWLock};
 
 use misc::interface::{Fn, /* Handler */};
 
@@ -9,8 +9,8 @@ use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
 use Table;
-use packet;
-use packet::TcpPacket;
+use packet::{mod, TcpPacket};
+use send::{mod, Error,};
 
 use connection::handshaking::Handshaking;
 use connection::established::{
@@ -84,7 +84,7 @@ pub fn trans<A>(listener: &mut Option<Listener>,
 pub fn passive_new<A>(state:      &::State<A>,
                       handler:    OnConnectionAttempt,
                       local_port: Port)
-                      -> Result<(), ()>
+                      -> send::Result<Weak<::PerPort>>
   where A: RoutingTable
 {
   let per_port = ::PerPort::get_or_init(&state.tcp, local_port);
@@ -94,9 +94,9 @@ pub fn passive_new<A>(state:      &::State<A>,
     None => Some(Listener { handler: handler }),
     _    => {
       debug!("Oh no, listener already exists here");
-      return Err(());
+      return Err(Error::PortOrTripleReserved);
     },
   };
 
-  Ok(())
+  Ok(per_port.clone().downgrade())
 }
