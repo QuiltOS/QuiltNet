@@ -105,7 +105,7 @@ impl Handshaking
     let mut lock = conn.write();
     match *lock {
       Connection::Closed => (),
-      _                  => return Err(Error::ConnectionAlreadyExists),
+      _                  => return Err(Error::PortOrTripleReserved),
     };
     debug!("Confirmed no existing connection on our port {} to server {}", us, them);
 

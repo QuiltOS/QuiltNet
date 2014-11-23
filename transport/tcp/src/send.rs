@@ -12,7 +12,7 @@ use packet;
 
 #[deriving(PartialEq, Eq, Clone, Show)]
 pub enum Error {
-  ConnectionAlreadyExists,
+  PortOrTripleReserved,
   ListenerAlreadyExists,
   RouteBrokeConnection, // new route has different src IP so we are fucked
   BadHandshake,
