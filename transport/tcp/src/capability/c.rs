@@ -112,6 +112,7 @@ impl<A> Reader for C<A>
 {
   fn read(&mut self, mut buf: &mut [u8]) -> IoResult<uint>
   {
+    debug!("trying to do a blocking read");
     let arc = match self.con.upgrade() {
       Some(l) => l,
       None    => return Err(EOF),
@@ -149,6 +150,7 @@ impl<A> Writer for C<A>
 {
   fn write(&mut self, mut buf: &[u8]) -> IoResult<()>
   {
+    debug!("trying to do a blocking write");
     let arc = match self.con.upgrade() {
       Some(l) => l,
       None    => return Err(EOF),

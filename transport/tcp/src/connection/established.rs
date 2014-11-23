@@ -127,6 +127,7 @@ impl Established
                  -> uint
     where A: RoutingTable
   {
+    debug!("trying to do a non-blocking read");
     0
   }
 
@@ -137,6 +138,7 @@ impl Established
                   -> uint
     where A: RoutingTable
   {
+    debug!("trying to do a non-blocking write");
     0
   }
 }
