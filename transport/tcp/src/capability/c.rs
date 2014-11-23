@@ -1,4 +1,12 @@
 use std::io::net::ip::Port;
+use std::io::{
+  Reader,
+  Writer,
+  IoResult,
+  IoError,
+  IoErrorKind
+};
+
 use std::sync::{Arc, Weak, Mutex, RWLock};
 use std::comm::{
   Sender,
@@ -90,4 +98,75 @@ pub fn make_con_handler() -> (connection::established::Handler, Receiver<()>, Re
     }
   };
   (handler, rd_rx, wt_rx)
+}
+
+
+const EOF: IoError = IoError {
+  kind:   IoErrorKind::EndOfFile,
+  desc:   "TCP connection is apparently closed!",
+  detail: None,
+};
+
+impl<A> Reader for C<A>
+  where A: RoutingTable
+{
+  fn read(&mut self, mut buf: &mut [u8]) -> IoResult<uint>
+  {
+    let arc = match self.con.upgrade() {
+      Some(l) => l,
+      None    => return Err(EOF),
+    };
+
+    let mut total_read = 0;
+
+    loop {
+      {
+        let mut lock = arc.write();
+        let mut est = match &mut *lock {
+          &Connection::Established(ref mut est) => est,
+          _ if total_read == 0 => return Err(EOF),
+          _                    => return Ok(total_read), // semi-success: next call will EOF
+        };
+        let n       = est.read(&*self.state, buf);
+        {
+          // TODO report this annoying situation
+          let temp1 = buf;
+          let temp2 = temp1[mut total_read..];
+          buf       = temp2;
+        }
+        total_read += n;
+        if buf.len() == 0 { return Ok(total_read) }; // success
+      };
+      // block, after letting go of lock
+      self.can_read.recv();
+    }
+  }
+}
+
+
+impl<A> Writer for C<A>
+  where A: RoutingTable
+{
+  fn write(&mut self, mut buf: &[u8]) -> IoResult<()>
+  {
+    let arc = match self.con.upgrade() {
+      Some(l) => l,
+      None    => return Err(EOF),
+    };
+
+    loop {
+      {
+        let mut lock = arc.write();
+        let mut est = match &mut *lock {
+          &Connection::Established(ref mut est) => est,
+          _ => return Err(EOF),
+        };
+        let n = est.write(&*self.state, buf);
+        buf   = buf[n..];
+        if buf.len() == 0 { return Ok(()) };
+      };
+      // block, after letting go of lock
+      self.can_write.recv();
+    }
+  }
 }
