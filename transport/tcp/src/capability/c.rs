@@ -1,5 +1,5 @@
 use std::io::net::ip::Port;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Weak, Mutex, RWLock};
 use std::comm::{
   Sender,
   Receiver,
@@ -23,12 +23,9 @@ use super::{l, L};
 pub struct C<A>
   where A: RoutingTable
 {
-  us:        Port, // TODO: change to ::ConAddr,
-  them:      ::ConAddr,
-  //con:       Weak<::connection::Connection>,
-
   state:     Arc<::State<A>>,
 
+  con:       Weak<RWLock<::connection::Connection>>,
   can_read:  Receiver<()>,
   can_write: Receiver<()>,
 }
@@ -43,23 +40,16 @@ impl<A> C<A>
   {
     let (handler, rd_rx, wt_rx) = make_con_handler();
 
-    try!(connection::handshaking::Handshaking::new(&**state,
-                                                   us,
-                                                   them,
+    let con = try!(connection::handshaking::Handshaking::new(
+      &**state, us, None, them,
+      false, false, None, handler));
 
-                                                   false,
-                                                   false,
-                                                   None,
-                                                   None,
-                                                   handler));
-
-    Ok(new(state, us, them, rd_rx, wt_rx))
+    Ok(new(state, con, rd_rx, wt_rx))
   }
 }
 
 pub fn new<A>(state:   &Arc<::State<A>>,
-              us:      Port,
-              them:    ::ConAddr,
+              con:     Weak<RWLock<::connection::Connection>>,
               rd_rx:   Receiver<()>,
               wt_rx:   Receiver<()>)
               -> C<A>
@@ -68,13 +58,12 @@ pub fn new<A>(state:   &Arc<::State<A>>,
   // block on first CanRead---to signify that connection is established
   rd_rx.recv();
 
-  C { us: us,
-      them: them,
+  C {
+    state: state.clone(),
 
-      state: state.clone(),
-
-      can_read:  rd_rx,
-      can_write: wt_rx,
+    con: con,
+    can_read:  rd_rx,
+    can_write: wt_rx,
   }
 }
 

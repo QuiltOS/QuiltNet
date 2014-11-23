@@ -23,6 +23,7 @@ pub type OnConnectionAttempt = Box<FnMut<(::ConAddr /* us */, ::ConAddr /* them 
                                + Send + Sync + 'static>;
 
 pub struct Listener {
+  us:      Port,
   handler: OnConnectionAttempt,
 }
 
@@ -35,6 +36,8 @@ impl Listener
   {
     let us   = (packet.get_dst_addr(), packet.get_dst_port());
     let them = (packet.get_src_addr(), packet.get_src_port());
+
+    assert_eq!(self.us, us.1);
 
     if !( packet.flags().contains(packet::SYN) && ! packet.flags().contains(packet::ACK) )
     {
@@ -56,12 +59,12 @@ impl Listener
     };
     let _ = Handshaking::new(state,
                              us.1,
+                             Some(us.0),
                              them,
 
                              false,
                              true,
                              Some(packet.get_seq_num()),
-                             Some(us.0),
                              handler_pair);
     // keep on listening
   }
@@ -91,7 +94,7 @@ pub fn passive_new<A>(state:      &::State<A>,
   let mut lock = per_port.listener.write(); // get listener read lock
 
   *lock = match *lock {
-    None => Some(Listener { handler: handler }),
+    None => Some(Listener { us: local_port, handler: handler }),
     _    => {
       debug!("Oh no, listener already exists here");
       return Err(Error::PortOrTripleReserved);

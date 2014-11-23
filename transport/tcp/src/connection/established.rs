@@ -8,9 +8,10 @@ use misc::interface::{Fn, /* Handler */};
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
-use packet::TcpPacket;
-use super::Connection;
+use packet::{mod, TcpPacket};
+use send::{mod, Error,};
 
+use super::Connection;
 use super::tcb::TCB;
 
 pub enum Situation {
@@ -23,8 +24,9 @@ pub type Handler =
 
 // especially must be private because we cheat on whether the fields exist
 pub struct Established {
-  // This is the one bit of information not kept tracked of by our key
-  our_addr: ipv4::Addr,
+  us:             ::ConAddr,
+  them:           ::ConAddr,
+
   handler: Handler,
   tcb: TCB,
 }
@@ -32,11 +34,32 @@ pub struct Established {
 impl super::State for Established
 {
   fn next<A>(self,
-             _state:  &::State<A>,
-             _packet: TcpPacket)
+             state:  &::State<A>,
+             packet: TcpPacket)
              -> Connection
     where A: RoutingTable
   {
+    match self.next_raii(state, packet)
+    {
+      Ok(con) => con,
+      Err(_)  => Connection::Closed,
+    }
+  }
+}
+
+impl Established
+{
+  fn next_raii<A>(mut self,
+                  state:  &::State<A>,
+                  packet: TcpPacket)
+                  -> send::Result<Connection>
+    where A: RoutingTable
+  {
+    let us   = (packet.get_dst_addr(), packet.get_dst_port());
+    let them = (packet.get_src_addr(), packet.get_src_port());
+
+    assert_eq!(self.us,   us);
+    assert_eq!(self.them, them);
 
     // TODO Check if control packet -> transition to close
 
@@ -49,12 +72,10 @@ impl super::State for Established
     // self.tcb.recv(_packet, CanRead);
 
     // stay established
-    Connection::Established(self)
+    Ok(Connection::Established(self))
   }
-}
 
-impl Established
-{
+
   pub fn invoke_handler(mut self, situ: Situation) -> Connection
   {
     use std::mem::swap;
@@ -79,20 +100,21 @@ impl Established
     con
   }
 
-  pub fn new(//state:   &::State<A>,
-    us:      ::ConAddr,
-    them:    ::ConAddr,
-    our_isn: u32,
-    their_isn: u32,
-    handler: Handler)
+  pub fn new(//state:     &::State<A>,
+             us:        ::ConAddr,
+             them:      ::ConAddr,
+             our_isn:   u32,
+             their_isn: u32,
+             handler:   Handler)
     -> Connection
   {
     debug!("Established connection on our addr {} to server {}", us, them);
     let est = Established {
-      our_addr: us.0,
+      us:      us,
+      them:    them,
       handler: handler,
       //TODO: initialize TCB with seq number state from handshake
-      tcb: TCB::new(our_isn, their_isn)
+      tcb:     TCB::new(our_isn, their_isn)
     };
     // first CanRead let's them know connection was made
     est.invoke_handler(Situation::CanRead)

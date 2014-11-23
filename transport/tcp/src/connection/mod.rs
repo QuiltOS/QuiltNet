@@ -3,6 +3,7 @@ use std::collections::hash_map::{Occupied, Vacant};
 use std::default::Default;
 use std::io::net::ip::Port;
 use std::sync::{
+  Arc,
   RWLock,
   RWLockReadGuard,
   RWLockWriteGuard,
@@ -33,6 +34,15 @@ impl Default for Connection
     Connection::Closed
   }
 }
+
+impl Connection {
+  pub fn get_or_init(per_port: &::PerPort, them: ::ConAddr) -> Arc<RWLock<Connection>>
+  {
+    per_port.connections.get_or_init(them,
+                                     || RWLock::new(Default::default()))
+  }
+}
+
 
 
 pub trait State {

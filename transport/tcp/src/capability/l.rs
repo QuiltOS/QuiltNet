@@ -60,7 +60,7 @@ impl<A> L<A>
     Ok(self::L {
       us:       us,
       weak:     weak,
-      
+
       state:    state.clone(),
       requests: rx,
     })
@@ -71,9 +71,17 @@ impl<A> L<A>
 
     let (handler, rd_rx, wt_rx) = c::make_con_handler();
 
+    // We will initialize these, then the async side will just find a closed
+    // connection -- no problem.
+    //
+    // async does not reserve connection before calling us in case we decline to
+    // accept
+    let per_port = ::PerPort::get_or_init(&self.state.tcp, us.1);
+    let conn     = Connection::get_or_init(&*per_port, them);
+
     // give them the stuff to make a connection
     reply.send(handler);
 
-    c::new(&self.state, us.1, them, rd_rx, wt_rx)
+    c::new(&self.state, conn.downgrade(), rd_rx, wt_rx)
   }
 }
