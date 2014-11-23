@@ -45,6 +45,7 @@ impl<A> L<A>
       // TODO: this mutex is not necessary
       let request = Mutex::new(tx);
       box move |&mut: us: ::ConAddr, them: ::ConAddr| {
+        debug!("in L-Capability Handler");
         let (tx, rx) = channel();
         request.lock().send((us, them, tx));
         Some(rx.recv())

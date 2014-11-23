@@ -65,7 +65,8 @@ impl Handshaking
     }
 
     if packet.flags().contains(packet::SYN) {
-      self.owe = true
+      self.owe = true;
+      self.their_number = Some(packet.get_seq_num()); // TODO: should check this
     }
 
     debug!("{} to {} post packet: want {}, owe {}", them, us, self.want, self.owe);
@@ -176,7 +177,6 @@ impl Handshaking
   fn generate_isn() -> u32 {
     let mut rng = task_rng();
     rng.gen::<u32>()
-
   }
 }
 

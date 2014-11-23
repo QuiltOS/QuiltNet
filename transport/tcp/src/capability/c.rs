@@ -92,6 +92,7 @@ pub fn make_con_handler() -> (connection::established::Handler, Receiver<()>, Re
     let rd = Mutex::new(rd_tx);
     let wt = Mutex::new(wt_tx);
     box move |&mut: est: Established, situ: Situation| {
+      debug!("in C-Capability Handler");
       match situ {
         Situation::CanRead  => rd.lock().send(()),
         Situation::CanWrite => wt.lock().send(()),
