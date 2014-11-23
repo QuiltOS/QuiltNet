@@ -1,8 +1,8 @@
 use ringbuf::RingBuf;
-use packet::TcpPacket;
+use packet::{TcpPacket, ACK};
 use super::manager::recv::RecvMgr;
 use super::manager::send::SendMgr;
-
+use std::rand::{task_rng, Rng};
 
 pub const TCP_BUF_SIZE : u32 = 1u32 << 16u;
 pub const TCP_RECV_WND_INIT : u32 = TCP_BUF_SIZE;
@@ -22,8 +22,34 @@ pub struct TcbState {
   pub send_WL1 : u32,   // Seq number for last window update
   pub send_WL2 : u32,   // Ack number for last window update
   pub send_ISN : u32,   // Send Initial Sequence Number
-  
+
+    
 }
+
+impl TcbState {
+  
+  fn generate_isn() -> u32 {
+    let mut rng = task_rng();
+    rng.gen::<u32>()
+  }
+
+  /// Returns initialized TcbState with randomly generated
+  /// Initial Sequence Number
+  pub fn new() -> TcbState {
+    TcbState {
+        recv_NXT : 0u32,
+        recv_WND : TCP_RECV_WND_INIT,
+        recv_ISN : 0u32, // TODO: get from handshake
+        send_UNA : 0u32,
+        send_NXT : 0u32,
+        send_WND : 0u32,
+        send_WL1 : 0u32,
+        send_WL2 : 0u32,
+        send_ISN : TcbState::generate_isn()
+    }
+  }
+}
+
 
 /// Encapsulates all connection state and data structures
 /// TODO: build this once socket is opened so you can accumulate 
@@ -46,17 +72,7 @@ impl TCB {
       send_mgr : SendMgr::new(),
 
       // TODO: how to init these
-      state    : TcbState {
-        recv_NXT : 0u32,
-        recv_WND : TCP_RECV_WND_INIT,
-        recv_ISN : 0u32, // TODO: get from handshake
-        send_UNA : 0u32,
-        send_NXT : 0u32,
-        send_WND : 0u32,
-        send_WL1 : 0u32,
-        send_WL2 : 0u32,
-        send_ISN : 0u32, //TODO: randomly generate
-        }
+      state    : TcbState::new(),
     }
   }
 
@@ -65,7 +81,7 @@ impl TCB {
   /// Receive logic for TCP packet
   /// TODO: return type? - maybe hint for ACK response
   pub fn recv(&mut self, packet: &TcpPacket, notify_read:  || -> (), notify_write: || -> ()) {
-    self.recv_mgr.recv(&mut self.state, packet, notify_read, notify_write)
+    //self.recv_mgr.recv(&mut self.state, packet, notify_read, notify_write)
   }
 
   /// Send logic for TCP Packets 
@@ -79,7 +95,7 @@ impl TCB {
   /// sequence number.
   ///
   /// Returns the number of bytes read
-  pub fn read(&self, buf: &mut [u8], n: uint) -> uint {
+  pub fn read(&mut self, buf: &mut [u8], n: uint) -> uint {
     self.recv_mgr.read(buf, n)
   }
 
@@ -95,4 +111,40 @@ impl TCB {
     self.send_mgr.send(buf, start, n)
   }
 
+  fn recv_acceptable(&self, packet: &TcpPacket) -> bool{
+    //TODO: checks for acceptability
+    // ACK num in SND window
+    // SEQ num in RCV window
+    // ???
+
+    // Check if 'acceptable ack'
+    // NOTE Should we trash packet if not? Still might be valid data
+    if packet.flags().contains(ACK){
+
+      // Check SND.UNA < SEG.ACK =< SND.NXT
+      return mod_in_interval(self.state.send_UNA, packet.get_ack_num(), self.state.send_NXT)
+    } else {
+      //TODO
+      return true
+    }
+
+    //TODO: check if packet overlaps acceptable receive window of sequenc numbers 
+
+  }
 }
+
+// Checks if n in (s, e] (mod 2^32)
+// TODO: should be in utils or something?
+#[inline]
+pub fn mod_in_interval(s: u32, e: u32, n: u32) -> bool {
+  if e < s {
+
+    // interval is wrapped around
+    s < n || n <= e
+  } else {
+
+    // Plain old interval
+    s < n && n <= e
+  }
+}
+

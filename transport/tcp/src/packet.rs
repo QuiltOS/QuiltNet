@@ -13,7 +13,6 @@ use std::fmt;
 use network::ipv4::Addr;
 use network::ipv4::packet;
 
-
 // Length of TCP header in bytes
 pub const TCP_HDR_LEN: uint = 20;
 
@@ -90,6 +89,11 @@ impl TcpPacket {
     self.get_tcp_mut()[mut ..TCP_HDR_LEN]
   }
 
+
+  pub fn get_body_len(&self) -> u32 {
+    (self.get_tcp().len() - TCP_HDR_LEN) as u32
+  } 
+
   // 4-tuple info
   pub fn get_src_addr(&self) -> Addr {
     self.ip.borrow().get_source()
@@ -111,7 +115,6 @@ impl TcpPacket {
   pub fn set_dst_port(&mut self, port: u16) {
     BufWriter::new(self.tcp_hdr_mut()[mut 2..4]).write_be_u16(port);
   }
-
 
   // Control Flags
   pub fn flags(&self) -> Flags {
