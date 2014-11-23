@@ -293,11 +293,20 @@ impl A {
     }
   }
 
+  /// returns native endian
   pub fn make_header_checksum(&self) -> u16 {
     let u16s: &[u16] = unsafe { transmute(self.as_slice()) };
-    // slice to make sure body is excluded,
-    // and also because length is incorrect from transmute
-    make_checksum(u16s[..12])
+
+    // TODO: Factor out singleton iterator
+    let temp: [u16, ..1] = [0]; // for checkum field itself
+
+    // [..12] to make sure body is excluded,
+    // and also because length might be incorrect from transmute
+    let iter = u16s[0..5].iter()
+      .chain(temp.iter())
+      .chain(u16s[6..10].iter());
+
+    make_checksum(iter.map(|x| Int::from_be(*x)))
   }
 
   pub fn update_checksum(&mut self) {
@@ -370,28 +379,39 @@ pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
     return Err(BadPacket::HeaderTooLong(packet.hdr_bytes(),
                                         packet.as_slice().len()))
   };
-    if packet.hdr_bytes() < MIN_HDR_LEN_BYTES as uint
+  if packet.hdr_bytes() < MIN_HDR_LEN_BYTES as uint
   {
     return Err(BadPacket::HeaderTooShort(packet.hdr_bytes()))
   };
 
-  if packet.make_header_checksum() != packet.get_header_checksum()
   {
-    return Err(BadPacket::BadChecksum(packet.make_header_checksum(),
-                                      packet.get_header_checksum()))
+    let expected = packet.make_header_checksum();
+    let got      = packet.get_header_checksum();
+    if expected != got
+    {
+      return Err(BadPacket::BadChecksum(expected, got));
+    }
   };
 
   Ok(())
 }
 
+/// assumes and returns native byte order
+fn make_checksum<I>(iter: I) -> u16
+  where I: Iterator<u16>
+{
+  let mut sum = iter
+    .map(|x| x as u32)
+    .fold(0, |old, cur| old + cur);
 
-fn make_checksum(header: &[u16]) -> u16 {
-  // TODO: Factor out singleton iterator
-  let temp: [u16, ..1] = [0]; // for checkum field itself
-  let sum = header[0..5].iter()
-    .chain(temp.iter())
-    .chain(header[6..].iter())
-    .map(|x| *x)
-    .fold(0, |old, cur| Int::from_be(cur) + old);
-  !(sum + (sum >> 12))
+  debug!("Untruncated checksum is: {:032b}", sum);
+
+  while sum >> 16 != 0 {
+    sum = (sum & 0x0000FFFF) + (sum >> 16);
+  }
+
+  // align debug messages
+  debug!("Truncated checksum is:   {:032b}", sum);
+
+  !(sum as u16)
 }
