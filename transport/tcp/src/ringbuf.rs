@@ -108,45 +108,45 @@ mod test {
 
   use super::RingBuf;
 
-#[test]
+  #[test]
   fn simple(){
     let mut ring = RingBuf::new(10);
     let mut buf = [0u8, 0u8];
-    assert!(ring.write([1u8, 1u8]) == 2);
+    assert_eq!(ring.write([1, 1].as_slice()), 2);
     println!("after write: {}", ring);
-    assert!(ring.read(buf) == 2);
+    assert_eq!(ring.read(buf.as_mut_slice()), 2);
     println!("after read: {}", ring);
-    assert!(buf == [1u8,1u8]);
+    assert_eq!(buf, [1,1]);
   }
 
-  #[test]
+ #[test]
   fn slightly_more_complex(){
     let mut ring = RingBuf::new(10);
     ring.head = 8;
     ring.tail = 8;
     let mut buf = [0u8, 0u8, 0u8, 0u8, 0u8];
-    assert!(ring.write([1u8, 1u8, 2u8, 3u8, 4u8]) == 5);
+    assert_eq!(ring.write([1, 1, 2, 3, 4].as_slice()), 5);
     println!("after write: {}", ring);
-    assert!(ring.read(buf) == 5);
+    assert_eq!(ring.read(buf.as_mut_slice()), 5);
     println!("after read: {}", ring);
-    assert!(buf == [1u8,1u8, 2u8, 3u8, 4u8]);
+    assert_eq!(buf, [1,1, 2, 3, 4]);
   }
 
   #[test]
   fn wrap(){
     let mut ring = RingBuf::new(4);
     let mut buf  = [0u8,0u8,0u8,0u8];
-    assert!(ring.write([1u8,2u8,3u8]) == 3);
+    assert_eq!(ring.write([1,2,3].as_slice()), 3);
     println!("After write1: {}", ring);
-    assert!(ring.read(buf) == 3);
+    assert_eq!(ring.read(buf.as_mut_slice()), 3);
     println!("After read1: {}", ring);
-    assert!(buf == [1u8, 2u8, 3u8, 0u8]);
+    assert_eq!(buf, [1, 2, 3, 0]);
 
-    assert!(ring.write([4u8, 5u8, 6u8, 7u8]) == 4);
+    assert_eq!(ring.write([4, 5, 6, 7].as_slice()), 4);
     println!("After write2: {}", ring);
-    assert!(ring.read(buf) == 4);
+    assert_eq!(ring.read(buf.as_mut_slice()), 4);
     println!("After read2: {}", ring);
     println!("buf: {}", buf.as_slice());
-    assert!(buf == [4u8, 5u8, 6u8, 7u8])
+    assert_eq!(buf, [4, 5, 6, 7])
   }
 }

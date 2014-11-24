@@ -240,23 +240,23 @@ mod test {
   #[test]
   fn byte(){
     let b = [1u8]; // 0x1 == 1
-    assert!(get_multibyte(b, 0, 1) == 1i);
+    assert_eq!(get_multibyte(&b, 0, 1),  1i);
   }
 
   #[test]
   fn short(){
     let b = [1u8, 255u8]; // 0x1_11111111 == 511
-    assert!(get_multibyte(b, 0, 1) == 1i);
-    assert!(get_multibyte(b, 0, 2) == 511i);
+    assert_eq!(get_multibyte(&b, 0, 1), 1i);
+    assert_eq!(get_multibyte(&b, 0, 2), 511i);
   }
 
   #[test]
   fn u32(){
     let b = [10u8, 112u8, 1u8, 123u8]; // 0x00001010_01110000_00000001_01111011 == 511
-    assert!(get_multibyte(b, 0, 1) == 10i);
-    assert!(get_multibyte(b, 0, 2) == 2672i);
-    assert!(get_multibyte(b, 0, 3) == 684033i);
-    assert!(get_multibyte(b, 0, 4) == 175112571);
+    assert_eq!(get_multibyte(&b, 0, 1), 10i);
+    assert_eq!(get_multibyte(&b, 0, 2), 2672i);
+    assert_eq!(get_multibyte(&b, 0, 3), 684033i);
+    assert_eq!(get_multibyte(&b, 0, 4), 175112571);
   }
 
 }
