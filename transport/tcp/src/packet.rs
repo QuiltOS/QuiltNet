@@ -67,6 +67,14 @@ impl TcpPacket {
     Ok(())
   }
 
+  pub fn as_vec(&self) -> &Vec<u8> {
+    self.ip.as_vec()
+  }
+
+  pub fn as_mut_vec(&mut self) -> &mut Vec<u8> {
+    self.ip.as_mut_vec()
+  }
+
   /// Returns slice containing TCP packet
   fn get_tcp(&self) -> &[u8] {
     self.ip.borrow().get_payload()

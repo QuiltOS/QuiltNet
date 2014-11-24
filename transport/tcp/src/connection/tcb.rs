@@ -6,6 +6,7 @@ use packet::{mod, TcpPacket};
 
 use send;
 use super::manager::dummy::DummyPacketBuf;
+use super::manager::PacketBufIter;
 use super::manager::PacketBuf;
 use super::manager::recv::RecvMgr;
 use super::manager::send::SendMgr;
@@ -218,7 +219,7 @@ impl TCB
                               them:   ::ConAddr) -> send::Result<()> {
 
     // Send all the bytes we have up to the current send window 
-    let bytes_to_send = self.write.iter().take(self.state.send_WND).peekable();
+    let mut bytes_to_send = self.write.iter().take(self.state.send_WND as uint).peekable();
 
     // Until we run out of bytes
     while !bytes_to_send.is_empty() {
@@ -234,12 +235,17 @@ impl TCB
         // Counter for bytes added to payload
         let mut ctr = 0u;
         {
-          let v = packet.ip.as_mut_vec();
+          let mut v = packet.as_mut_vec();
 
           // Add up to MSS bytes to this packet
-          for b in bytes_to_send.take(TCP_MSS){
-              v.push(b);
-              ctr += 1;
+          for _ in range(0u, TCP_MSS as uint) {
+            match bytes_to_send.next() {
+              Some(b) => {
+                v.push(b);
+                ctr += 1;
+              },
+              None    => break
+            }
           }
         };
 
@@ -256,6 +262,7 @@ impl TCB
                       |x| x,
                       builder));
     }
+    Ok(())
   }
   
   fn mod_leq(&self, n: u32, m: u32) -> bool {
