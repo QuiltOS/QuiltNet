@@ -144,7 +144,7 @@ impl Established
     where A: RoutingTable
   {
     debug!("trying to do a non-blocking read");
-    0
+    self.tcb.read(buf)
   }
 
   /// non-blocking, returns how much was read from caller's buffer
@@ -155,6 +155,6 @@ impl Established
     where A: RoutingTable
   {
     debug!("trying to do a non-blocking write");
-    0
+    self.tcb.send(buf)
   }
 }

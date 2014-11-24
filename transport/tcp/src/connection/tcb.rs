@@ -167,8 +167,8 @@ impl TCB {
   /// sequence number.
   ///
   /// Returns the number of bytes read
-  pub fn read(&mut self, buf: &mut [u8], n: uint) -> uint {
-    self.recv_mgr.read(buf, n)
+  pub fn read(&mut self, buf: &mut [u8]) -> uint {
+    self.recv_mgr.read(buf, 0)
     //TODO: update recv_WND += n
   }
 
@@ -180,8 +180,8 @@ impl TCB {
   /// NOTE: this is less than n when
   ///               n > (SND.UNA + SND.WND ) - SND.NXT
   /// TODO: all the things
-  pub fn send(&self, buf: &[u8], start: u32, n: uint) -> uint {
-    self.send_mgr.send(buf, start, n)
+  pub fn send(&self, buf: &[u8]) -> uint {
+    self.send_mgr.send(buf, 0, buf.len())
   }
 
   //TODO: how the fuck are we supposed to figure out n <= m (mod x)...
