@@ -89,7 +89,7 @@ impl RingBuf {
       copy_memory(self.data.slice_mut(0, write_head), buf[first_slice_len..n] );
 
     } else {
-      
+
       // Copy straight until head
       copy_memory(self.data.slice_mut(self.head, write_head), buf);
 

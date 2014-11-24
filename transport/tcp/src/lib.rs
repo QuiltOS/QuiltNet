@@ -38,7 +38,7 @@ use connection::Connection;
 
 mod packet;
 mod concurrent_hash_map;
-mod ringbuf;
+mod ring_buf;
 
 mod send;
 mod receive;

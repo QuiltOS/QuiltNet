@@ -1,4 +1,3 @@
-use ringbuf::RingBuf;
 use packet::{mod, TcpPacket};
 use super::manager::dummy::DummyPacketBuf;
 use super::manager::PacketBuf;
@@ -58,8 +57,8 @@ pub struct TCB {
 impl TCB {
   pub fn new(our_isn: u32, their_isn: u32) -> TCB {
     TCB {
-      read  : PacketBuf::new(),
-      write : PacketBuf::new(),
+      read  : PacketBuf::new(their_isn),
+      write : PacketBuf::new(our_isn),
       
       recv_mgr : RecvMgr::new(),
       send_mgr : SendMgr::new(),
