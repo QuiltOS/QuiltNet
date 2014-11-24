@@ -2,6 +2,7 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 
+#![feature(associated_types)]
 #![feature(default_type_params)]
 #![feature(unboxed_closures)] // still broken
 #![feature(slicing_syntax)]

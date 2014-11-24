@@ -59,6 +59,24 @@ impl Established
     assert_eq!(self.us,   us);
     assert_eq!(self.them, them);
 
+    let (r, w) = self.tcb.recv(packet);
+
+    let self2 = if r {
+      self.invoke_handler(Situation::CanRead)
+    } else {
+      Connection::Established(self)
+    };
+
+    let self3 = match self2 {
+      Connection::Established(est) => if w {
+        est.invoke_handler(Situation::CanWrite)
+      } else {
+        Connection::Established(est)
+      },
+      _ => self2,
+    };
+
+
     // TODO Check if control packet -> transition to close
 
     // TODO
@@ -70,7 +88,7 @@ impl Established
     // self.tcb.recv(_packet, CanRead);
 
     // stay established
-    Ok(Connection::Established(self))
+    Ok(self3)
   }
 
 
@@ -126,7 +144,7 @@ impl Established
     where A: RoutingTable
   {
     debug!("trying to do a non-blocking read");
-    0
+    self.tcb.read(buf)
   }
 
   /// non-blocking, returns how much was read from caller's buffer
@@ -137,6 +155,6 @@ impl Established
     where A: RoutingTable
   {
     debug!("trying to do a non-blocking write");
-    0
+    self.tcb.send(buf)
   }
 }
