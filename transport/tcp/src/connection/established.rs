@@ -119,4 +119,26 @@ impl Established
     // first CanRead let's them know connection was made
     est.invoke_handler(Situation::CanRead)
   }
+
+  /// non-blocking, returns how much was written to caller's buffer
+  pub fn read<A>(&mut self,
+                 state:   &::State<A>,
+                 buf:     &mut [u8])
+                 -> uint
+    where A: RoutingTable
+  {
+    debug!("trying to do a non-blocking read");
+    0
+  }
+
+  /// non-blocking, returns how much was read from caller's buffer
+  pub fn write<A>(&mut self,
+                  state:   &::State<A>,
+                  buf:     &[u8])
+                  -> uint
+    where A: RoutingTable
+  {
+    debug!("trying to do a non-blocking write");
+    0
+  }
 }
