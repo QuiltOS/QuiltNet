@@ -1,6 +1,9 @@
 use ringbuf::RingBuf;
 use packet::{mod, TcpPacket};
-use super::manager::PacketBuf;
+use super::manager::{
+  DummyPacketBuf,
+  PacketBuf,
+};
 use super::manager::recv::RecvMgr;
 use super::manager::send::SendMgr;
 
@@ -45,8 +48,8 @@ impl TcbState {
 
 /// Encapsulates all connection state and data structures
 pub struct TCB {
-  //read:  Box<PacketBuf + 'static>,
-  //write: Box<PacketBuf + 'static>,
+  read:  DummyPacketBuf,
+  write: DummyPacketBuf,
 
   // Buffers
   recv_mgr : RecvMgr,
@@ -57,6 +60,9 @@ pub struct TCB {
 impl TCB {
   pub fn new(our_isn: u32, their_isn: u32) -> TCB {
     TCB {
+      read  : PacketBuf::new(),
+      write : PacketBuf::new(),
+      
       recv_mgr : RecvMgr::new(),
       send_mgr : SendMgr::new(),
       state    : TcbState::new(our_isn, their_isn),
