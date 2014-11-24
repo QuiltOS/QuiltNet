@@ -4,8 +4,6 @@ use std::io::{
 };
 use std::sync::Arc;
 
-use misc::interface::Fn;
-
 use network::ipv4::{
   mod,
   control,

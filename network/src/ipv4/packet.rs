@@ -1,3 +1,4 @@
+use std::fmt;
 use std::mem::transmute;
 use std::num::Int;
 use std::vec::Vec;
@@ -55,13 +56,12 @@ impl V {
     packet
   }
 
-  // TODO: Should be higher ranked liftime on closure, but that causes compiler ICE.
   pub fn new_with_builder
-    <'clos, Err, Accum>
+    <Err, Accum>
     (ip:                 Addr,
      protocol:           u8,
      expected_body_size: Option<u16>,
-     builder:            |&mut V|:'clos -> Result<Accum, Err>)
+     builder:            |&mut V| -> Result<Accum, Err>)
      -> Result<(Accum, V), Err>
   {
     let mut packet = V::new_with_header(ip, protocol, expected_body_size);
@@ -313,26 +313,26 @@ impl A {
     let cs = self.make_header_checksum();
     self.set_header_checksum(cs);
   }
+}
 
-  //TODO: this results in when actually run
-  //    task '<unknown>' has overflowed its stack
-  //    Illegal instruction (core dumped)
-  pub fn print(&self) {
-    println!("Ip  | ver {} | {} | Tos {} | Len {}  |",
-             self.get_version(),
-             self.get_header_length(),
-             self.cast_h().type_of_service,
-             self.get_total_length());
-    println!("    | FId {}    |   off {} |",
-             self.get_identification(),
-             self.get_flags_fragment_offset().val1());
-    println!("    | ttl {} | proto {} | sum {} |",
-             self.get_time_to_live(),
-             self.get_protocol(),
-             self.get_header_checksum());
-    println!("    | Src {}   | Dst {} |",
-             self.get_source(),
-             self.get_destination());
+impl fmt::Show for A {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f,
+           "Ip  | ver {} | {} | Tos {} | Len {}  |\n    | FId {}    |   off {} |\n    | ttl {} | proto {} | sum {} |\n    | Src {}   | Dst {} |",
+           self.get_version(),
+           self.get_header_length(),
+           self.cast_h().type_of_service,
+           self.get_total_length(),
+
+           self.get_identification(),
+           self.get_flags_fragment_offset().val1(),
+
+           self.get_time_to_live(),
+           self.get_protocol(),
+           self.get_header_checksum(),
+
+           self.get_source(),
+           self.get_destination())
   }
 }
 

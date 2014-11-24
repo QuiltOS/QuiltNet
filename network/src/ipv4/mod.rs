@@ -1,8 +1,6 @@
 use std::collections::hash_map::HashMap;
 use std::sync::{Arc, RWLock};
 
-use misc::interface::{Fn, /* Handler */};
-
 use data_link::interface as dl;
 
 use self::strategy::RoutingTable;

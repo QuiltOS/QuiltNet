@@ -1,5 +1,4 @@
-//#![feature(unboxed_closures)]
-//#![feature(slicing_syntax)]
+#![feature(unboxed_closures)]
 #![feature(phase)]
 
 // for tests
@@ -67,7 +66,7 @@ impl RoutingTable for RipTable {
 
   fn monitor(state: Arc<ipv4::State<RipTable>>) -> () {
     debug!("In use");
-    comm::register(state.clone());
+    comm::register(&state);
     periodic::spawn_updater(state.clone());
     periodic::spawn_garbage_collector(state);
   }

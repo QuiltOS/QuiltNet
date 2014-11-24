@@ -5,8 +5,6 @@ use std::io::net::ip::Port;
 use std::sync::{RWLock, Weak};
 use std::rand::{task_rng, Rng};
 
-use misc::interface::{Fn, /* Handler */};
-
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
