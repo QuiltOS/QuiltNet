@@ -53,10 +53,11 @@ pub trait State {
 pub fn trans<A>(e: &mut Connection, s: &::State<A>, p: TcpPacket)
   where A: RoutingTable
 {
-  use std::mem::{uninitialized, swap};
+  use std::mem::swap;
 
-  let mut blank: Connection = unsafe { uninitialized() };
+  let mut blank: Connection = Connection::Closed;
 
+  // safe to "close" it without another connection moving in because we have lock
   swap(e, &mut blank);
 
   *e = match blank {
