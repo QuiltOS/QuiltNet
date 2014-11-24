@@ -27,7 +27,6 @@ pub struct TcbState {
   pub recv_ISN : u32,   // Recv Initial Sequence Number
 
   // ::State Variables
-  // TODO: sizes of all these
   pub send_UNA : u32,   // Oldest unacknowledged sequence number
   pub send_NXT : u32,   // Next Sequence Number to be Sent
   pub send_WND : u16,   // Send Window Size
@@ -83,7 +82,6 @@ impl TCB
   // ******** TCP Module API ***********************************//
 
   /// Receive logic for TCP packet
-  /// TODO: return type? - maybe hint for ACK response
   pub fn recv(&mut self, packet: TcpPacket) -> (bool, bool)
   {
     debug!("TCB: recv packet {}", packet);
@@ -105,8 +103,17 @@ impl TCB
           // If ACKing new data
           // FIXME: is this covered in validate_packet_state()?
           if seg_ACK > self.state.send_UNA {
-            //    -> SND.UNA = SEG.ACK
+
+            // How many bytes just got ACKed?
+            let ack_delta = seg_ACK - self.state.send_UNA;
+
+            // Update our UNA pointer
             self.state.send_UNA = seg_ACK;
+
+            // Fast-forward our retransmission queue up to the ACK
+            // FIXME: Is this the right way to drop the first N bytes?
+            self.write.consume_iter().take(ack_delta as uint).last();
+
             //    -> if (send_WL1 < SEG.SEQ) or (send_WL1 == SEG.SEQ && send_WL2 <= SEG.ACK)
             if (self.state.send_WL1 < seg_SEQ) ||
               (self.state.send_WL1 == seg_SEQ && self.mod_leq(self.state.send_WL2, seg_ACK))
@@ -129,8 +136,6 @@ impl TCB
 
       let contains_nxt = self.contains_recv_nxt(&packet);
       // Handle data now
-      // TODO: gonna need to own that packet
-      // we know this isn't a dup from above
       debug!("packet contains RCV.NXT: {}, SEQ:{}, LEN:{}", contains_nxt, packet.get_seq_num(), packet.get_body_len());
       
       self.recv_mgr.add_packet(packet);
@@ -188,9 +193,12 @@ impl TCB
   /// Returns the number of bytes read
   pub fn read(&mut self, buf: &mut [u8]) -> uint {
 
+    // Get CONSUMING iter over bytes queued for reading
     let mut bytes_to_read = self.read.consume_iter().take(buf.len()).peekable();
     let mut ctr = 0u;
     let mut writer = BufWriter::new(buf);
+
+    // Read as many bytes as we can to fill user's buf
     for b in bytes_to_read {
       writer.write_u8(b);
       ctr += 1;
