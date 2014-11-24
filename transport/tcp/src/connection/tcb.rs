@@ -1,3 +1,4 @@
+use std::io::BufWriter;
 use std::cmp;
 
 use network::ipv4::strategy::RoutingTable;
@@ -186,9 +187,19 @@ impl TCB
   ///
   /// Returns the number of bytes read
   pub fn read(&mut self, buf: &mut [u8]) -> uint {
-    self.recv_mgr.read(buf, 0)
-    //TODO: update recv_WND += n
-    
+
+    let mut bytes_to_read = self.read.consume_iter().take(buf.len()).peekable();
+    let mut ctr = 0u;
+    let mut writer = BufWriter::new(buf);
+    for b in bytes_to_read {
+      writer.write_u8(b);
+      ctr += 1;
+    }
+
+    // Our receive window just widened by ctr bytes
+    self.state.recv_WND += ctr as u16;
+
+    ctr
   }
 
 
