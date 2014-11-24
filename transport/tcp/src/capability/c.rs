@@ -54,52 +54,27 @@ impl<A> C<A>
 
     Ok(new(state, con, rd_rx, wt_rx))
   }
-}
 
-pub fn new<A>(state:   &Arc<::State<A>>,
-              con:     Weak<RWLock<::connection::Connection>>,
-              rd_rx:   Receiver<()>,
-              wt_rx:   Receiver<()>)
-              -> C<A>
-  where A: RoutingTable
-{
-  // block on first CanRead---to signify that connection is established
-  rd_rx.recv();
+  /// Convenience wrapper. If you always are going to do non-blocking, use the
+  /// async API instead.
+  ///
+  /// `None` means no connection / closed. `Some(n)` is n number of bytes read.
+  pub fn read_nonblock(&mut self, buf: &mut [u8]) -> Result<uint, ()>
+  {
+    debug!("trying to do a non-blocking read");
+    let arc = match self.con.upgrade() {
+      Some(a) => a,
+      None    => return Err(()),
+    };
 
-  C {
-    state: state.clone(),
-
-    con: con,
-    can_read:  rd_rx,
-    can_write: wt_rx,
+    let mut lock = arc.write();
+    let mut est = match &mut *lock {
+      &Connection::Established(ref mut est) => est,
+      _                                     => return Err(()),
+    };
+    Ok(est.read(&*self.state, buf))
   }
 }
-
-pub fn make_con_handler() -> (connection::established::Handler, Receiver<()>, Receiver<()>)
-{
-  use connection::established::Established;
-  use connection::established::Situation;
-
-
-  let (rd_tx, rd_rx) = channel::<()>();
-  let (wt_tx, wt_rx) = channel::<()>();
-
-  let handler = {
-    // TODO: this mutex is not necessary
-    let rd = Mutex::new(rd_tx);
-    let wt = Mutex::new(wt_tx);
-    box move |&mut: est: Established, situ: Situation| {
-      debug!("in C-Capability Handler");
-      match situ {
-        Situation::CanRead  => rd.lock().send(()),
-        Situation::CanWrite => wt.lock().send(()),
-      };
-      Connection::Established(est)
-    }
-  };
-  (handler, rd_rx, wt_rx)
-}
-
 
 const EOF: IoError = IoError {
   kind:   IoErrorKind::EndOfFile,
@@ -171,4 +146,48 @@ impl<A> Writer for C<A>
       self.can_write.recv();
     }
   }
+}
+
+pub fn new<A>(state:   &Arc<::State<A>>,
+              con:     Weak<RWLock<::connection::Connection>>,
+              rd_rx:   Receiver<()>,
+              wt_rx:   Receiver<()>)
+              -> C<A>
+  where A: RoutingTable
+{
+  // block on first CanRead---to signify that connection is established
+  rd_rx.recv();
+
+  C {
+    state: state.clone(),
+
+    con: con,
+    can_read:  rd_rx,
+    can_write: wt_rx,
+  }
+}
+
+pub fn make_con_handler() -> (connection::established::Handler, Receiver<()>, Receiver<()>)
+{
+  use connection::established::Established;
+  use connection::established::Situation;
+
+
+  let (rd_tx, rd_rx) = channel::<()>();
+  let (wt_tx, wt_rx) = channel::<()>();
+
+  let handler = {
+    // TODO: this mutex is not necessary
+    let rd = Mutex::new(rd_tx);
+    let wt = Mutex::new(wt_tx);
+    box move |&mut: est: Established, situ: Situation| {
+      debug!("in C-Capability Handler");
+      match situ {
+        Situation::CanRead  => rd.lock().send(()),
+        Situation::CanWrite => wt.lock().send(()),
+      };
+      Connection::Established(est)
+    }
+  };
+  (handler, rd_rx, wt_rx)
 }
