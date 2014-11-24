@@ -1,9 +1,7 @@
 use ringbuf::RingBuf;
 use packet::{mod, TcpPacket};
-use super::manager::{
-  DummyPacketBuf,
-  PacketBuf,
-};
+use super::manager::dummy::DummyPacketBuf;
+use super::manager::PacketBuf;
 use super::manager::recv::RecvMgr;
 use super::manager::send::SendMgr;
 
