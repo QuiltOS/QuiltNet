@@ -24,15 +24,30 @@ impl PacketBuf for RingPacketBuf
     }
   }
 
-  fn add_vec(&mut self, seq_num: u32, vec: Vec<u8>, start_off: uint) {
+  fn add_vec(&mut self, seq_num: u32, vec: Vec<u8>, start_off: uint) -> u32 {
     self.add_slice(seq_num, vec.as_slice()[start_off..])
   }
 
-  fn add_slice(&mut self, seq_num: u32, buf: &[u8]) {
+  fn add_slice(&mut self, seq_num: u32, buf: &[u8]) -> u32
+  {
     let delta: u64 = (seq_num as u64) - (self.seq as u64);
 
-    let n = self.ring.write(buf);
-    assert_eq!(n, buf.len());
+    (if     // tacks on perfectly
+      (delta == 0) &&
+      (delta as uint + buf.len()) < self.ring.window_size()
+    {
+      self.ring.write(buf)
+    }
+    else if // overlaps, but is not completely contained
+      (delta < 0) &&
+      (buf.len() - (-delta) as uint) < self.ring.window_size() &&
+      ((-delta) as uint) < buf.len()
+    {
+      self.ring.write(buf[-delta as uint..])
+    }
+    else // out of order or redundant/contained
+    { 0 }
+    as u32)
   }
 
   fn get_next_seq(&self) -> u32 { self.seq }

@@ -12,8 +12,8 @@ pub struct RingBuf {
 }
 
 
-impl RingBuf {
-
+impl RingBuf
+{
   // Returns new Ring Buffer of given (fixed) size
   pub fn new(size: uint) -> RingBuf {
     RingBuf {
@@ -24,7 +24,7 @@ impl RingBuf {
     }
   }
 
-  fn window_size(&self) -> uint {
+  pub fn window_size(&self) -> uint {
     if self.tail <= self.head {
       self.head - self.tail
     } else {
