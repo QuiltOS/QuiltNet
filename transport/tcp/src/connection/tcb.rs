@@ -5,9 +5,11 @@ use network::ipv4::Addr;
 use packet::{mod, TcpPacket};
 
 use send;
-use super::manager::dummy::DummyPacketBuf;
-//use super::manager::PacketBufIter;
-use super::manager::PacketBuf;
+use super::manager::{
+  BestPacketBuf,
+  PacketBuf,
+  // PacketBufIter,
+};
 use super::manager::recv::RecvMgr;
 use super::manager::send::SendMgr;
 
@@ -55,8 +57,8 @@ impl TcbState
 
 /// Encapsulates all connection state and data structures
 pub struct TCB {
-  read:  DummyPacketBuf,
-  write: DummyPacketBuf,
+  read:  BestPacketBuf,
+  write: BestPacketBuf,
 
   // Buffers
   recv_mgr : RecvMgr,

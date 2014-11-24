@@ -3,6 +3,8 @@ pub mod ring;
 pub mod send;
 pub mod recv;
 
+pub type BestPacketBuf = ring::RingPacketBuf;
+
 pub trait PacketBuf
 {
   fn new(init_seq_num: u32) -> Self;
