@@ -6,13 +6,11 @@ use super::{
   //PacketBufIter,
 };
 
-type ViewC<'a>    = Map<'a, &'a u8, u8, Items<'a, u8>>;
-type ConsumeC<'a> = Map<'a, &'a u8, u8, Items<'a, u8>>;
-
 
 pub struct DummyPacketBuf {
   dumb: [u8, ..2],
 }
+
 
 impl PacketBuf for DummyPacketBuf
 {
@@ -27,26 +25,21 @@ impl PacketBuf for DummyPacketBuf
 }
 
 
-pub trait PacketBufIter<'a>: PacketBuf
-{
-  type View:    Iterator<u8>;
-  type Consume: Iterator<u8>;
-
-  fn iter        (&'a     self) -> <Self as PacketBufIter<'a>>::View;
-  fn consume_iter(&'a mut self) -> <Self as PacketBufIter<'a>>::Consume;
-}
+type ViewC<'a>    = Map<'a, &'a u8, u8, Items<'a, u8>>;
+type ConsumeC<'a> = Map<'a, &'a u8, u8, Items<'a, u8>>;
 
 
-impl<'a> super::PacketBufIter<'a> for DummyPacketBuf
+//impl<'a> super::PacketBufIter<'a> for DummyPacketBuf
+impl<'a> DummyPacketBuf
 {
   type View    = ViewC<'a>;
   type Consume = ConsumeC<'a>;
 
-  fn iter(&'a self) -> ViewC<'a> {
+  pub fn iter(&'a self) -> ViewC<'a> {
     self.dumb.iter().map(|x| *x)
   }
 
-  fn consume_iter(&'a mut self) -> ConsumeC<'a> {
+  pub fn consume_iter(&'a mut self) -> ConsumeC<'a> {
     self.dumb.iter().map(|x| *x)
   }
 }

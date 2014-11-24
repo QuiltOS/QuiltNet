@@ -1,5 +1,3 @@
-pub use self::dummy::PacketBufIter;
-
 pub mod dummy;
 pub mod ring;
 pub mod send;
@@ -14,3 +12,13 @@ pub trait PacketBuf
 
   fn get_next_seq(&self) -> u32;
 }
+/*
+pub trait PacketBufIter<'a>: PacketBuf
+{
+  type View:    Iterator<u8>;
+  type Consume: Iterator<u8>;
+
+  fn iter        (&'a     self) -> <Self as PacketBufIter<'a>>::View;
+  fn consume_iter(&'a mut self) -> <Self as PacketBufIter<'a>>::Consume;
+}
+*/

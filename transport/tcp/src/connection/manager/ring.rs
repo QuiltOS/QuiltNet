@@ -5,8 +5,9 @@ use ring_buf::{mod, RingBuf};
 
 use super::{
   PacketBuf,
-  PacketBufIter,
+  //PacketBufIter,
 };
+
 
 pub struct RingPacketBuf {
   seq:  u32,
@@ -48,11 +49,11 @@ impl<'a>  RingPacketBuf
   type View    = ViewC<'a>;
   type Consume = ConsumeC<'a>;
 
-  fn iter(&'a self) -> ViewC<'a> {
+  pub fn iter(&'a self) -> ViewC<'a> {
     self.ring.iter().map(|x| *x)
   }
 
-  fn consume_iter(&'a mut self) -> ConsumeC<'a> {
+  pub fn consume_iter(&'a mut self) -> ConsumeC<'a> {
 
     // TODO close over len instead
     let inc: |&mut &mut u32, u8|:'a -> Option<u8> = |ptr, b| {
