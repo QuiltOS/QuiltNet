@@ -85,7 +85,7 @@ impl TCB
   /// TODO: return type? - maybe hint for ACK response
   pub fn recv(&mut self, packet: TcpPacket) -> (bool, bool)
   {
-    debug!("In the TCB!");
+    debug!("TCB: recv packet {}", packet);
 
     let mut can_read  = false;
     let mut can_write = false;
@@ -93,6 +93,7 @@ impl TCB
     // Is duplicate? -> trash TODO: quick duplicate detection
     if self.validate_packet_state(&packet) && !self.is_duplicate(&packet){
 
+      debug!("Valid state for packet SEQ:{}, LEN:{}", packet.get_seq_num(), packet.get_body_len());
       let seg_SEQ = packet.get_seq_num();
       let seg_WND = packet.get_window_size();
 
@@ -129,6 +130,8 @@ impl TCB
       // Handle data now
       // TODO: gonna need to own that packet
       // we know this isn't a dup from above
+      debug!("packet contains RCV.NXT: {}, SEQ:{}, LEN:{}", contains_nxt, packet.get_seq_num(), packet.get_body_len());
+      
       self.recv_mgr.add_packet(packet);
 
       if contains_nxt {
@@ -200,6 +203,8 @@ impl TCB
                          us:     ::ConAddr,
                          them:   ::ConAddr) -> uint {
 
+
+    debug!("User on <{}<{}> send data: {}", us, them, buf);
     //TODO: will this SEQ num state get moved into PacketBuf?
     self.write.add_slice(self.state.send_NXT, buf);
 
@@ -219,6 +224,8 @@ impl TCB
                               state:  &::State<A>,
                               us:     ::ConAddr,
                               them:   ::ConAddr) -> send::Result<()> {
+
+    debug!("<{},{}> Flushing Transmission Queue", us, them);
 
     // Send all the bytes we have up to the current send window 
     let mut bytes_to_send = self.write.iter().take(self.state.send_WND as uint).peekable();
@@ -252,14 +259,15 @@ impl TCB
         };
 
         //TODO Update sent record for timers
+        debug!("Retransmission built: Packet:{}", packet)
 
         Ok(())
       };
 
       try!(send::send(&*state.ip,
-                      Some(us.0),   //TODO: get from somewhere
-                      us.1,       //TODO: get from somewhere
-                      them,     //TODO: get from somewhere
+                      Some(us.0),   
+                      us.1,       
+                      them,     
                       Some(TCP_MSS),
                       |x| x,
                       builder));
