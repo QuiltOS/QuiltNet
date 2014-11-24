@@ -38,6 +38,7 @@ use connection::Connection;
 
 mod packet;
 mod concurrent_hash_map;
+mod ring_buf;
 
 mod send;
 mod receive;

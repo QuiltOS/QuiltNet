@@ -16,7 +16,7 @@ pub struct DummyPacketBuf {
 
 impl PacketBuf for DummyPacketBuf
 {
-  fn new() -> DummyPacketBuf {
+  fn new(_init_seq_num: u32) -> DummyPacketBuf {
     DummyPacketBuf { dumb: [0, 0] }
   }
 
