@@ -189,18 +189,6 @@ impl TcpPacket {
 
 }
 
-// For purposes of sorting by sequence number
-impl Ord for TcpPacket {
-  fn cmp(&self, other: &TcpPacket) -> Ordering {
-    self.get_seq_num().cmp(&other.get_seq_num())
-  } 
-}
-
-impl PartialOrd for TcpPacket {
-  fn partial_cmp(&self, other: &TcpPacket) -> Option<Ordering> {
-    Some(self.cmp(other))
-  } 
-}
 
 impl fmt::Show for TcpPacket {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -230,6 +218,7 @@ fn get_multibyte(buf: &[u8], start_ix: uint, len: uint) -> int {
   res
 }
 
+/*
 #[cfg(test)]
 mod test {
   use super::get_multibyte;
@@ -255,5 +244,5 @@ mod test {
     assert!(get_multibyte(b, 0, 3) == 684033i);
     assert!(get_multibyte(b, 0, 4) == 175112571);
   }
-
 }
+*/

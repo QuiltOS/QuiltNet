@@ -132,7 +132,7 @@ mod test {
     assert!(buf == [1u8,1u8, 2u8, 3u8, 4u8]);
   }
 
-  #[test]
+/*  #[test]
   fn wrap(){
     let mut ring = RingBuf::new(4);
     let mut buf  = [0u8,0u8,0u8,0u8];
@@ -149,4 +149,5 @@ mod test {
     println!("buf: {}", buf.as_slice());
     assert!(buf == [4u8, 5u8, 6u8, 7u8])
   }
+  */
 }
