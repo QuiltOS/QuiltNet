@@ -29,8 +29,6 @@ pub struct TcpPacket {
 pub enum BadPacket {
   TooShort(uint),              // header cannot fit
 
-  BadPacketLength(uint, u16),  // not what it really is
-
   HeaderTooLong(uint, uint),   // header declared shorter than min or longer than body
   HeaderTooShort(uint),        // header declared shorter than min or longer than body
 
@@ -72,11 +70,10 @@ impl TcpPacket {
 
     let packet = TcpPacket::new(ip);
 
-    // then this so other header indexing doesn't panic
-    if packet.get_tcp().len() != packet.ip.borrow().get_total_length() as uint {
-      return Err(BadPacket::BadPacketLength(packet.get_tcp().len(),
-                                            packet.ip.borrow().get_total_length()))
-    };
+    // this should be true as long as IP does it's job and our CODE is correct
+    // therefore is assert, not check
+    assert_eq!(packet.ip.borrow().get_total_length() as uint - packet.ip.borrow().hdr_bytes() as uint,
+               packet.get_tcp().len());
 
     let hdr_len = packet.get_hdr_size() as uint * 4;
 
