@@ -26,6 +26,7 @@ impl PacketBuf for DummyPacketBuf
   fn get_next_seq(&self) -> u32 { 0 }
 }
 
+
 pub trait PacketBufIter<'a>: PacketBuf
 {
   type View:    Iterator<u8>;
@@ -35,16 +36,17 @@ pub trait PacketBufIter<'a>: PacketBuf
   fn consume_iter(&'a mut self) -> <Self as PacketBufIter<'a>>::Consume;
 }
 
+
 impl<'a> super::PacketBufIter<'a> for DummyPacketBuf
 {
   type View    = ViewC<'a>;
   type Consume = ConsumeC<'a>;
 
-  fn iter<'a>(&'a self) -> ViewC<'a> {
+  fn iter(&'a self) -> ViewC<'a> {
     self.dumb.iter().map(|x| *x)
   }
 
-  fn consume_iter<'a>(&'a mut self) -> ConsumeC<'a> {
+  fn consume_iter(&'a mut self) -> ConsumeC<'a> {
     self.dumb.iter().map(|x| *x)
   }
 }

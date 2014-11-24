@@ -1,21 +1,18 @@
 use std::slice::Items;
-use std::iter::Map;
+use std::iter::{Map, Scan};
 
 use ring_buf::{mod, RingBuf};
 
 use super::{
   PacketBuf,
-  //PacketBufIter,
+  PacketBufIter,
 };
-
-//type ViewC<'a>    = Map<'a, &'a u8, u8, Items<'a, u8>>;
-//type ConsumeC<'a> = Map<'a, &'a u8, u8, Items<'a, u8>>;
-
 
 pub struct RingPacketBuf {
   seq:  u32,
   ring: RingBuf,
 }
+
 
 impl PacketBuf for RingPacketBuf
 {
@@ -39,18 +36,31 @@ impl PacketBuf for RingPacketBuf
 
   fn get_next_seq(&self) -> u32 { self.seq }
 }
-/*
-impl<'a> super::PacketBufIter<'a> for RingPacketBuf
+
+
+type ViewC<'a>    = Map <'a, &'a u8, u8, ring_buf::View<'a>>;
+type ConsumeC<'a> = Scan<'a,     u8, u8, ring_buf::Consume<'a>, &'a mut u32>;
+
+
+//impl<'a> PacketBufIter<'a> for RingPacketBuf
+impl<'a>  RingPacketBuf
 {
   type View    = ViewC<'a>;
   type Consume = ConsumeC<'a>;
 
-  fn iter<'a>(&'a self) -> ViewC<'a> {
-    self.dumb.iter().map(|x| *x)
+  fn iter(&'a self) -> ViewC<'a> {
+    self.ring.iter().map(|x| *x)
   }
 
-  fn consume_iter<'a>(&'a mut self) -> ConsumeC<'a> {
-    self.dumb.iter().map(|x| *x)
+  fn consume_iter(&'a mut self) -> ConsumeC<'a> {
+
+    // TODO close over len instead
+    let inc: |&mut &mut u32, u8|:'a -> Option<u8> = |ptr, b| {
+      **ptr = **ptr + 1; // wrap around is inplicit
+      Some(b)
+    };
+
+    self.ring.consume_iter()
+      .scan(&mut self.seq, inc)
   }
 }
-*/

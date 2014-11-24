@@ -11,8 +11,6 @@ pub struct RingBuf {
   data : Vec<u8>,
 }
 
-pub type View<'a>    = Chain<Items<'a, u8>, Items<'a, u8>>;
-pub type Consume<'a> = Scan<'a, &'a u8, u8, View<'a>, (&'a mut uint, uint)>;
 
 impl RingBuf {
 
@@ -160,6 +158,11 @@ impl RingBuf {
     }
   }
 }
+
+pub type View<'a>    = Chain<Items<'a, u8>, Items<'a, u8>>;
+pub type Consume<'a> = Scan<'a, &'a u8, u8, View<'a>, (&'a mut uint, uint)>;
+
+
 
 #[cfg(test)]
 mod test
