@@ -129,7 +129,6 @@ impl Established
       us:      us,
       them:    them,
       handler: handler,
-      //TODO: initialize TCB with seq number state from handshake
       tcb:     TCB::new(our_isn, their_isn)
     };
     // first CanRead let's them know connection was made
@@ -155,6 +154,6 @@ impl Established
     where A: RoutingTable
   {
     debug!("trying to do a non-blocking write");
-    self.tcb.send(buf)
+    self.tcb.send(buf, state, self.us, self.them)
   }
 }

@@ -1,10 +1,18 @@
+use std::cmp;
+
+use network::ipv4::strategy::RoutingTable;
+use network::ipv4::Addr;
 use packet::{mod, TcpPacket};
+
+use send;
 use super::manager::dummy::DummyPacketBuf;
 use super::manager::PacketBuf;
 use super::manager::recv::RecvMgr;
 use super::manager::send::SendMgr;
 
-pub const TCP_BUF_SIZE : u16 = ((1u32 << 16u) - 1u32) as u16;
+
+pub const TCP_MSS           : u16 = 536u16;
+pub const TCP_BUF_SIZE      : u16 = ((1u32 << 16u) - 1u32) as u16;
 pub const TCP_RECV_WND_INIT : u16 = TCP_BUF_SIZE;
 
 #[deriving(Show)]
@@ -14,7 +22,7 @@ pub struct TcbState {
   //recv_UP  : u32, // Recv Urgent Pointer
   pub recv_ISN : u32,   // Recv Initial Sequence Number
 
-  // State Variables
+  // ::State Variables
   // TODO: sizes of all these
   pub send_UNA : u32,   // Oldest unacknowledged sequence number
   pub send_NXT : u32,   // Next Sequence Number to be Sent
@@ -25,7 +33,8 @@ pub struct TcbState {
   pub send_ISN : u32,   // Send Initial Sequence Number
 }
 
-impl TcbState {
+impl TcbState 
+{
 
   pub fn new(our_isn: u32, their_isn: u32) -> TcbState {
     TcbState {
@@ -54,7 +63,8 @@ pub struct TCB {
   state:     TcbState,
 }
 
-impl TCB {
+impl TCB 
+{
   pub fn new(our_isn: u32, their_isn: u32) -> TCB {
     TCB {
       read  : PacketBuf::new(their_isn),
@@ -131,7 +141,7 @@ impl TCB {
       // -> Send ACK TODO: efficient way of ACKing - single ACK value at any time, should just update
       // ACK number in timer
     } else {
-      debug!("Invalid Packet State: TCB: {}, SEG:<ACK:{}, SEQ:{}>", self.state,
+      debug!("Invalid Packet ::State: TCB: {}, SEG:<ACK:{}, SEQ:{}>", self.state,
              packet.get_ack_num(),
              packet.get_seq_num());
     }
@@ -161,8 +171,6 @@ impl TCB {
   }
 
   /// Send logic for TCP Packets
-  fn send_packet(&self, packet: TcpPacket) {
-  }
 
   // ********* Userland API ************************************//
 
@@ -174,6 +182,7 @@ impl TCB {
   pub fn read(&mut self, buf: &mut [u8]) -> uint {
     self.recv_mgr.read(buf, 0)
     //TODO: update recv_WND += n
+    
   }
 
 
@@ -183,12 +192,72 @@ impl TCB {
   /// Returning the number of bytes we were able to successfully write
   /// NOTE: this is less than n when
   ///               n > (SND.UNA + SND.WND ) - SND.NXT
-  /// TODO: all the things
-  pub fn send(&self, buf: &[u8]) -> uint {
-    self.send_mgr.send(buf, 0, buf.len())
+  pub fn send<A: RoutingTable>(&mut self, buf:    &[u8],
+                         state:  &::State<A>,
+                         us:     ::ConAddr,
+                         them:   ::ConAddr) -> uint {
+
+    //TODO: will this SEQ num state get moved into PacketBuf?
+    self.write.add_slice(self.state.send_NXT, buf);
+
+    // Calculate how much we put in based on window size
+    let bytes_written = cmp::min(buf.len(), self.state.send_WND as uint);
+    
+    // Update SND.NXT
+    self.state.send_NXT += bytes_written as u32;
+
+    self.flush_transmit_queue(state, us, them);
+
+    bytes_written
   }
 
-  //TODO: how the fuck are we supposed to figure out n <= m (mod x)...
+  //Iterate through bytes to be sent, packaging them into packets and sending them off
+  pub fn flush_transmit_queue<A: RoutingTable>(&mut self, 
+                              state:  &::State<A>,
+                              us:     ::ConAddr,
+                              them:   ::ConAddr) -> send::Result<()> {
+
+    // Send all the bytes we have up to the current send window 
+    let bytes_to_send = self.write.iter().take(self.state.send_WND).peekable();
+
+    // Until we run out of bytes
+    while !bytes_to_send.is_empty() {
+      
+      // Make a packet builder
+      let builder: for<'p> |&'p mut TcpPacket| -> send::Result<()> = |packet| {
+
+        // Set Packet Header Params 
+        packet.set_ack_num(self.state.recv_NXT);
+        packet.set_seq_num(self.state.send_NXT);
+        packet.set_window_size(self.state.recv_WND);
+
+        // Counter for bytes added to payload
+        let mut ctr = 0u;
+        {
+          let v = packet.ip.as_mut_vec();
+
+          // Add up to MSS bytes to this packet
+          for b in bytes_to_send.take(TCP_MSS){
+              v.push(b);
+              ctr += 1;
+          }
+        };
+
+        //TODO Update sent record for timers
+
+        Ok(())
+      };
+
+      try!(send::send(&*state.ip,
+                      Some(us.0),   //TODO: get from somewhere
+                      us.1,       //TODO: get from somewhere
+                      them,     //TODO: get from somewhere
+                      Some(TCP_MSS),
+                      |x| x,
+                      builder));
+    }
+  }
+  
   fn mod_leq(&self, n: u32, m: u32) -> bool {
     n <= m || (n - m > (1 << 16))
   }
