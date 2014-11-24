@@ -8,6 +8,7 @@ use std::io::{
   IoResult,
 };
 use std::mem::{transmute, size_of};
+use std::num::Int;
 use std::fmt;
 
 use network::ipv4::Addr;
@@ -28,7 +29,6 @@ pub struct TcpPacket {
 pub enum BadPacket {
   TooShort(uint),              // header cannot fit
 
-  BadVersion(u8),              // isn't 4
   BadPacketLength(uint, u16),  // not what it really is
 
   HeaderTooLong(uint, uint),   // header declared shorter than min or longer than body
@@ -63,8 +63,43 @@ impl TcpPacket {
     unsafe {transmute(ip_packet) }
   }
 
-  pub fn validate(ip_packet: &packet::A) -> Result<(), BadPacket> {
-    Ok(())
+  pub fn validate(ip: packet::V) -> Result<TcpPacket, BadPacket>
+  {
+    // have to check this first to avoid out-of-bounds panic on version check
+    if ip.borrow().get_total_length() < TCP_HDR_LEN as u16 + packet::MIN_HDR_LEN_BYTES {
+      return Err(BadPacket::TooShort(ip.borrow().get_total_length() as uint))
+    }
+
+    let packet = TcpPacket::new(ip);
+
+    // then this so other header indexing doesn't panic
+    if packet.get_tcp().len() != packet.ip.borrow().get_total_length() as uint {
+      return Err(BadPacket::BadPacketLength(packet.get_tcp().len(),
+                                            packet.ip.borrow().get_total_length()))
+    };
+
+    let hdr_len = packet.get_hdr_size() as uint * 4;
+
+    if hdr_len > packet.get_tcp().len()
+    {
+      return Err(BadPacket::HeaderTooLong(hdr_len,
+                                          packet.get_tcp().len()))
+    };
+    if hdr_len < TCP_HDR_LEN as uint
+    {
+      return Err(BadPacket::HeaderTooShort(hdr_len))
+    };
+
+    {
+      let expected = packet.make_header_checksum();
+      let got      = packet.get_checksum();
+      if expected != got
+      {
+        return Err(BadPacket::BadChecksum(expected, got));
+      }
+    };
+
+    Ok(packet)
   }
 
   pub fn as_vec(&self) -> &Vec<u8> {
@@ -174,18 +209,9 @@ impl TcpPacket {
   // Checksum Ops
   pub fn get_checksum(&self) -> u16 {
     BufReader::new(self.tcp_hdr()[16..18]).read_be_u16().unwrap()
-    //Int::from_be(get_multibyte(self.tcp_hdr(), 16, 2)) as u16
-  }
-  pub fn compute_checksum(&self) -> u16 {
-    //TODO:
-    0
   }
   pub fn set_checksum(&mut self, checksum: u16) {
     BufWriter::new(self.tcp_hdr_mut()[mut 16..18]).write_be_u16(checksum);
-  }
-  pub fn update_checksum(&mut self) {
-    let cs = self.compute_checksum();
-    self.set_checksum(cs);
   }
 
   /// Returns TCP payload as slice
@@ -198,6 +224,55 @@ impl TcpPacket {
     self.get_tcp_mut()[mut TCP_HDR_LEN..]
   }
 
+  /// returns native endian
+  pub fn make_header_checksum(&self) -> u16
+  {
+    // +--------+--------+--------+--------+
+    // |           Source Address          |
+    // +--------+--------+--------+--------+
+    // |         Destination Address       |
+    // +--------+--------+--------+--------+
+    // |  zero  |  PTCL  |    TCP Length   |
+    // +--------+--------+--------+--------+
+
+    // src and dest
+    let pseudo1: &[u16] = unsafe {
+      transmute::<_,&[u16]>(self.ip.borrow().as_slice())
+    }[6..10];
+
+    let pseudo2: [u16, ..2] = [
+      self.ip.borrow().get_protocol() as u16,
+      self.get_tcp().len() as u16, // tcp_len
+    ];
+
+    // TODO: Factor out singleton iterator
+
+    // for checkum field itself
+    let temp: [u16, ..1] = [
+      if pseudo2[1] % 1 == 0 {
+        0
+      } else { // compensate for last byte
+        self.get_tcp()[pseudo2[1] as uint - 1] as u16
+      }
+    ];
+
+    let u16s: &[u16] = unsafe { transmute(self.get_tcp()) };
+
+    // [..12] to make sure body is excluded,
+    // and also because length might be incorrect from transmute
+    let iter = u16s[0..8].iter()
+      .chain(temp.iter())
+      .chain(u16s[9..(pseudo2[1] / 2) as uint].iter())
+      .chain(pseudo1.iter())
+      .chain(pseudo2.iter());
+
+    packet::make_checksum(iter.map(|x| Int::from_be(*x)))
+  }
+
+  pub fn update_checksum(&mut self) {
+    let cs = self.make_header_checksum();
+    self.set_checksum(cs);
+  }
 }
 
 // For purposes of sorting by sequence number

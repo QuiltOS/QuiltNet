@@ -304,7 +304,7 @@ impl A {
     // and also because length might be incorrect from transmute
     let iter = u16s[0..5].iter()
       .chain(temp.iter())
-      .chain(u16s[6..10].iter());
+      .chain(u16s[6..(self.hdr_bytes() / 2)].iter());
 
     make_checksum(iter.map(|x| Int::from_be(*x)))
   }
@@ -367,7 +367,7 @@ pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
     return Err(BadPacket::BadVersion(packet.get_version()))
   };
 
-  // then this so other header indexing doesn't packet
+  // then this so other header indexing doesn't panic
   if packet.as_slice().len() != packet.get_total_length() as uint {
     return Err(BadPacket::BadPacketLength(packet.as_slice().len(),
                                           packet.get_total_length()))
@@ -397,7 +397,7 @@ pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
 }
 
 /// assumes and returns native byte order
-fn make_checksum<I>(iter: I) -> u16
+pub fn make_checksum<I>(iter: I) -> u16
   where I: Iterator<u16>
 {
   let mut sum = iter

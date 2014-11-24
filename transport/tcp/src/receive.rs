@@ -29,15 +29,13 @@ fn handle<A>(state:  &::State<A>,
              packet: ipv4::packet::V)
   where A: RoutingTable
 {
-  match TcpPacket::validate(packet.borrow()) {
-    Ok(_)  => (),
+  let packet = match TcpPacket::validate(packet) {
+    Ok(p)  => p,
     Err(e) => {
       debug!("TCP packet invalid because {}", e);
       return;
     },
   };
-
-  let packet = TcpPacket::new(packet);
 
   debug!("Got TCP Packet: {}", &packet);
 
