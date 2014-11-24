@@ -24,9 +24,9 @@ impl V {
                      protocol:           u8,
                      expected_body_size: Option<u16>) -> V
   {
-    let mut buf: Vec<u8> = Vec::with_capacity(MIN_HDR_LEN_BYTES as uint
+    let mut buf: Vec<u8> = Vec::with_capacity(MIN_HDR_LEN_8S as uint
                                               + expected_body_size.unwrap_or(0) as uint);
-    unsafe { buf.set_len(MIN_HDR_LEN_BYTES as uint); }
+    unsafe { buf.set_len(MIN_HDR_LEN_8S as uint); }
     let mut packet = V::new(buf);
     {
       let s = packet.borrow_mut();
@@ -48,7 +48,7 @@ impl V {
         destination_address:   SENTINAL32, // SET LATER
       };
       s.set_version(4);
-      s.set_header_length(MIN_HDR_LEN_WORDS);
+      s.set_header_length(MIN_HDR_LEN_32S);
       s.set_type_of_service(Precedence::Routine, ServiceFlags::empty());
       s.set_flags_fragment_offset(DONT_FRAGMENT, 0);
       s.set_destination(ip);
@@ -72,7 +72,7 @@ impl V {
 
     // once the new error handling libs land
     // this can be return Err(...) instead
-    assert!(len > MIN_HDR_LEN_BYTES);
+    assert!(len > MIN_HDR_LEN_8S);
 
     // now fix header and checksum
     {
@@ -94,9 +94,10 @@ impl V {
   pub fn borrow_mut(&mut self) -> &mut A { unsafe { transmute(self.buf.as_mut_slice()) } }
 }
 
-pub const MIN_HDR_LEN_BITS:  u32 = MIN_HDR_LEN_WORDS as u32 * 32;
-pub const MIN_HDR_LEN_BYTES: u16 = MIN_HDR_LEN_WORDS as u16 * 4;
-pub const MIN_HDR_LEN_WORDS: u8  = 5;
+pub const MIN_HDR_LEN_1S:  u32 = MIN_HDR_LEN_32S as u32 * 32;
+pub const MIN_HDR_LEN_8S:  u16 = MIN_HDR_LEN_32S as u16 * 4;
+pub const MIN_HDR_LEN_16S: u16 = MIN_HDR_LEN_32S as u16 * 2;
+pub const MIN_HDR_LEN_32S: u8  = 5;
 
 ///   From RFC 791
 ///
@@ -295,7 +296,7 @@ impl A {
 
   /// returns native endian
   pub fn make_header_checksum(&self) -> u16 {
-    let u16s: &[u16] = unsafe { transmute(self.as_slice()) };
+    let u16s: &[u16] = unsafe { cast_slice(self.as_slice()) };
 
     // TODO: Factor out singleton iterator
     let temp: [u16, ..1] = [0]; // for checkum field itself
@@ -379,7 +380,7 @@ pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
     return Err(BadPacket::HeaderTooLong(packet.hdr_bytes(),
                                         packet.as_slice().len()))
   };
-  if packet.hdr_bytes() < MIN_HDR_LEN_BYTES as uint
+  if packet.hdr_bytes() < MIN_HDR_LEN_8S as uint
   {
     return Err(BadPacket::HeaderTooShort(packet.hdr_bytes()))
   };
@@ -414,4 +415,19 @@ pub fn make_checksum<I>(iter: I) -> u16
   debug!("Truncated checksum is:   {:032b}", sum);
 
   !(sum as u16)
+}
+
+/// Adjusts len
+pub unsafe fn cast_slice<T, U>(src: &[T]) -> &[U]
+{
+  use std::mem::size_of;
+  use std::raw::Slice;
+  let Slice { data, len } = transmute::<_, Slice<U>>(src);
+
+  assert!(len % size_of::<U>() == 0);
+
+  transmute(Slice {
+    data: data,
+    len:  len / size_of::<U>(),
+  })
 }

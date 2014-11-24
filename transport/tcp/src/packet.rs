@@ -64,7 +64,7 @@ impl TcpPacket {
   pub fn validate(ip: packet::V) -> Result<TcpPacket, BadPacket>
   {
     // have to check this first to avoid out-of-bounds panic on version check
-    if ip.borrow().get_total_length() < TCP_HDR_LEN as u16 + packet::MIN_HDR_LEN_BYTES {
+    if ip.borrow().get_total_length() < TCP_HDR_LEN as u16 + packet::MIN_HDR_LEN_8S {
       return Err(BadPacket::TooShort(ip.borrow().get_total_length() as uint))
     }
 
@@ -232,34 +232,44 @@ impl TcpPacket {
     // |  zero  |  PTCL  |    TCP Length   |
     // +--------+--------+--------+--------+
 
+    let len_tcp_bytes = self.get_tcp().len();
+    let len_tcp_words = len_tcp_bytes / 2;
+
+    // the WHOLE IP PACKET
+    let bytes: &[u8]  = self.ip.borrow().as_slice();
+    let words: &[u16] = unsafe { packet::cast_slice(bytes) };
+
     // src and dest
-    let pseudo1: &[u16] = unsafe {
-      transmute::<_,&[u16]>(self.ip.borrow().as_slice())
-    }[6..10];
+    let pseudo1: &[u16] = words[6..10];
+    debug!("done magic number index 1");
 
     let pseudo2: [u16, ..2] = [
-      self.ip.borrow().get_protocol() as u16,
-      self.get_tcp().len() as u16, // tcp_len
+      (self.ip.borrow().get_protocol() as u16).to_be(),
+      (self.get_tcp().len() as u16).to_be(), // tcp_len
     ];
 
     // TODO: Factor out singleton iterator
-
-    // for checkum field itself
-    let temp: [u16, ..1] = [
-      if pseudo2[1] % 1 == 0 {
+    let zero_checksum_or_last_byte: [u16, ..1] = [
+      if len_tcp_bytes % 2 == 0 {
+        debug!("no magic number index 2 needed");
         0
       } else { // compensate for last byte
-        self.get_tcp()[pseudo2[1] as uint - 1] as u16
-      }
+        let n = bytes[bytes.len() - 1] as u16;
+        debug!("done magic number index 2");
+        n
+      }.to_be(),
     ];
 
-    let u16s: &[u16] = unsafe { transmute(self.get_tcp()) };
+    let tcp_words = words[packet::MIN_HDR_LEN_16S as uint..];
 
-    // [..12] to make sure body is excluded,
-    // and also because length might be incorrect from transmute
-    let iter = u16s[0..8].iter()
-      .chain(temp.iter())
-      .chain(u16s[9..(pseudo2[1] / 2) as uint].iter())
+    let real1 = tcp_words[..8];
+    debug!("done magic number index 3");
+    let real2 = tcp_words[9..];
+    debug!("done magic number index 4");
+
+    let iter = real1.iter()
+      .chain(zero_checksum_or_last_byte.iter())
+      .chain(real2.iter())
       .chain(pseudo1.iter())
       .chain(pseudo2.iter());
 
