@@ -1,5 +1,6 @@
 use ringbuf::RingBuf;
 use packet::{mod, TcpPacket};
+use super::manager::PacketBuf;
 use super::manager::recv::RecvMgr;
 use super::manager::send::SendMgr;
 
@@ -22,8 +23,6 @@ pub struct TcbState {
   pub send_WL1 : u32,   // Seq number for last window update
   pub send_WL2 : u32,   // Ack number for last window update
   pub send_ISN : u32,   // Send Initial Sequence Number
-
-
 }
 
 impl TcbState {
@@ -46,6 +45,8 @@ impl TcbState {
 
 /// Encapsulates all connection state and data structures
 pub struct TCB {
+  //read:  Box<PacketBuf + 'static>,
+  //write: Box<PacketBuf + 'static>,
 
   // Buffers
   recv_mgr : RecvMgr,
