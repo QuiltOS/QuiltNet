@@ -193,7 +193,7 @@ mod test
     assert_eq!(buf, [1,1, 2, 3, 4]);
   }
 
-/*  #[test]
+  #[test]
   fn wrap(){
     let mut ring = RingBuf::new(4);
     let mut buf  = [0u8,0u8,0u8,0u8];
@@ -210,5 +210,4 @@ mod test
     println!("buf: {}", buf.as_slice());
     assert_eq!(buf, [4, 5, 6, 7])
   }
-  */
 }

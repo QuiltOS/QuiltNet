@@ -241,7 +241,7 @@ fn get_multibyte(buf: &[u8], start_ix: uint, len: uint) -> int {
   res
 }
 
-/*
+
 #[cfg(test)]
 mod test {
   use super::get_multibyte;
@@ -268,4 +268,3 @@ mod test {
     assert_eq!(get_multibyte(&b, 0, 4), 175112571);
   }
 }
-*/
