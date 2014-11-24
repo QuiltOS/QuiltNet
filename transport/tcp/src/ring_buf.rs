@@ -1,5 +1,8 @@
 use std::cmp;
 use std::slice::bytes::copy_memory;
+use std::slice::Items;
+use std::iter::{Chain, Scan};
+
 
 #[deriving(Show)]
 pub struct RingBuf {
@@ -7,6 +10,9 @@ pub struct RingBuf {
   head : uint,     // Front of unconsumed, valid data
   data : Vec<u8>,
 }
+
+pub type View<'a>    = Chain<Items<'a, u8>, Items<'a, u8>>;
+pub type Consume<'a> = Scan<'a, &'a u8, u8, View<'a>, (&'a mut uint, uint)>;
 
 impl RingBuf {
 
@@ -29,31 +35,30 @@ impl RingBuf {
   }
 
   // Reads as many bytes as possible into buf, returns number of bytes read
-  pub fn read(&mut self, buf: &mut [u8]) -> uint {
-
+  pub fn read(&mut self, buf: &mut [u8]) -> uint
+  {
     // Number of bytes we're going to copy
     let n = cmp::min(self.window_size(), buf.len());
-    //println!("read: n: {}, ws: {}", n, self.window_size());
+    debug!("read: n: {}, ws: {}", n, self.window_size());
 
     // Head of slice we're reading from, wrapped around
     let read_head = (self.tail + n) % self.data.len();
 
     // If we need to wrap around
-    if self.tail > read_head {
-
+    if self.tail > read_head
+    {
       let first_slice_len = self.data.len() - self.tail;
 
       // read until end of vec into first slice of buf
-      copy_memory(buf.slice_mut(0, first_slice_len), self.data[self.tail..]);
+      copy_memory(buf[mut ..first_slice_len], self.data[self.tail..]);
 
       // read from start until head into second slice of buf
-      copy_memory(buf.slice_mut(first_slice_len, n), self.data[0..read_head]);
-
-    } else {
-
+      copy_memory(buf[mut first_slice_len..n], self.data[0..read_head]);
+    }
+    else
+    {
       // Copy straight until head
       copy_memory(buf, self.data[self.tail..read_head]);
-
     }
 
     // Move tail to reflect consumption
@@ -64,8 +69,8 @@ impl RingBuf {
   }
 
   // Writes as many bytes as possible from buf, returns number of bytes written
-  pub fn write(&mut self, buf: &[u8]) -> uint {
-
+  pub fn write(&mut self, buf: &[u8]) -> uint
+  {
     let len = self.data.len();
 
     // Number of bytes we're going to copy
@@ -78,21 +83,20 @@ impl RingBuf {
     let write_head = (self.head + n) % len;
 
     // If we need to wrap around
-    if self.tail > write_head {
-
+    if self.tail > write_head
+    {
       let first_slice_len = len - self.head;
 
       // read until end of vec into first slice of buf
-      copy_memory(self.data.slice_mut(self.head, len), buf[0..first_slice_len]);
+      copy_memory(self.data[mut self.head..len], buf[0..first_slice_len]);
 
       // read from start until head into second slice of buf
-      copy_memory(self.data.slice_mut(0, write_head), buf[first_slice_len..n] );
-
-    } else {
-
+      copy_memory(self.data[mut ..write_head], buf[first_slice_len..n] );
+    }
+    else
+    {
       // Copy straight until head
-      copy_memory(self.data.slice_mut(self.head, write_head), buf);
-
+      copy_memory(self.data[mut self.head..write_head], buf);
     }
 
     // Move head to front of newly written data
@@ -101,11 +105,65 @@ impl RingBuf {
     // Return # bytes read
     n
   }
+
+  pub fn iter<'a>(&'a self) -> View<'a>
+  {
+    let len = self.data.len();
+
+    // If we need to wrap around
+    if self.tail <= self.head
+    {
+      self.data[self.head..]
+        .iter()
+        .chain(self.data[..self.tail].iter())
+    }
+    else
+    {
+      // we need to chain so that the types are the same
+      assert!(self.tail - self.head > 1);
+      let arbitrary_split = self.tail - 1;
+
+      self.data[self.head..arbitrary_split]
+        .iter()
+        .chain(self.data[arbitrary_split..self.tail].iter())
+    }
+  }
+
+  pub fn consume_iter<'a>(&'a mut self) -> Consume<'a>
+  {
+    let len: uint = self.data.len();
+
+    // TODO close over len instead
+    let inc: |&mut (&mut uint, uint), &u8|:'a -> Option<u8> = |st, b| {
+      *st.0 = *st.0 + 1 % st.1;
+      Some(*b)
+    };
+
+    // If we need to wrap around
+    if self.tail <= self.head
+    {
+      self.data[self.head..]
+        .iter()
+        .chain(self.data[..self.tail].iter())
+        .scan((&mut self.head, len), inc)
+    }
+    else
+    {
+      // we need to chain so that the types are the same
+      assert!(self.tail - self.head > 1);
+      let arbitrary_split = self.tail - 1;
+
+      self.data[self.head..arbitrary_split]
+        .iter()
+        .chain(self.data[arbitrary_split..self.tail].iter())
+        .scan((&mut self.head, len), inc)
+    }
+  }
 }
 
 #[cfg(test)]
-mod test {
-
+mod test
+{
   use super::RingBuf;
 
   #[test]

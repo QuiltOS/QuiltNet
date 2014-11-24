@@ -39,3 +39,18 @@ impl PacketBuf for RingPacketBuf
 
   fn get_next_seq(&self) -> u32 { self.seq }
 }
+/*
+impl<'a> super::PacketBufIter<'a> for RingPacketBuf
+{
+  type View    = ViewC<'a>;
+  type Consume = ConsumeC<'a>;
+
+  fn iter<'a>(&'a self) -> ViewC<'a> {
+    self.dumb.iter().map(|x| *x)
+  }
+
+  fn consume_iter<'a>(&'a mut self) -> ConsumeC<'a> {
+    self.dumb.iter().map(|x| *x)
+  }
+}
+*/
