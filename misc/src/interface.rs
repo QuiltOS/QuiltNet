@@ -1,16 +1,5 @@
 use std::comm::Sender;
 use std::sync::Mutex;
-// TODO: get rid of `pub` in `pub use`
-pub use std::ops::Fn;
-
-
-pub struct Nop;
-
-impl<T> Fn<T, ()> for Nop where T: Send
-{
-  extern "rust-call" fn call(&self, _: T) { }
-}
-
 
 
 // TODO: real network card may consolidate multiple packets per interrupt.
@@ -20,10 +9,6 @@ pub type Handler<Packet> = Box<Fn<(Packet,), ()> + Send + 'static>;
 pub trait Interface {
   // need associated types to be better
 }
-
-
-
-// might not work, see rust-lang #17779
 
 pub struct LockedClosure<F> {
   pub closure: Mutex<F>

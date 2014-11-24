@@ -1,4 +1,4 @@
-//#![feature(unboxed_closures)]
+#![feature(unboxed_closures)]
 #![feature(slicing_syntax)]
 #![feature(tuple_indexing)]
 

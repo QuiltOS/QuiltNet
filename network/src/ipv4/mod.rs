@@ -1,7 +1,7 @@
 use std::collections::hash_map::HashMap;
+use std::fmt;
+use std::str::FromStr;
 use std::sync::{Arc, RWLock};
-
-use misc::interface::{Fn, /* Handler */};
 
 use data_link::interface as dl;
 
@@ -15,8 +15,31 @@ pub mod strategy;
 
 
 #[deriving(PartialEq, PartialOrd, Eq, Ord,
-           Clone, Show, Hash)]
+           Clone, Hash)]
 pub struct Addr(pub u8, pub u8, pub u8, pub u8);
+
+impl fmt::Show for Addr {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "{}.{}.{}.{}", self.0, self.1, self.2, self.3)
+  }
+}
+
+impl FromStr for Addr {
+  fn from_str(s: &str) -> Option<Addr> {
+    let mut quad: [Option<u8>, ..4] = [None, None, None, None];
+    let iter = s.trim().split('.').map(|x| from_str(x));
+    
+    for (mut ptr, val) in quad.iter_mut().zip(iter)
+    {
+      *ptr = val;
+    }
+    match quad {
+      [Some(q1), Some(q2), Some(q3), Some(q4)] => Some(Addr(q1, q2, q3, q4)),
+      _ => None
+    }
+  }
+}
+
 
 #[inline]
 pub fn parse_addr(&[a, b, c, d]: &[u8, ..4]) -> Addr {

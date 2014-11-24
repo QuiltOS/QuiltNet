@@ -6,8 +6,6 @@ use super::{
   send
 };
 
-use misc::interface::{Fn, Handler};
-
 use data_link::interface as dl;
 
 
@@ -26,9 +24,7 @@ fn receive<A>(state: &super::State<A>, buf: Vec<u8>)
     },
   };
 
-  debug!("packet header:");
-  // TODO: make print instead return String to write with debug!
-  if log_enabled!(::log::DEBUG) { packet.borrow().print(); };
+  debug!("packet header:\n{}", packet.borrow());
 
   if is_packet_dst_local(state, &packet) {
     debug!("Packet is local! {}", packet);
@@ -109,23 +105,12 @@ fn is_packet_dst_local<A>(state: &super::State<A>, packet: &packet::V) -> bool
     .any(|&super::InterfaceRow { local_ip, .. }| local_ip == dst)
 }
 
-struct IpDl<A>
-  where A: strategy::RoutingTable + Send
-{
-  state: Arc<super::State<A>>,
-}
-
-impl<A> Fn<(dl::Packet,), ()> for IpDl<A>
-  where A: strategy::RoutingTable + Send
-{
-  extern "rust-call" fn call(&self, args: (dl::Packet,)) {
-    let (packet,) = args;
-    receive(&*self.state, packet);
-  }
-}
 
 pub fn make_receive_callback<A>(state: Arc<super::State<A>>) -> dl::Handler
   where A: strategy::RoutingTable + Send
 {
-  box IpDl { state: state.clone() }
+  let state = state.clone();
+  box move |&: packet: dl::Packet | {
+    receive(&*state, packet);
+  }
 }

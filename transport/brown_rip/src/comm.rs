@@ -2,8 +2,6 @@ use std::io::IoResult;
 use std::sync::Arc;
 use std::option::None;
 
-use misc::interface::Fn;
-
 use network::ipv4::{
   mod,
   control,
@@ -16,15 +14,6 @@ use network::ipv4::{
 use super::{RIP_INFINITY, RipTable, RipRow};
 use super::packet::{mod, Packet};
 
-struct RipHandler { state: Arc<ipv4::State<RipTable>> }
-
-impl Fn<(ipv4::packet::V,), ()> for RipHandler {
-
-  extern "rust-call" fn call(&self, (packet,):(ipv4::packet::V,)) {
-    handle(&*self.state, packet).unwrap(/* "Failure handling incomming IP Packet" */);
-  }
-
-}
 
 fn handle(state: &ipv4::State<RipTable>, packet: ipv4::packet::V) -> IoResult<()> {
   let neighbor_addr = packet.borrow().get_source();
@@ -67,11 +56,18 @@ fn handle(state: &ipv4::State<RipTable>, packet: ipv4::packet::V) -> IoResult<()
 }
 
 /// Registers protocol handler for incomming RIP packets.
-pub fn register(state: Arc<ipv4::State<RipTable>>) {
+pub fn register(state: &Arc<ipv4::State<RipTable>>) {
+  let handler = {
+    let state = state.clone();
+    box move |&: packet: ipv4::packet::V | {
+      handle(&*state, packet).ok().expect("Failure handling incomming IP Packet");
+    }
+  };
+  
   control::register_protocol_handler(
-    &*state,
+    &**state,
     super::RIP_PROTOCOL,
-    box RipHandler { state: state.clone() })
+    handler)
 }
 
 
