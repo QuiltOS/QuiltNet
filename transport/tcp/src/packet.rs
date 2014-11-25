@@ -302,7 +302,7 @@ impl PartialOrd for TcpPacket {
 
 impl fmt::Show for TcpPacket {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "TCP: <srcAddr: {}, dstAddr: {}>, |srcPort {}|dstPort {}|\n|Seq# {}|\n|Ack# {}|\n|offset {}|ACK {}|SYN {}|FIN {}|window {}|\n|checksum {}|",
+    write!(f, "TCP: <srcAddr: {}, dstAddr: {}>, |srcPort {}|dstPort {}|\n|Seq# {}|\n|Ack# {}|\n|offset {}|ACK {}|SYN {}|FIN {}|window {}|\n|checksum {}|\n{}",
            self.get_src_addr(), self.get_dst_addr(),
            self.get_src_port(), self.get_dst_port(),
            self.get_seq_num(),
@@ -310,7 +310,8 @@ impl fmt::Show for TcpPacket {
            self.get_hdr_size(),
            self.flags().contains(ACK), self.flags().contains(SYN), self.flags().contains(FIN),
            self.get_window_size(),
-           self.get_checksum())
+           self.get_checksum(),
+           self.get_payload())
   }
 }
 
