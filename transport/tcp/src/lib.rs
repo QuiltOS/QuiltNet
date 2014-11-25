@@ -97,6 +97,7 @@ impl<A> State<A> where A: RoutingTable
       tcp: ConcurrentHashMap::new(),
     });
     receive::register(&ptr);
+    drivers::trace::register(&ptr);
     ptr
   }
 

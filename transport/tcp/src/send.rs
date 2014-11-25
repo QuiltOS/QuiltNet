@@ -9,6 +9,7 @@ use network::ipv4::{
 };
 
 use packet;
+use drivers::trace;
 
 #[deriving(PartialEq, Eq, Clone, Show)]
 pub enum Error {
@@ -58,6 +59,9 @@ pub fn send
 
   let awkward_checksum_fixer: for<'p> |&'p mut ipv4::packet::V| -> result::Result<(), E> = | packet |
   {
+    // Log the sending of this packet
+    trace::log_trace(packet::TcpPacket::hack(packet), false);
+
     let packet = packet::TcpPacket::hack_mut(packet);
 
     match src_addr {
