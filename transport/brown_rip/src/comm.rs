@@ -30,15 +30,16 @@ fn handle(state: &ipv4::State<RipTable>, packet: ipv4::packet::V) -> IoResult<()
       debug!("Got request from {}", neighbor_addr);
 
       // TODO: factor out singleton iterator
+      {
+        let single = [neighbor_addr];
+        let unlocked = state.routes.map.write();
+        let factory = || unlocked.iter().map(|(a,r)| (*a,r)); // the whole table
 
-      let single = [neighbor_addr];
-      let unlocked = state.routes.map.write();
-      let factory = || unlocked.iter().map(|(a,r)| (*a,r)); // the whole table
-
-      try!(propagate(factory,
-                     single.iter().map(|x| *x), // just who issued the request
-                     &state.neighbors,
-                     state.interfaces.as_slice()));
+        try!(propagate(factory,
+                       single.iter().map(|x| *x), // just who issued the request
+                       &state.neighbors,
+                       state.interfaces.as_slice()));
+      }
 
       // TODO factor out empty iterator
       let empty: [packet::Entry, ..0] = [];
