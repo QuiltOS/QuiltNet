@@ -4,6 +4,7 @@ use std::cmp;
 use network::ipv4::strategy::RoutingTable;
 use network::ipv4::Addr;
 use packet::{mod, TcpPacket};
+use connection::timer::RetransmitData;
 
 use send;
 use super::packet_buf::{
@@ -16,9 +17,10 @@ use super::packet_buf::{
 //use super::manager::send::SendMgr;
 
 
-pub const TCP_MSS           : u16 = 536u16;
-pub const TCP_BUF_SIZE      : u16 = ((1u32 << 16u) - 1u32) as u16;
-pub const TCP_RECV_WND_INIT : u16 = TCP_BUF_SIZE;
+pub const TCP_MSS           : u16  = 536u16;
+pub const TCP_BUF_SIZE      : u16  = ((1u32 << 16u) - 1u32) as u16;
+pub const TCP_RECV_WND_INIT : u16  = TCP_BUF_SIZE;
+pub const TCP_MAX_RETRIES   : uint = 5u;
 
 #[deriving(Show)]
 pub struct TcbState {
@@ -53,6 +55,7 @@ pub struct TCB {
   //recv_mgr : RecvMgr,
   //send_mgr : SendMgr,
   state:     TcbState,
+  transmit_data: RetransmitData,
 }
 
 impl TCB
@@ -61,10 +64,8 @@ impl TCB
     TCB {
       read  : PacketBuf::new(their_isn),
       write : PacketBuf::new(our_isn),
-
-      //recv_mgr : RecvMgr::new(),
-      //send_mgr : SendMgr::new(),
-      state    : TcbState::new(our_isn, their_isn, their_wnd),
+      state : TcbState::new(our_isn, their_isn, their_wnd),
+      transmit_data: RetransmitData::new(),
     }
   }
 
@@ -105,6 +106,8 @@ impl TCB
             //  RTT_last = now() - last_transmit_time()
             // else:
             //  This is an invalid ACK....
+
+          self.transmit_data.update_rtt_from_ack(seg_ACK);
 
 
           // Fast-forward our retransmission queue up to the ACK
@@ -231,6 +234,8 @@ impl TCB
     let send_nxt = get_next_write_seq(&self.write);
 
     let bytes_written = self.write.add_slice(send_nxt, buf);
+
+    self.transmit_data.update_with_interval(get_next_write_seq(&self.write));
 
     //TODO: will this SEQ num state get moved into PacketBuf?
     //debug!("SendBuf: {}", self.write);
