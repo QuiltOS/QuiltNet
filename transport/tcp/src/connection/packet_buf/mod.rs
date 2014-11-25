@@ -1,7 +1,5 @@
 pub mod dummy;
 pub mod ring;
-pub mod send;
-pub mod recv;
 
 pub type BestPacketBuf = ring::RingPacketBuf;
 
