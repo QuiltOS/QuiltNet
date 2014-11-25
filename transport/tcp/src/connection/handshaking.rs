@@ -91,7 +91,6 @@ impl Handshaking
     Ok(if (self.want || self.owe) == false {
       debug!("{} to {} free!!!!", them, us);
       // Become established
-      // TODO: pass handshake params to TCB
       Established::new((self.our_ip.unwrap(), self.us),
                        self.them,
                        self.our_number,

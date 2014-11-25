@@ -40,7 +40,7 @@ impl PacketBuf for RingPacketBuf
       (delta == 0) 
       //&& (delta as uint + buf.len()) < self.ring.writable_len()
     {
-      debug!("perfect fit");
+      debug!("perfect fit: {}, {}:{}", self, seq_num, buf);
       let bytes_fit = cmp::min(self.ring.writable_len(), buf.len());
 
       bytes_written = self.ring.write(buf[..bytes_fit]);
