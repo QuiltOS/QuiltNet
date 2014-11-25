@@ -13,19 +13,9 @@ use network::ipv4::strategy::RoutingTable;
 
 use super::packet::TcpPacket;
 
-struct Handler<A>  where A: RoutingTable {
-  state: Arc<super::State<A>>,
-}
 
-impl<A> Fn<(ipv4::packet::V,), ()> for Handler<A>
-  where A: RoutingTable
-{
-  extern "rust-call" fn call(&self, (packet,):(ipv4::packet::V,)) {
-    handle(&*self.state, packet);
-  }
-}
 
-fn handle<A>(state:  &::State<A>,
+fn handle<A>(state:  &Arc<::State<A>>,
              packet: ipv4::packet::V)
   where A: RoutingTable
 {
@@ -57,7 +47,7 @@ fn handle<A>(state:  &::State<A>,
       debug!("existing connection found to handle this! (might be closed)");
       super::connection::trans(
         &mut *connection.write(),
-        state,
+        &**state,
         packet)
     },
     None => {
@@ -77,5 +67,10 @@ pub fn register<A>(state: &Arc<super::State<A>>)
   control::register_protocol_handler(
     &*state.ip,
     super::PROTOCOL,
-    box Handler { state: state.clone() })
+    {
+      let state = state.clone();
+      box move | packet: ipv4::packet::V | {
+        handle(&state, packet);
+      }
+    })
 }
