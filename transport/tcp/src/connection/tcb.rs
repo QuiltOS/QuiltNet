@@ -314,10 +314,10 @@ pub fn mod_in_interval(s: u32, e: u32, n: u32) -> bool {
   if e < s {
 
     // interval is wrapped around
-    s < n || n <= e
+    s <= n || n <= e
   } else {
 
     // Plain old interval
-    s < n && n <= e
+    s <= n && n <= e
   }
 }

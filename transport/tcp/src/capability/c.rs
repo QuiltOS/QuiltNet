@@ -112,7 +112,7 @@ impl<A> Reader for C<A>
         {
           // TODO report this annoying situation
           let temp1 = buf;
-          let temp2 = temp1[mut total_read..];
+          let temp2 = temp1[mut n..];
           buf       = temp2;
         }
         total_read += n;

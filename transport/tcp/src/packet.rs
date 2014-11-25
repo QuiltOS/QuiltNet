@@ -37,6 +37,7 @@ pub enum BadPacket {
 }
 
 bitflags! {
+#[deriving(Show)]
   flags Flags: u8 {
     const URG = 0b_00_100000,
     const ACK = 0b_00_010000,
@@ -301,7 +302,7 @@ impl PartialOrd for TcpPacket {
 
 impl fmt::Show for TcpPacket {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "TCP: <srcAddr: {}, dstAddr: {}>, |srcPort {}|dstPort {}|\n|Seq# {}|\n|Ack# {}|\n|offset {}|ACK {}|SYN {}|FIN {}|window {}|\n|checksum {}|\n{}",
+    write!(f, "TCP: [Flags:{}] <srcAddr: {}, dstAddr: {}>, |srcPort {}|dstPort {}|\n|Seq# {}|\n|Ack# {}|\n|offset {}|ACK {}|SYN {}|FIN {}|window {}|\n|checksum {}|\n{}", self.tcp_hdr()[13],
            self.get_src_addr(), self.get_dst_addr(),
            self.get_src_port(), self.get_dst_port(),
            self.get_seq_num(),
