@@ -159,15 +159,28 @@ impl Handshaking
         if brag {
           debug!("{} will SYN {}", us, them);
           packet.flags_mut().insert(packet::SYN);
+
           self.want = true;
         }
         if self.owe {
           debug!("{} will ACK {}", us, them);
+
           packet.flags_mut().insert(packet::ACK);
           self.owe = false;
         }
+
+        // Set SEQ to our ISN
+        packet.set_seq_num(self.our_number);
+
+        // Set ACK to their SEQ if we need
+        match self.their_number {
+          None => (),
+          Some(ack_num) => packet.set_ack_num(self.their_number.unwrap()),
+        };
+
         Ok(())
       };
+          
 
       try!(send::send(&*state.ip,
                       our_ip, // to ensure routes don't fuck us

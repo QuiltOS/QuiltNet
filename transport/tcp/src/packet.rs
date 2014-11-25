@@ -188,24 +188,24 @@ impl TcpPacket {
   // Sequence Number Ops
   pub fn get_seq_num(&self) -> u32 {
     // assert!(self.is_seq())
-    BufReader::new(self.tcp_hdr()[4..9]).read_be_u32().unwrap()
+    BufReader::new(self.tcp_hdr()[4..8]).read_be_u32().unwrap()
     //Int::from_be(get_multibyte(self.tcp_hdr(), 4, 4)) as u32
   }
   pub fn set_seq_num(&mut self, seq_num: u32) {
-    BufWriter::new(self.tcp_hdr_mut()[mut 4..9]).write_be_u32(seq_num);
+    BufWriter::new(self.tcp_hdr_mut()[mut 4..8]).write_be_u32(seq_num);
   }
 
   // Acknowledgement Number Ops
   pub fn get_ack_num(&self) -> Option<u32> {
     if self.flags().contains(ACK) {
-      None
+      Some(BufReader::new(self.tcp_hdr()[8..12]).read_be_u32().unwrap())
     } else {
-      Some(BufReader::new(self.tcp_hdr()[8..13]).read_be_u32().unwrap())
+      None
     }
   }
   pub fn set_ack_num(&mut self, ack_num: u32) {
     self.flags_mut().insert(ACK);
-    BufWriter::new(self.tcp_hdr_mut()[mut 8..13]).write_be_u32(ack_num);
+    BufWriter::new(self.tcp_hdr_mut()[mut 8..12]).write_be_u32(ack_num);
   }
 
   // Checksum Ops
