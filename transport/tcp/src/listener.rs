@@ -2,7 +2,7 @@ use std::fmt;
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::io::net::ip::Port;
-use std::sync::{Weak, RWLock};
+use std::sync::{Arc, Weak, RWLock};
 
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
@@ -11,15 +11,26 @@ use Table;
 use packet::{mod, TcpPacket};
 use send::{mod, Error,};
 
+use connection::Connection;
 use connection::handshaking::Handshaking;
 use connection::established::{
   mod,
   Established,
 };
 
-pub type OnConnectionAttempt = Box<FnMut<(::ConAddr /* us */, ::ConAddr /* them */,),
-                                         Option<established::Handler>>
-                               + Send + Sync + 'static>;
+pub type ConnectionFun = Box<
+  FnOnce<(established::Handler,),
+         (send::Result<Weak<RWLock<Connection>>>)>
+  + Send + Sync + 'static>;
+
+pub type ConnectionAttemptMessage = (::ConAddr, // us
+                                     ::ConAddr, // them
+                                     ConnectionFun);
+
+pub type OnConnectionAttempt = Box<
+  FnMut<ConnectionAttemptMessage, ()>
+  + Send + Sync + 'static>;
+
 
 pub struct Listener {
   us:      Port,
@@ -29,7 +40,7 @@ pub struct Listener {
 impl Listener
 {
   fn handle<A>(&mut self,
-               state:  &::State<A>,
+               state:  &Arc<::State<A>>,
                packet: TcpPacket)
     where A: RoutingTable
   {
@@ -52,25 +63,25 @@ impl Listener
 
     debug!("Done with 1/3 handshake with {} on our port {}", them, us.1);
 
-    let handler_pair = match self.handler.call_mut((us, them)) {
-      Some(hs) => hs,
-      None     => return,
+    let con_maker: ConnectionFun = {
+      let seq_num = packet.get_seq_num();
+      let state   = state.clone().downgrade();
+      box move |: handler | {
+        let state = match state.upgrade() {
+          None    => return Err(Error::BadHandshake), // I suppose IP dissapearing is a bad handshake?
+          Some(s) => s,
+        };
+        Handshaking::new(&*state, us.1, Some(us.0), them,
+                         false, true, Some(seq_num), handler)
+      }
     };
-    let _ = Handshaking::new(state,
-                             us.1,
-                             Some(us.0),
-                             them,
 
-                             false,
-                             true,
-                             Some(packet.get_seq_num()),
-                             handler_pair);
-    // keep on listening
+    self.handler.call_mut((us, them, con_maker));
   }
 }
 
 pub fn trans<A>(listener: &mut Option<Listener>,
-                state:    &::State<A>,
+                state:    &Arc<::State<A>>,
                 packet:   TcpPacket)
   where A: RoutingTable
 {

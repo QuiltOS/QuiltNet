@@ -18,8 +18,6 @@ use send;
 use super::{c, C};
 
 
-type FugginComplex = (::ConAddr, ::ConAddr, Sender<connection::established::Handler>);
-
 /// Capability that gives synchronous access to a Listener
 // TODO: not too great that ipv4::State's routing strategy is leaking this far.
 pub struct L<A>
@@ -29,7 +27,7 @@ pub struct L<A>
   weak:     Weak<::PerPort>,
 
   state:    Arc<::State<A>>,
-  requests: Receiver<FugginComplex>
+  requests: Receiver<listener::ConnectionAttemptMessage>
 }
 
 impl<A> L<A>
@@ -39,16 +37,14 @@ impl<A> L<A>
                 us:         Port)
                 -> send::Result<L<A>>
   {
-    let (tx, rx) = channel::<FugginComplex>();
+    let (tx, rx) = channel::<listener::ConnectionAttemptMessage>();
 
     let handler = {
       // TODO: this mutex is not necessary
       let request = Mutex::new(tx);
-      box move |&mut: us: ::ConAddr, them: ::ConAddr| {
+      box move |&mut: us: ::ConAddr, them: ::ConAddr, call | {
         debug!("in L-Capability Handler");
-        let (tx, rx) = channel();
-        request.lock().send((us, them, tx));
-        Some(rx.recv())
+        request.lock().send((us, them, call));
       }
     };
 
@@ -66,23 +62,15 @@ impl<A> L<A>
     })
   }
 
-  pub fn accept(&self) -> C<A> {
+  pub fn accept(&self) -> send::Result<C<A>> {
     debug!("Accept called on capability {}", self.us);
-    let (us, them, reply) = self.requests.recv();
-
+    // get info and black-box function to actually make the connection
+    let (_, _, mk_con) = self.requests.recv();
+    // make handler and receives to interact with connection
     let (handler, rd_rx, wt_rx) = c::make_con_handler();
-
-    // We will initialize these, then the async side will just find a closed
-    // connection -- no problem.
-    //
-    // async does not reserve connection before calling us in case we decline to
-    // accept
-    let per_port = ::PerPort::get_or_init(&self.state.tcp, us.1);
-    let conn     = Connection::get_or_init(&*per_port, them);
-
-    // give them the stuff to make a connection
-    reply.send(handler);
-
-    c::new(&self.state, conn.downgrade(), rd_rx, wt_rx)
+    // make connection with handler
+    let weak_ref = try!(mk_con.call_once((handler,)));
+    // make connection capability with weak ref to handler
+    Ok(c::new(&self.state, weak_ref, rd_rx, wt_rx))
   }
 }
