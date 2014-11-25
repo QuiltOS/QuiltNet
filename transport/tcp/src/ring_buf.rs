@@ -131,22 +131,23 @@ fn raw_make_iter<'a>(data: &'a Vec<u8>,
 {
   let len = data.len();
 
-  if tail <= head
+  if head < tail
   {
     // we need to wrap around
-    data[head..]
+    data[tail..]
       .iter()
-      .chain(data[..tail].iter())
+      .chain(data[..head].iter())
   }
-  else
+  else if head > tail
   {
     // we need to chain so that the types are the same
-    assert!(tail - head > 1);
-    let arbitrary_split = tail - 1;
-
-    data[head..arbitrary_split]
+    let arbitrary_split = head - 1;
+    data[tail..arbitrary_split]
       .iter()
-      .chain(data[arbitrary_split..tail].iter())
+      .chain(data[arbitrary_split..head].iter())
+  }
+  else {
+    panic!("head should never be the same as tail in RingBuf")
   }
 }
 
