@@ -106,25 +106,7 @@ impl RingBuf
 
   pub fn iter<'a>(&'a self) -> View<'a>
   {
-    let len = self.data.len();
-
-    // If we need to wrap around
-    if self.tail <= self.head
-    {
-      self.data[self.head..]
-        .iter()
-        .chain(self.data[..self.tail].iter())
-    }
-    else
-    {
-      // we need to chain so that the types are the same
-      assert!(self.tail - self.head > 1);
-      let arbitrary_split = self.tail - 1;
-
-      self.data[self.head..arbitrary_split]
-        .iter()
-        .chain(self.data[arbitrary_split..self.tail].iter())
-    }
+    raw_make_iter(&self.data, self.head, self.tail)
   }
 
   pub fn consume_iter<'a>(&'a mut self) -> Consume<'a>
@@ -137,25 +119,35 @@ impl RingBuf
       Some(*b)
     };
 
-    // If we need to wrap around
-    if self.tail <= self.head
-    {
-      self.data[self.head..]
-        .iter()
-        .chain(self.data[..self.tail].iter())
-        .scan((&mut self.head, len), inc)
-    }
-    else
-    {
-      // we need to chain so that the types are the same
-      assert!(self.tail - self.head > 1);
-      let arbitrary_split = self.tail - 1;
+    raw_make_iter(&self.data, self.head, self.tail)
+      .scan((&mut self.head, len), inc)
+  }
+}
 
-      self.data[self.head..arbitrary_split]
-        .iter()
-        .chain(self.data[arbitrary_split..self.tail].iter())
-        .scan((&mut self.head, len), inc)
-    }
+// for finer-grain borrowing
+fn raw_make_iter<'a>(data: &'a Vec<u8>,
+                     head: uint,
+                     tail: uint) -> View<'a>
+{
+  let len = data.len();
+
+  if head < tail
+  {
+    // we need to wrap around
+    data[tail..]
+      .iter()
+      .chain(data[..head].iter())
+  }
+  else if head > tail
+  {
+    // we need to chain so that the types are the same
+    let arbitrary_split = head - 1;
+    data[tail..arbitrary_split]
+      .iter()
+      .chain(data[arbitrary_split..head].iter())
+  }
+  else {
+    panic!("head should never be the same as tail in RingBuf")
   }
 }
 
