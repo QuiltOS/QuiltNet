@@ -36,7 +36,6 @@ use concurrent_hash_map::ConcurrentHashMap;
 use listener::Listener;
 use connection::Connection;
 
-
 mod packet;
 mod concurrent_hash_map;
 mod ring_buf;
@@ -46,11 +45,12 @@ mod receive;
 
 mod listener;
 mod connection;
+pub mod drivers;
 
 pub mod capability;
 
 
-const PROTOCOL: u8 = 6;
+pub const PROTOCOL: u8 = 6;
 
 /// Address of one end of a connection
 pub type ConAddr = (ipv4::Addr, Port);
