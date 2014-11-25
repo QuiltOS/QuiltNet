@@ -21,6 +21,7 @@ extern crate misc;
 extern crate time;
 extern crate network;
 
+use std::fmt;
 use std::collections::HashMap;
 use std::default::Default;
 use std::io::net::ip::Port;
@@ -100,16 +101,31 @@ impl<A> State<A> where A: RoutingTable
   }
 
   pub fn dump_tcp(&self) {
-    //TODO: Print tcp state (not ip state)
+    println!("Sockets:");
+    self.tcp.dump();
   }
 }
 
 pub type SubTable = ConcurrentHashMap<ConAddr, RWLock<Connection>>;
 
+impl fmt::Show for RWLock<Connection> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "RW<{}>", self.read().deref()) 
+  }
+}
+
+impl fmt::Show for RWLock<Option<Listener>> {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "RW<{}>", self.read().deref()) 
+  }
+}
+
 pub struct PerPort {
   listener:    RWLock<Option<Listener>>,
   connections: SubTable,
 }
+
+
 
 impl Default for PerPort
 {
@@ -128,5 +144,11 @@ impl PerPort
     tcp.get_or_init(
       us,
       || Default::default())
+  }
+}
+
+impl fmt::Show for PerPort {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "Listener: {}, Cnx:TODO", self.listener) //, self.connections)
   }
 }

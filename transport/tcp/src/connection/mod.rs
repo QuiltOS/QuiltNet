@@ -1,3 +1,5 @@
+use std::fmt;
+
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::default::Default;
@@ -43,7 +45,15 @@ impl Connection {
   }
 }
 
-
+impl fmt::Show for Connection {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match self {
+       &Connection::Closed => write!(f, "CLOSED"),
+       &Connection::Handshaking(ref h) => write!(f, "HANDSHAKING[TODO]"),
+       &Connection::Established(ref e) => write!(f, "ESTABLISHED"),
+    }
+  }
+}
 
 pub trait State {
   fn next<A>(self, &::State<A>, TcpPacket) -> Connection

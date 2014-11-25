@@ -1,3 +1,4 @@
+use std::fmt;
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::io::net::ip::Port;
@@ -100,4 +101,10 @@ pub fn passive_new<A>(state:      &::State<A>,
   };
 
   Ok(per_port.clone().downgrade())
+}
+
+impl fmt::Show for Listener {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    write!(f, "LISTENER: <{}>", self.us)
+  }
 }

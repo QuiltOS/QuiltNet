@@ -1,6 +1,7 @@
 use std::borrow::BorrowFrom;
 use std::collections::HashMap;
 use std::collections::hash_map::{Entry, Occupied, Vacant};
+use std::fmt;
 use std::default::Default;
 use std::hash::{
   Hash,
@@ -17,8 +18,8 @@ use std::sync::{
 pub struct ConcurrentHashMap<K, V, H = RandomSipHasher>(RWLock<HashMap<K, Arc<V>, H>>);
 
 impl<K, V> ConcurrentHashMap<K, V, RandomSipHasher>
-  where K: Send + Sync + Hash + Eq,
-        V: Send + Sync,
+  where K: Send + Sync + Hash + Eq + fmt::Show,
+        V: Send + Sync + fmt::Show,
 {
   pub fn new() -> ConcurrentHashMap<K, V, RandomSipHasher>
   {
@@ -27,8 +28,8 @@ impl<K, V> ConcurrentHashMap<K, V, RandomSipHasher>
 }
 
 impl<K, V, S, H> ConcurrentHashMap<K, V, H>
-  where K: Send + Sync + Eq + Hash<S>,
-        V: Send + Sync,
+  where K: Send + Sync + Eq + Hash<S> + fmt::Show,
+        V: Send + Sync + fmt::Show,
         H: Send + Sync + Hasher<S>,
 {
   pub fn get<Sized? Q>(&self, k: &Q) -> Option<Arc<V>>
@@ -59,6 +60,12 @@ impl<K, V, S, H> ConcurrentHashMap<K, V, H>
         arc.clone()
       }
       Occupied(entry) => entry.into_mut().clone(),
+    }
+  }
+
+  pub fn dump(&self) {
+    for (k, v) in self.0.read().iter() {
+      println!("[{}] {}", k, v);
     }
   }
 }
