@@ -36,14 +36,14 @@ impl PacketBuf for RingPacketBuf
 
     (if     // tacks on perfectly
       (delta == 0) &&
-      (delta as uint + buf.len()) < self.ring.window_size()
+      (delta as uint + buf.len()) < self.ring.valid_len()
     {
       debug!("perfect fit");
       self.ring.write(buf)
     }
     else if // overlaps, but is not completely contained
       (delta < 0) &&
-      (buf.len() - (-delta) as uint) < self.ring.window_size() &&
+      (buf.len() - (-delta) as uint) < self.ring.valid_len() &&
       ((-delta) as uint) < buf.len()
     {
       self.ring.write(buf[-delta as uint..])
@@ -57,8 +57,8 @@ impl PacketBuf for RingPacketBuf
 }
 
 
-type ViewC<'a>    = Map <'a, &'a u8, u8, ring_buf::View<'a>>;
-type ConsumeC<'a> = Scan<'a,     u8, u8, ring_buf::Consume<'a>, &'a mut u32>;
+type ViewC<'a>    = ring_buf::View<'a>;
+type ConsumeC<'a> = Scan<'a, u8, u8, ring_buf::Consume<'a>, &'a mut u32>;
 
 
 //impl<'a> PacketBufIter<'a> for RingPacketBuf
@@ -67,10 +67,12 @@ impl<'a>  RingPacketBuf
   type View    = ViewC<'a>;
   type Consume = ConsumeC<'a>;
 
+  #[inline]
   pub fn iter(&'a self) -> ViewC<'a> {
-    self.ring.iter().map(|x| *x)
+    self.ring.iter()
   }
 
+  #[inline]
   pub fn consume_iter(&'a mut self) -> ConsumeC<'a> {
 
     // TODO close over len instead

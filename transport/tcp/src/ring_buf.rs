@@ -1,15 +1,15 @@
 use std::cmp;
 use std::slice::bytes::copy_memory;
 use std::slice::Items;
-use std::iter::{Chain, Scan};
-
+use std::iter::{Chain, Map, Scan};
 
 #[deriving(Show)]
 pub struct RingBuf {
-  tail : uint, // Back of unconsumed, valid data
-  head : uint,     // Front of unconsumed, valid data
-  data : Vec<u8>,
+  tail: uint, // Back of unconsumed, valid data  -- oldest byte written
+  head: uint, // Front of unconsumed, valid data -- next byte to write
+  data: Vec<u8>,
 }
+// head == tail is declared to be empty
 
 
 impl RingBuf
@@ -17,14 +17,24 @@ impl RingBuf
   // Returns new Ring Buffer of given (fixed) size
   pub fn new(size: uint) -> RingBuf {
     RingBuf {
-      tail : 0,
-      head : 0, //TODO: do we want head = data.len()?
-      // add 1 slot to disambiguate full/empty
-      data : Vec::from_fn(size + 1, |n| 0),
+      tail: 0,
+      head: 0,
+      data: Vec::from_fn(size + 1, |n| 0),
     }
   }
 
-  pub fn window_size(&self) -> uint {
+  fn check_invariants(&self) {
+    // always at least one byte in ring buf
+    assert!(self.data.len() > 0);
+    // head and tail always point to a valid byte
+    assert!(self.tail < self.data.len());
+    assert!(self.head < self.data.len());
+  }
+
+  /// The number of readable/valid bytes
+  pub fn valid_len(&self) -> uint {
+    self.check_invariants();
+
     if self.tail <= self.head {
       self.head - self.tail
     } else {
@@ -35,9 +45,11 @@ impl RingBuf
   // Reads as many bytes as possible into buf, returns number of bytes read
   pub fn read(&mut self, buf: &mut [u8]) -> uint
   {
+    self.check_invariants();
+
     // Number of bytes we're going to copy
-    let n = cmp::min(self.window_size(), buf.len());
-    debug!("read: n: {}, ws: {}", n, self.window_size());
+    let n = cmp::min(self.valid_len(), buf.len());
+    debug!("read: n: {}, ws: {}", n, self.valid_len());
 
     // Head of slice we're reading from, wrapped around
     let read_head = (self.tail + n) % self.data.len();
@@ -63,18 +75,21 @@ impl RingBuf
     self.tail = read_head;
 
     // Return # bytes read
+    self.check_invariants();
     n
   }
 
   // Writes as many bytes as possible from buf, returns number of bytes written
   pub fn write(&mut self, buf: &[u8]) -> uint
   {
+    self.check_invariants();
+
     let len = self.data.len();
 
     // Number of bytes we're going to copy
     // NOTE: subtract 1 to avoid writing full array - we can't disambiguate full/empty!
-    let n = cmp::min(len - self.window_size() - 1, buf.len());
-    //println!("write: n: {}, ws: {}", n, self.window_size());
+    let n = cmp::min(len - self.valid_len() - 1, buf.len());
+    //println!("write: n: {}, ws: {}", n, self.valid_len());
 
 
     // Head of slice we're writing into, wrapped around
@@ -101,30 +116,39 @@ impl RingBuf
     self.head = write_head;
 
     // Return # bytes read
+    self.check_invariants();
     n
   }
 
+  #[inline]
   pub fn iter<'a>(&'a self) -> View<'a>
   {
     raw_make_iter(&self.data, self.head, self.tail)
   }
 
+  #[inline]
   pub fn consume_iter<'a>(&'a mut self) -> Consume<'a>
   {
     let len: uint = self.data.len();
 
     // TODO close over len instead
-    let inc: |&mut (&mut uint, uint), &u8|:'a -> Option<u8> = |st, b| {
-      *st.0 = *st.0 + 1 % st.1;
-      Some(*b)
+    let inc: |&mut (&mut uint, uint), u8|:'a -> Option<u8> = |st, b| {
+      *st.0 = (*st.0 + 1) % st.1;
+      Some(b)
     };
 
     raw_make_iter(&self.data, self.head, self.tail)
-      .scan((&mut self.head, len), inc)
+      .scan((&mut self.tail, len), inc)
   }
 }
 
+
+pub type View<'a>    = Map<'a, &'a u8, u8, Chain<Items<'a, u8>, Items<'a, u8>>>;
+pub type Consume<'a> = Scan<'a, u8, u8, View<'a>, (&'a mut uint, uint)>;
+
+
 // for finer-grain borrowing
+#[inline]
 fn raw_make_iter<'a>(data: &'a Vec<u8>,
                      head: uint,
                      tail: uint) -> View<'a>
@@ -138,28 +162,36 @@ fn raw_make_iter<'a>(data: &'a Vec<u8>,
       .iter()
       .chain(data[..head].iter())
   }
-  else if head > tail
+  else
   {
+    // continuous (including empty)
+
     // we need to chain so that the types are the same
-    let arbitrary_split = head - 1;
-    data[tail..arbitrary_split]
+    data[tail..head]
       .iter()
-      .chain(data[arbitrary_split..head].iter())
+      .chain(data[head..head].iter())
   }
-  else {
-    panic!("head should never be the same as tail in RingBuf")
-  }
+  .map(|x| *x)
 }
-
-pub type View<'a>    = Chain<Items<'a, u8>, Items<'a, u8>>;
-pub type Consume<'a> = Scan<'a, &'a u8, u8, View<'a>, (&'a mut uint, uint)>;
-
 
 
 #[cfg(test)]
 mod test
 {
   use super::RingBuf;
+
+  #[test]
+  fn empty_valid_lens() {
+    let mut ring = RingBuf::new(0);
+    assert_eq!(ring.valid_len(), 0);
+  }
+
+  #[test]
+  fn single_valid_byte() {
+    let mut ring = RingBuf::new(1);
+    assert_eq!(ring.write([1].as_slice()), 1);
+    assert_eq!(ring.valid_len(), 1);
+  }
 
   #[test]
   fn simple(){
@@ -201,5 +233,60 @@ mod test
     println!("After read2: {}", ring);
     println!("buf: {}", buf.as_slice());
     assert_eq!(buf, [4, 5, 6, 7])
+  }
+
+  #[test]
+  fn simple_non_consuming() {
+    let mut ring = RingBuf::new(4);
+
+    assert_eq!(ring.write([1,2,3,4].as_slice()), 4);
+
+    assert_eq!(ring.tail, 0);
+    assert_eq!(ring.head, 4);
+    assert_eq!(ring.valid_len(), 4);
+
+    ring.check_invariants();
+
+    let mut iter = ring.iter();
+
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), Some(2));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), Some(4));
+    assert_eq!(iter.next(), None);
+
+    ring.check_invariants();
+
+    assert_eq!(ring.tail, 0);
+    assert_eq!(ring.head, 4);
+    assert_eq!(ring.valid_len(), 4);
+  }
+
+  #[test]
+  fn simple_consuming() {
+    let mut ring = RingBuf::new(4);
+    assert_eq!(ring.write([1,2,3,4].as_slice()), 4);
+
+    assert_eq!(ring.tail, 0);
+    assert_eq!(ring.head, 4);
+    assert_eq!(ring.valid_len(), 4);
+
+    ring.check_invariants();
+
+    {
+      let mut iter = ring.consume_iter();
+
+      assert_eq!(iter.next(), Some(1));
+      assert_eq!(iter.next(), Some(2));
+      assert_eq!(iter.next(), Some(3));
+      assert_eq!(iter.next(), Some(4));
+      assert_eq!(iter.next(), None);
+    }
+
+    ring.check_invariants();
+
+    assert_eq!(ring.tail, 4);
+    assert_eq!(ring.head, 4);
+    assert_eq!(ring.valid_len(), 0);
   }
 }
