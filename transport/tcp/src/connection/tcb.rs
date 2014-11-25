@@ -73,8 +73,6 @@ impl TCB
   /// Receive logic for TCP packet
   pub fn recv(&mut self, packet: TcpPacket) -> (bool, bool)
   {
-    debug!("TCB: recv packet {}", packet);
-
     let mut can_read  = false;
     let mut can_write = false;
     // Validate (ACK, SEQ in appropriate intervals)
@@ -100,12 +98,15 @@ impl TCB
           let una = self.write.get_next_consume_seq();
 
             // UPDATE TIMER STATE
+            // (NEED X LEVELS of these if you have X max retransmission limit)
             // if seg_ACK <= last_retransmitted
             //  don't care
             // elif seg_ACK <= send.NXT
             //  RTT_last = now() - last_transmit_time()
             // else:
             //  This is an invalid ACK....
+
+
           // Fast-forward our retransmission queue up to the ACK
           let _= self.write.consume_iter()
             .zip(::std::iter::count(una, 1))
@@ -143,7 +144,7 @@ impl TCB
         }
 
         let recv_next = get_next_write_seq(&self.read);
-        debug!("read buf head changed from {} to {}", old_recv_next, recv_next);
+        //debug!("read buf head changed from {} to {}", old_recv_next, recv_next);
 
         if old_recv_next != recv_next // != cause wrap arounds
         {
@@ -188,7 +189,7 @@ impl TCB
   ///
   /// Returns the number of bytes read
   pub fn read(&mut self, buf: &mut [u8]) -> uint {
-    debug!("tcb read called, buf is {}", self.read);
+//    debug!("tcb read called, buf is {}", self.read);
 
     // Get CONSUMING iter over bytes queued for reading
     let mut bytes_to_read = self.read.consume_iter().take(buf.len()).peekable();
@@ -200,7 +201,6 @@ impl TCB
     // Read as many bytes as we can to fill user's buf
     debug!("reading from consuming iterator");
     for b in bytes_to_read {
-      println!("read byte {}", b);
       writer.write_u8(b);
       ctr += 1;
     }
@@ -225,16 +225,16 @@ impl TCB
                  them:   ::ConAddr) -> uint
     where A: RoutingTable
   {
-    debug!("TCB state: {}", self.state);
-    debug!("User on <{}<{}> send data: {}", us, them, buf);
+    //debug!("TCB state: {}", self.state);
+    //debug!("User on <{}<{}> send data: {}", us, them, buf);
 
     let send_nxt = get_next_write_seq(&self.write);
 
     let bytes_written = self.write.add_slice(send_nxt, buf);
 
     //TODO: will this SEQ num state get moved into PacketBuf?
-    debug!("SendBuf: {}", self.write);
-    debug!("{} bytes written", bytes_written);
+    //debug!("SendBuf: {}", self.write);
+    //debug!("{} bytes written", bytes_written);
 
     self.flush_transmit_queue(state, us, them);
 
@@ -249,6 +249,10 @@ impl TCB
     where A: RoutingTable
   {
     debug!("<{},{}> Flushing Transmission Queue", us, them);
+
+    // UPDATE TIMER DATA
+    // if new data, push another entry onto queue with now() as time
+    // pop entry w/ MAX_RETRIES retries off
 
     // Send all the bytes we have up to the current send window
     let mut bytes_to_send = self.write.iter().take(self.state.send_WND as uint).peekable();
@@ -287,7 +291,6 @@ impl TCB
         };
 
         //TODO Update sent record for timers
-        debug!("Retransmission built: Packet:{}", packet)
 
         Ok(())
       };

@@ -17,7 +17,7 @@ pub fn register<A>(state: &Arc<::State<A>>)
     {
       let state = state.clone();
       box move | packet: ipv4::packet::V | {
-        log_trace(&TcpPacket::new(packet), true);
+//        log_trace(&TcpPacket::new(packet), true);
       }
     })
 }

@@ -98,17 +98,15 @@ impl<A> Reader for C<A>
 
     loop {
       {
-        debug!("getting write lock in read");
         let mut lock = arc.write();
-        debug!("got write lock in read");
         let mut est = match &mut *lock {
           &Connection::Established(ref mut est) => est,
           _ if total_read == 0 => return Err(EOF),
           _                    => return Ok(total_read), // semi-success: next call will EOF
         };
-        debug!("reading from est");
+        //debug!("reading from est");
         let n       = est.read(&*self.state, buf);
-        debug!("tcb read {} bytes", n);
+        //debug!("tcb read {} bytes", n);
         {
           // TODO report this annoying situation
           let temp1 = buf;
@@ -116,8 +114,8 @@ impl<A> Reader for C<A>
           buf       = temp2;
         }
         total_read += n;
-        debug!("total read so far is {}", total_read);
-        debug!("buf is {}", buf);
+        //debug!("total read so far is {}", total_read);
+        //debug!("buf is {}", buf);
         if total_read == num_requested { return Ok(total_read) }; // success
         assert!(total_read < num_requested);
       };
