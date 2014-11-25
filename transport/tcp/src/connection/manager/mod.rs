@@ -27,3 +27,20 @@ pub trait PacketBufIter<'a>: PacketBuf
   fn consume_iter(&'a mut self) -> <Self as PacketBufIter<'a>>::Consume;
 }
 */
+
+
+// TODO: make derived method in PacketBufIter
+
+// TODO: cap at tail seq + 2^31 ?
+
+/// seq number for the head of continuous data
+pub fn get_next_write_seq(b: &BestPacketBuf) -> u32
+{
+  let tail = b.get_next_consume_seq();
+
+  // number of continuous bytes
+  // make sure not to consume
+  let delta = b.iter().count();
+
+  tail + delta as u32
+}
