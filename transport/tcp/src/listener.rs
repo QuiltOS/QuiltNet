@@ -66,16 +66,16 @@ impl Listener
     let con_maker: ConnectionFun = {
       let seq_num = packet.get_seq_num();
       let state   = state.clone().downgrade();
+      let wnd     = packet.get_window_size();
       box move |: handler | {
         let state = match state.upgrade() {
           None    => return Err(Error::BadHandshake), // I suppose IP dissapearing is a bad handshake?
           Some(s) => s,
         };
         Handshaking::new(&*state, us.1, Some(us.0), them,
-                         false, true, Some(seq_num), handler)
+                         false, true, Some(seq_num), Some(wnd), handler)
       }
     };
-
     self.handler.call_mut((us, them, con_maker));
   }
 }
