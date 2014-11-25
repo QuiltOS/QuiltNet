@@ -17,10 +17,6 @@ use Table;
 use packet::TcpPacket;
 
 pub mod packet_buf;
-pub mod timer;
-
-pub mod tcb;
-
 pub mod handshaking;
 pub mod established;
 

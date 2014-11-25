@@ -10,11 +10,11 @@ use network::ipv4::strategy::RoutingTable;
 
 use packet::{mod, TcpPacket};
 use send::{mod, Error,};
-use super::tcb::{mod};
 
 use super::Connection;
 use super::established::{
   mod,
+  tcb,
   Established,
   Situation,
 };

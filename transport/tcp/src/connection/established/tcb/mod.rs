@@ -3,18 +3,22 @@ use std::cmp;
 
 use network::ipv4::strategy::RoutingTable;
 use network::ipv4::Addr;
-use packet::{mod, TcpPacket};
-use connection::timer::RetransmitData;
 
+use packet::{mod, TcpPacket};
 use send;
-use super::packet_buf::{
+
+use connection::packet_buf::{
   BestPacketBuf,
   PacketBuf,
   // PacketBufIter,
   get_next_write_seq,
 };
+use self::timer::RetransmitData;
 //use super::manager::recv::RecvMgr;
 //use super::manager::send::SendMgr;
+
+
+mod timer;
 
 
 pub const TCP_MSS           : u16  = 536u16;

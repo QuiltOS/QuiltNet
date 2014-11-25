@@ -10,7 +10,11 @@ use packet::{mod, TcpPacket};
 use send::{mod, Error,};
 
 use super::Connection;
-use super::tcb::TCB;
+use self::tcb::TCB;
+
+
+pub mod tcb;
+
 
 pub enum Situation {
   CanRead,

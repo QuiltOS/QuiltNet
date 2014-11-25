@@ -1,10 +1,14 @@
 use time;
-use std::sync::Arc;
+use std::sync::{Arc, Weak, RWLock};
 use std::io::Timer;
 use std::time::duration::Duration;
 use std::collections::ring_buf::RingBuf;
 
-use connection::tcb::{TCB,TCP_MAX_RETRIES};
+use network::ipv4;
+use network::ipv4::strategy::RoutingTable;
+
+use connection::Connection;
+use connection::established::tcb::{TCB,TCP_MAX_RETRIES};
 
 pub const TCP_RTT_INIT : uint = 2_000u; // 2 seconds
 
@@ -111,15 +115,35 @@ fn now_millis() -> i64 {
   ts.sec * 1000 + (ts.nsec / 1000) as i64
 }
 
-pub fn start_timer(tcb: &Arc<Connection>) {
-  let tcb_new = tcb.clone();
+pub fn start_timer<A>(state: &Weak<::State<A>>,
+                      weak:  &Weak<RWLock<Connection>>)
+  where A: RoutingTable
+{
+  let state_weak = state.clone();
+  let con_weak  = weak.clone();
   spawn(proc(){
     let mut timer = Timer::new().unwrap();
     loop {
-      let interval = Duration::milliseconds(tcb_new.transmit_data.get_rtt_estimate() as i64);
+      let (mut state, mut con) = match (state_weak.upgrade(), con_weak.upgrade()) {
+        (Some(state), Some(arc)) => (state, arc),
+        _                        => break,
+      };
+
+      let mut lock = con.write();
+      
+      let mut est = match &mut *lock {
+        &Connection::Established(ref mut est) => est,
+        _                                     => break,
+      };
+      
+      let mut tcb = &mut est.tcb;
+      let interval = Duration::milliseconds(tcb.transmit_data.get_rtt_estimate() as i64);
       let oneshot  = timer.oneshot(interval);
       oneshot.recv();
-      tcb_new.flush_transmit_queue()
+      match tcb.flush_transmit_queue(&*state, est.us, est.them) {
+        Ok(_)  => (),
+        Err(_) => debug!("failure during timeout action, ok"),
+      };
     }
   });
 }
