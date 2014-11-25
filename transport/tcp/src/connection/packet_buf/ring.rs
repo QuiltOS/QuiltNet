@@ -33,17 +33,19 @@ impl PacketBuf for RingPacketBuf
 
   fn add_slice(&mut self, seq_num: u32, buf: &[u8]) -> u32
   {
-    let delta: i64 = (seq_num as i64) - (self.nxt_seq as i64) + (self.ring.readable_len() as i64);
+    let delta: i64 =
+      (seq_num as i64) -
+      ((self.nxt_seq + self.ring.readable_len() as u32) as i64);
     debug!("delta: {}", delta);
-    let mut bytes_written = 0u;
+
     if     // tacks on perfectly
-      (delta == 0) 
+      (delta == 0)
       //&& (delta as uint + buf.len()) < self.ring.writable_len()
     {
       debug!("perfect fit: {}, {}:{}", self, seq_num, buf);
       let bytes_fit = cmp::min(self.ring.writable_len(), buf.len());
 
-      bytes_written = self.ring.write(buf[..bytes_fit]);
+      self.ring.write(buf[..bytes_fit]) as u32
     }
     else if // overlaps, but is not completely contained
       (delta < 0) &&
@@ -51,12 +53,10 @@ impl PacketBuf for RingPacketBuf
       ((-delta) as uint) < buf.len()
     {
       debug!("overlaps");
-      bytes_written = self.ring.write(buf[-delta as uint..]);
+      self.ring.write(buf[-delta as uint..]) as u32
     }
     else // out of order or redundant/contained
-    { debug!("not writing anything"); bytes_written = 0u; }
-
-    bytes_written as u32
+    { debug!("not writing anything"); 0 }
   }
 
   fn get_next_consume_seq(&self) -> u32 { self.nxt_seq }

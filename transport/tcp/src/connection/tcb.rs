@@ -100,9 +100,10 @@ impl TCB
           let una = self.write.get_next_consume_seq();
 
           // Fast-forward our retransmission queue up to the ACK
-          self.write.consume_iter()
+          let _= self.write.consume_iter()
             .zip(::std::iter::count(una, 1))
-            .take_while(|&(_, n)| n <= seg_ACK);
+            .take_while(|&(_, n): &(u8, u32) | n != seg_ACK)
+            .last();
 
           //    -> if (send_WL1 < SEG.SEQ) or (send_WL1 == SEG.SEQ && send_WL2 <= SEG.ACK)
           if (self.state.send_WL1 < seg_SEQ) ||
@@ -130,14 +131,14 @@ impl TCB
         {
           // need to let, because packet will be moved
           let seq    = packet.get_seq_num();
-          let offset = packet.get_hdr_size() as uint * 4;
+          let offset = packet.get_payload_offset();
           self.read.add_vec(seq, packet.to_vec(), offset);
         }
 
         let recv_next = get_next_write_seq(&self.read);
         debug!("read buf head changed from {} to {}", old_recv_next, recv_next);
 
-        if old_recv_next < recv_next
+        if old_recv_next != recv_next // != cause wrap arounds
         {
           can_read = true;
         }
@@ -247,7 +248,7 @@ impl TCB
 
     let cur_recv_nxt = get_next_write_seq(&self.read);
 
-    let mut ctr = get_next_write_seq(&self.write);
+    let mut ctr = self.write.get_next_consume_seq();
     // Until we run out of bytes
     while !bytes_to_send.is_empty() {
 
@@ -270,7 +271,10 @@ impl TCB
                 v.push(b);
                 ctr += 1;
               },
-              None    => break
+              None    => {
+                debug!("less than MSS packet cause there is nothing else to send");
+                break
+              }
             }
           }
         };

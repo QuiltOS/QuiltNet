@@ -225,6 +225,10 @@ impl TcpPacket {
     self.get_tcp()[TCP_HDR_LEN..]
   }
 
+  pub fn get_payload_offset(&self) -> uint {
+    self.ip.borrow().hdr_bytes() as uint + TCP_HDR_LEN
+  }
+
   /// Returns TCP payload as mut slice
   pub fn get_mut_payload(&mut self) -> &mut[u8] {
     self.get_tcp_mut()[mut TCP_HDR_LEN..]

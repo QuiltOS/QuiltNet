@@ -24,11 +24,12 @@ pub fn register<A>(state: &Arc<::State<A>>)
 
 pub fn log_trace(tcp_packet: &TcpPacket, is_recv: bool) {
   let action = if is_recv { recv_str } else { send_str };
-  println!("[TRACE][{}][ns:{}][seq:{}][ack:{}][len:{}][flags:{}]", action, 
-                             (time::now_utc().tm_sec as u64) * 100_000_000u64 + time::now_utc().tm_nsec as u64,
-                             tcp_packet.get_seq_num(),
-                             tcp_packet.get_ack_num(),
-                             tcp_packet.get_body_len(),
-                             tcp_packet.flags()
-                             );
+  println!("[TRACE][{}][ns:{}][seq:{}][ack:{}][len:{}][flags:{}][data:{}]",
+           action, 
+           (time::now_utc().tm_sec as u64) * 100_000_000u64 + time::now_utc().tm_nsec as u64,
+           tcp_packet.get_seq_num(),
+           tcp_packet.get_ack_num(),
+           tcp_packet.get_body_len(),
+           tcp_packet.flags(),
+           unsafe { ::std::str::from_utf8_unchecked(tcp_packet.get_payload()) });
 }
