@@ -9,6 +9,7 @@ use super::{
 };
 
 
+#[deriving(Show)]
 pub struct RingPacketBuf {
   seq:  u32,
   ring: RingBuf,
@@ -31,11 +32,13 @@ impl PacketBuf for RingPacketBuf
   fn add_slice(&mut self, seq_num: u32, buf: &[u8]) -> u32
   {
     let delta: u64 = (seq_num as u64) - (self.seq as u64);
+    println!("delta: {}", delta);
 
     (if     // tacks on perfectly
       (delta == 0) &&
       (delta as uint + buf.len()) < self.ring.window_size()
     {
+      debug!("perfect fit");
       self.ring.write(buf)
     }
     else if // overlaps, but is not completely contained
@@ -46,7 +49,7 @@ impl PacketBuf for RingPacketBuf
       self.ring.write(buf[-delta as uint..])
     }
     else // out of order or redundant/contained
-    { 0 }
+    { println!("not writing anything"); 0 }
     as u32)
   }
 

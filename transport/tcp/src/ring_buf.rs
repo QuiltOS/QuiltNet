@@ -18,7 +18,7 @@ impl RingBuf
   pub fn new(size: uint) -> RingBuf {
     RingBuf {
       tail : 0,
-      head : 0,
+      head : 0, //TODO: do we want head = data.len()?
       // add 1 slot to disambiguate full/empty
       data : Vec::from_fn(size + 1, |n| 0),
     }
