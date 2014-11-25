@@ -296,7 +296,7 @@ impl A {
 
   /// returns native endian
   pub fn make_header_checksum(&self) -> u16 {
-    let u16s: &[u16] = unsafe { cast_slice(self.as_slice()) };
+    let u16s: &[u16] = unsafe { cast_slice(self.as_slice()[..self.as_slice().len() & !1]) };
 
     // TODO: Factor out singleton iterator
     let temp: [u16, ..1] = [0]; // for checkum field itself
