@@ -1,7 +1,5 @@
 pub mod dummy;
 pub mod ring;
-pub mod send;
-pub mod recv;
 
 pub type BestPacketBuf = ring::RingPacketBuf;
 
@@ -16,7 +14,6 @@ pub trait PacketBuf
   fn add_slice(&mut self, seq_num: u32, buf: &[u8]) -> u32;
 
   fn get_next_consume_seq(&self) -> u32;
-  fn get_next_write_seq(&self) -> u32;
 }
 /*
 pub trait PacketBufIter<'a>: PacketBuf
@@ -28,3 +25,20 @@ pub trait PacketBufIter<'a>: PacketBuf
   fn consume_iter(&'a mut self) -> <Self as PacketBufIter<'a>>::Consume;
 }
 */
+
+
+// TODO: make derived method in PacketBufIter
+
+// TODO: cap at tail seq + 2^31 ?
+
+/// seq number for the head of continuous data
+pub fn get_next_write_seq(b: &BestPacketBuf) -> u32
+{
+  let tail = b.get_next_consume_seq();
+
+  // number of continuous bytes
+  // make sure not to consume
+  let delta = b.iter().count();
+
+  tail + delta as u32
+}

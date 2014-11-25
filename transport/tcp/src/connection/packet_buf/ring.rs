@@ -12,9 +12,8 @@ use super::{
 
 #[deriving(Show)]
 pub struct RingPacketBuf {
-  consume_nxt_seq:  u32,
-  write_nxt_seq  :  u32,
-  ring: RingBuf,
+  nxt_seq: u32,
+  ring:    RingBuf,
 }
 
 
@@ -22,9 +21,8 @@ impl PacketBuf for RingPacketBuf
 {
   fn new(init_seq_num: u32) -> RingPacketBuf {
     RingPacketBuf {
-      consume_nxt_seq:  init_seq_num,
-      write_nxt_seq  :  init_seq_num,
-      ring: RingBuf::new(1 << 6),
+      nxt_seq: init_seq_num,
+      ring:    RingBuf::new(1 << 6),
 //      ring: RingBuf::new(0b_1_00_0000_0000_0000), //2 ^ 14
     }
   }
@@ -35,7 +33,7 @@ impl PacketBuf for RingPacketBuf
 
   fn add_slice(&mut self, seq_num: u32, buf: &[u8]) -> u32
   {
-    let delta: u64 = (seq_num as u64) - (self.write_nxt_seq as u64);
+    let delta: i64 = (seq_num as i64) - (self.nxt_seq as i64) + (self.ring.readable_len() as i64);
     debug!("delta: {}", delta);
     let mut bytes_written = 0u;
     if     // tacks on perfectly
@@ -58,14 +56,10 @@ impl PacketBuf for RingPacketBuf
     else // out of order or redundant/contained
     { debug!("not writing anything"); bytes_written = 0u; }
 
-    // Increment our initial seq number
-    self.write_nxt_seq += bytes_written as u32;
-
     bytes_written as u32
   }
 
-  fn get_next_write_seq(&self) -> u32 { self.write_nxt_seq }
-  fn get_next_consume_seq(&self) -> u32 { self.consume_nxt_seq }
+  fn get_next_consume_seq(&self) -> u32 { self.nxt_seq }
 }
 
 
@@ -94,6 +88,6 @@ impl<'a>  RingPacketBuf
     };
 
     self.ring.consume_iter()
-      .scan(&mut self.consume_nxt_seq, inc)
+      .scan(&mut self.nxt_seq, inc)
   }
 }

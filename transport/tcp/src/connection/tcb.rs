@@ -6,13 +6,13 @@ use network::ipv4::Addr;
 use packet::{mod, TcpPacket};
 
 use send;
-use super::manager::{
+use super::packet_buf::{
   BestPacketBuf,
   PacketBuf,
   // PacketBufIter,
 };
-use super::manager::recv::RecvMgr;
-use super::manager::send::SendMgr;
+//use super::manager::recv::RecvMgr;
+//use super::manager::send::SendMgr;
 
 
 pub const TCP_MSS           : u16 = 53616;

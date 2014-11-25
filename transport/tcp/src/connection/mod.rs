@@ -16,7 +16,7 @@ use network::ipv4::strategy::RoutingTable;
 use Table;
 use packet::TcpPacket;
 
-pub mod manager;
+pub mod packet_buf;
 
 pub mod tcb;
 
