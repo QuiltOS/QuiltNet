@@ -87,6 +87,7 @@ impl<A> Reader for C<A>
 {
   fn read(&mut self, mut buf: &mut [u8]) -> IoResult<uint>
   {
+    let num_requested = buf.len();
     debug!("trying to do a blocking read");
     let arc = match self.con.upgrade() {
       Some(l) => l,
@@ -97,13 +98,17 @@ impl<A> Reader for C<A>
 
     loop {
       {
+        debug!("getting write lock in read");
         let mut lock = arc.write();
+        debug!("got write lock in read");
         let mut est = match &mut *lock {
           &Connection::Established(ref mut est) => est,
           _ if total_read == 0 => return Err(EOF),
           _                    => return Ok(total_read), // semi-success: next call will EOF
         };
+        debug!("reading from est");
         let n       = est.read(&*self.state, buf);
+        debug!("tcb read {} bytes", n);
         {
           // TODO report this annoying situation
           let temp1 = buf;
@@ -111,7 +116,10 @@ impl<A> Reader for C<A>
           buf       = temp2;
         }
         total_read += n;
-        if buf.len() == 0 { return Ok(total_read) }; // success
+        debug!("total read so far is {}", total_read);
+        debug!("buf is {}", buf);
+        if total_read == num_requested { return Ok(total_read) }; // success
+        assert!(total_read < num_requested);
       };
       // block, after letting go of lock
       self.can_read.recv();
@@ -191,3 +199,11 @@ pub fn make_con_handler() -> (connection::established::Handler, Receiver<()>, Re
   };
   (handler, rd_rx, wt_rx)
 }
+
+/*
+impl fmt::Show for Capability<A>
+  where A: RoutingTable {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    }
+  }
+  */

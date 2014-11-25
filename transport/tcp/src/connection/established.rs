@@ -61,6 +61,7 @@ impl Established
 
     debug!("TCB bout to recv!");
     let (r, w) = self.tcb.recv(packet);
+    debug!("TCB recv yielded (r:{}, w:{})", r, w);
 
     let self2 = if r {
       self.invoke_handler(Situation::CanRead)
@@ -144,7 +145,7 @@ impl Established
                  -> uint
     where A: RoutingTable
   {
-    debug!("trying to do a non-blocking read");
+    debug!("trying to do a non-blocking read: est");
     self.tcb.read(buf)
   }
 

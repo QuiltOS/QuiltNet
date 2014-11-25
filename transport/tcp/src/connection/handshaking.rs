@@ -167,7 +167,6 @@ impl Handshaking
     {
       let builder: for<'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet|
       {
-        //TODO: add generated ISN
         if ! self.synd_before { // gotta SYN them at least once for double handshake
           debug!("{} will SYN {}", us, them);
           packet.flags_mut().insert(packet::SYN);

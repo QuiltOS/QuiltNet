@@ -15,7 +15,7 @@ use super::manager::recv::RecvMgr;
 use super::manager::send::SendMgr;
 
 
-pub const TCP_MSS           : u16 = 536u16;
+pub const TCP_MSS           : u16 = 53616;
 pub const TCP_BUF_SIZE      : u16 = ((1u32 << 16u) - 1u32) as u16;
 pub const TCP_RECV_WND_INIT : u16 = TCP_BUF_SIZE;
 
@@ -62,8 +62,8 @@ pub struct TCB {
   write: BestPacketBuf,
 
   // Buffers
-  recv_mgr : RecvMgr,
-  send_mgr : SendMgr,
+  //recv_mgr : RecvMgr,
+  //send_mgr : SendMgr,
   state:     TcbState,
 }
 
@@ -74,8 +74,8 @@ impl TCB
       read  : PacketBuf::new(their_isn),
       write : PacketBuf::new(our_isn),
       
-      recv_mgr : RecvMgr::new(),
-      send_mgr : SendMgr::new(),
+      //recv_mgr : RecvMgr::new(),
+      //send_mgr : SendMgr::new(),
       state    : TcbState::new(our_isn, their_isn, their_wnd),
     }
   }
@@ -91,7 +91,7 @@ impl TCB
     let mut can_write = false;
     // Validate (ACK, SEQ in appropriate intervals)
     // Is duplicate? -> trash TODO: quick duplicate detection
-    if self.validate_packet_state(&packet) && !self.is_duplicate(&packet){
+    if self.validate_packet_state(&packet) { 
 
       debug!("Valid state for packet SEQ:{}, LEN:{}", packet.get_seq_num(), packet.get_body_len());
       let seg_SEQ = packet.get_seq_num();
@@ -101,9 +101,11 @@ impl TCB
       match packet.get_ack_num() {
         None => (),
         Some(seg_ACK) => {
+          debug!("is ACK packet");
           // If ACKing new data
           // FIXME: is this covered in validate_packet_state()?
           if seg_ACK > self.state.send_UNA {
+            debug!("ACKing new data");
 
             // How many bytes just got ACKed?
             let ack_delta = seg_ACK - self.state.send_UNA;
@@ -133,17 +135,19 @@ impl TCB
               //    times
           }
         }
-      }
+      };
 
       let contains_nxt = self.contains_recv_nxt(&packet);
       // Handle data now
       debug!("packet contains RCV.NXT: {}, SEQ:{}, LEN:{}", contains_nxt, packet.get_seq_num(), packet.get_body_len());
       
-      self.recv_mgr.add_packet(packet);
+      self.read.add_slice(packet.get_seq_num(), packet.get_payload());
+      debug!("read buf is now {}", self.read);
 
       if contains_nxt {
         //  -> update RCV.WND = (2^16-1) - (recv_NXT - usr_NXT) [unconsumed space in buf]
-        self.state.recv_NXT = self.recv_mgr.shift_nxt();
+        //  TODO: ACTUALLY FAST FORWARD RECV.NXT
+        self.state.recv_NXT += packet.get_body_len();
 
         // Got more data, try to read again
         can_read = true;
@@ -166,17 +170,12 @@ impl TCB
     true
   }
 
-  //TODO
-  fn is_duplicate(&self, packet: &TcpPacket) -> bool {
-    false
-  }
-
   #[inline]
   /// Returns the receive window: the number of bytes in the receive buffer that are not reserved
   /// by unconsumed, sequentially ordered data
-  fn get_rcv_window(&self) -> u16 {
+  /*fn get_rcv_window(&self) -> u16 {
     self.recv_mgr.size - (self.state.recv_NXT - self.recv_mgr.usr_NXT) as u16
-  }
+  }*/
 
   #[inline]
   fn contains_recv_nxt(&self, packet: &TcpPacket) -> bool {
@@ -193,17 +192,23 @@ impl TCB
   ///
   /// Returns the number of bytes read
   pub fn read(&mut self, buf: &mut [u8]) -> uint {
+    debug!("tcb read called, buf is {}", self.read);
 
     // Get CONSUMING iter over bytes queued for reading
     let mut bytes_to_read = self.read.consume_iter().take(buf.len()).peekable();
+    debug!("got consuming iterator");
+
     let mut ctr = 0u;
     let mut writer = BufWriter::new(buf);
 
     // Read as many bytes as we can to fill user's buf
+    debug!("reading from consuming iterator");
     for b in bytes_to_read {
+      println!("read byte {}", b);
       writer.write_u8(b);
       ctr += 1;
     }
+    debug!("done reading from sonsuming iterator");
 
     // Our receive window just widened by ctr bytes
     self.state.recv_WND += ctr as u16;
@@ -226,13 +231,10 @@ impl TCB
     debug!("TCB state: {}", self.state);
     debug!("User on <{}<{}> send data: {}", us, them, buf);
 
-    //TODO: will this SEQ num state get moved into PacketBuf?
-    debug!("Adding slice: {} bytes", self.write.add_slice(self.state.send_NXT, buf));
-    //debug!("SendBuf: {}", self.write);
+    let bytes_written = self.write.add_slice(self.state.send_NXT, buf);
 
-    // Calculate how much we put in based on window size
-    let bytes_written = cmp::min(buf.len(), self.state.send_WND as uint);
- 
+    //TODO: will this SEQ num state get moved into PacketBuf?
+    debug!("SendBuf: {}", self.write);
     debug!("{} bytes written", bytes_written);
 
     // Update SND.NXT
@@ -241,7 +243,7 @@ impl TCB
 
     self.flush_transmit_queue(state, us, them);
 
-    bytes_written
+    bytes_written as uint
   }
 
   //Iterate through bytes to be sent, packaging them into packets and sending them off
@@ -255,6 +257,7 @@ impl TCB
     // Send all the bytes we have up to the current send window 
     let mut bytes_to_send = self.write.iter().take(self.state.send_WND as uint).peekable();
 
+    let mut ctr = self.state.send_UNA;
     // Until we run out of bytes
     while !bytes_to_send.is_empty() {
       
@@ -263,11 +266,10 @@ impl TCB
 
         // Set Packet Header Params 
         packet.set_ack_num(self.state.recv_NXT);
-        packet.set_seq_num(self.state.send_NXT);
+        packet.set_seq_num(ctr);
         packet.set_window_size(self.state.recv_WND);
 
         // Counter for bytes added to payload
-        let mut ctr = 0u;
         {
           let mut v = packet.as_mut_vec();
 
