@@ -36,14 +36,14 @@ impl PacketBuf for RingPacketBuf
 
     (if     // tacks on perfectly
       (delta == 0) &&
-      (delta as uint + buf.len()) < self.ring.valid_len()
+      (delta as uint + buf.len()) < self.ring.writable_len()
     {
       debug!("perfect fit");
       self.ring.write(buf)
     }
     else if // overlaps, but is not completely contained
       (delta < 0) &&
-      (buf.len() - (-delta) as uint) < self.ring.valid_len() &&
+      (buf.len() - (-delta) as uint) < self.ring.writable_len() &&
       ((-delta) as uint) < buf.len()
     {
       self.ring.write(buf[-delta as uint..])

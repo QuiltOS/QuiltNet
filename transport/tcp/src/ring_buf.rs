@@ -29,10 +29,17 @@ impl RingBuf
     // head and tail always point to a valid byte
     assert!(self.tail < self.data.len());
     assert!(self.head < self.data.len());
+
+    // always at least one empty byte -- but you can't use it
+    assert!(self.readable_len() < self.data.len());
+  }
+
+  pub fn writable_len(&self) -> uint {
+    self.data.len() - self.readable_len() - 1
   }
 
   /// The number of readable/valid bytes
-  pub fn valid_len(&self) -> uint {
+  pub fn readable_len(&self) -> uint {
     self.check_invariants();
 
     if self.tail <= self.head {
@@ -48,8 +55,8 @@ impl RingBuf
     self.check_invariants();
 
     // Number of bytes we're going to copy
-    let n = cmp::min(self.valid_len(), buf.len());
-    debug!("read: n: {}, ws: {}", n, self.valid_len());
+    let n = cmp::min(self.readable_len(), buf.len());
+    debug!("read: n: {}, ws: {}", n, self.readable_len());
 
     // Head of slice we're reading from, wrapped around
     let read_head = (self.tail + n) % self.data.len();
@@ -88,8 +95,8 @@ impl RingBuf
 
     // Number of bytes we're going to copy
     // NOTE: subtract 1 to avoid writing full array - we can't disambiguate full/empty!
-    let n = cmp::min(len - self.valid_len() - 1, buf.len());
-    //println!("write: n: {}, ws: {}", n, self.valid_len());
+    let n = cmp::min(self.writable_len(), buf.len());
+    //println!("write: n: {}, ws: {}", n, self.readable_len());
 
 
     // Head of slice we're writing into, wrapped around
@@ -181,16 +188,16 @@ mod test
   use super::RingBuf;
 
   #[test]
-  fn empty_valid_lens() {
+  fn empty_readable_lens() {
     let mut ring = RingBuf::new(0);
-    assert_eq!(ring.valid_len(), 0);
+    assert_eq!(ring.readable_len(), 0);
   }
 
   #[test]
   fn single_valid_byte() {
     let mut ring = RingBuf::new(1);
     assert_eq!(ring.write([1].as_slice()), 1);
-    assert_eq!(ring.valid_len(), 1);
+    assert_eq!(ring.readable_len(), 1);
   }
 
   #[test]
@@ -243,7 +250,7 @@ mod test
 
     assert_eq!(ring.tail, 0);
     assert_eq!(ring.head, 4);
-    assert_eq!(ring.valid_len(), 4);
+    assert_eq!(ring.readable_len(), 4);
 
     ring.check_invariants();
 
@@ -259,7 +266,7 @@ mod test
 
     assert_eq!(ring.tail, 0);
     assert_eq!(ring.head, 4);
-    assert_eq!(ring.valid_len(), 4);
+    assert_eq!(ring.readable_len(), 4);
   }
 
   #[test]
@@ -269,7 +276,7 @@ mod test
 
     assert_eq!(ring.tail, 0);
     assert_eq!(ring.head, 4);
-    assert_eq!(ring.valid_len(), 4);
+    assert_eq!(ring.readable_len(), 4);
 
     ring.check_invariants();
 
@@ -287,6 +294,6 @@ mod test
 
     assert_eq!(ring.tail, 4);
     assert_eq!(ring.head, 4);
-    assert_eq!(ring.valid_len(), 0);
+    assert_eq!(ring.readable_len(), 0);
   }
 }
