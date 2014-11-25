@@ -242,7 +242,7 @@ impl TcpPacket {
 
     // the WHOLE IP PACKET
     let bytes: &[u8]  = self.ip.borrow().as_slice();
-    let words: &[u16] = unsafe { packet::cast_slice(bytes) };
+    let words: &[u16] = unsafe { packet::cast_slice(bytes[..bytes.len() & !1]) };
 
     // src and dest
     let pseudo1: &[u16] = words[6..10];

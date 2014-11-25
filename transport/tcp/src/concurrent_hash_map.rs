@@ -64,8 +64,10 @@ impl<K, V, S, H> ConcurrentHashMap<K, V, H>
   }
 
   pub fn dump(&self) {
+    let mut ix = 0u;
     for (k, v) in self.0.read().iter() {
-      println!("[{}] {}", k, v);
+      println!("[{}] {}: {}", ix, k, v);
+      ix += 1;
     }
   }
 }
