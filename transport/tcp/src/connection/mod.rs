@@ -76,3 +76,19 @@ pub fn trans<A>(e: &mut Connection, s: &::State<A>, p: TcpPacket)
     Connection::Established(c) => c.next(s, p),
   }
 }
+
+pub fn close<A>(e: &mut Connection) where A: RoutingTable
+{
+  use std::mem::swap;
+
+  let mut blank: Connection = Connection::Closed;
+
+  // safe to "close" it without another connection moving in because we have lock
+  swap(e, &mut blank);
+
+  *e = match blank {
+    Connection::Closed         => Connection::Closed,
+    Connection::Handshaking(c) => c.close(),
+    Connection::Established(_) => blank, //c.close(),
+  }
+}

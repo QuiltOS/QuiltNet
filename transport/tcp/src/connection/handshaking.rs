@@ -26,6 +26,9 @@ pub struct Handshaking {
 
   want:           bool, // do we want to we want to receive an ACK?
   owe:            bool, // ought we to send them an ACK, if the situation arises?
+  ackd_before:    bool,
+  synd_before:    bool,
+
   our_number:     u32,
   their_number:   Option<u32>,
   their_wnd:      Option<u16>,
@@ -83,7 +86,7 @@ impl Handshaking
 
     debug!("{} to {} post packet: want {}, owe {}", them, us, self.want, self.owe);
 
-    try!(self.send(state, us.1, them, false /* don't SYN out of blue */));
+    try!(self.send(state, us.1, them));
 
     Ok(if (self.want || self.owe) == false {
       debug!("{} to {} free!!!!", them, us);
@@ -131,13 +134,15 @@ impl Handshaking
 
         want:           want,
         owe:            owe,
+        ackd_before:    false,
+        synd_before:    false,
         our_number:     Handshaking::generate_isn(),
         their_number:   their_number,
         their_wnd:      their_wnd,
         future_handler: future_handler,
       };
 
-      try!(potential.send(state, us, them, true /* initial SYN */));
+      try!(potential.send(state, us, them));
 
       // don't bother really reserving port until at least the first
       // message was sent;
@@ -151,8 +156,7 @@ impl Handshaking
   fn send<A>(&mut self,
              state:   &::State<A>,
              us:      Port, // already expects specific port
-             them:    ::ConAddr,
-             brag:    bool)
+             them:    ::ConAddr)
              -> send::Result<()>
     where A: RoutingTable
   {
@@ -164,17 +168,19 @@ impl Handshaking
       let builder: for<'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet|
       {
         //TODO: add generated ISN
-        if brag {
+        if self.synd_before { // gotta SYN them at least once for double handshake
           debug!("{} will SYN {}", us, them);
           packet.flags_mut().insert(packet::SYN);
 
           self.want = true;
+          self.synd_before = true;
         }
         if self.owe {
           debug!("{} will ACK {}", us, them);
 
           packet.flags_mut().insert(packet::ACK);
           self.owe = false;
+          self.ackd_before = true;
         }
 
         // Set SEQ to our ISN
@@ -191,7 +197,7 @@ impl Handshaking
 
         Ok(())
       };
-          
+
 
       try!(send::send(&*state.ip,
                       our_ip, // to ensure routes don't fuck us
@@ -213,5 +219,15 @@ impl Handshaking
   fn generate_isn() -> u32 {
     let mut rng = task_rng();
     rng.gen::<u32>()
+  }
+
+  pub fn close(self) -> Connection
+  {
+    if self.ackd_before {
+      debug!("TODO: goto fin wait 1");
+      Connection::Handshaking(self)
+    } else { // can close immediately
+      Connection::Closed
+    }
   }
 }
