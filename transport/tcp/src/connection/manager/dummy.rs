@@ -21,7 +21,8 @@ impl PacketBuf for DummyPacketBuf
   fn add_vec(&mut self, _seq_num: u32, _vec: Vec<u8>, _start_off: uint) -> u32 { 0 }
   fn add_slice(&mut self, _seq_num: u32, _buf: &[u8]) -> u32 { 0 }
 
-  fn get_next_seq(&self) -> u32 { 0 }
+  fn get_next_consume_seq(&self) -> u32 { 0 }
+  fn get_next_write_seq(&self) -> u32 { 0 }
 }
 
 

@@ -15,7 +15,8 @@ pub trait PacketBuf
   /// returns delta for the front
   fn add_slice(&mut self, seq_num: u32, buf: &[u8]) -> u32;
 
-  fn get_next_seq(&self) -> u32;
+  fn get_next_consume_seq(&self) -> u32;
+  fn get_next_write_seq(&self) -> u32;
 }
 /*
 pub trait PacketBufIter<'a>: PacketBuf

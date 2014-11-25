@@ -35,12 +35,12 @@ impl RingBuf
   }
 
   pub fn writable_len(&self) -> uint {
+    self.check_invariants();
     self.data.len() - self.readable_len() - 1
   }
 
   /// The number of readable/valid bytes
   pub fn readable_len(&self) -> uint {
-    self.check_invariants();
 
     if self.tail <= self.head {
       self.head - self.tail
