@@ -99,6 +99,13 @@ impl TCB
 
           let una = self.write.get_next_consume_seq();
 
+            // UPDATE TIMER STATE
+            // if seg_ACK <= last_retransmitted
+            //  don't care
+            // elif seg_ACK <= send.NXT
+            //  RTT_last = now() - last_transmit_time()
+            // else:
+            //  This is an invalid ACK....
           // Fast-forward our retransmission queue up to the ACK
           let _= self.write.consume_iter()
             .zip(::std::iter::count(una, 1))
