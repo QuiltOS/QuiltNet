@@ -69,7 +69,6 @@ impl TcpPacket {
     }
 
     let packet = TcpPacket::new(ip);
-    debug!("TCP Validating Packet: {}", packet);
 
     // this should be true as long as IP does it's job and our CODE is correct
     // therefore is assert, not check
