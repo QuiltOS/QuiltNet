@@ -108,6 +108,10 @@ impl TcpPacket {
     self.ip.as_mut_vec()
   }
 
+  pub fn to_vec(self) -> Vec<u8> {
+    self.ip.to_vec()
+  }
+
   /// Returns slice containing TCP packet
   fn get_tcp(&self) -> &[u8] {
     self.ip.borrow().get_payload()
@@ -182,7 +186,7 @@ impl TcpPacket {
   }
   // FIXME: way to ensure this always gets called
   pub fn set_hdr_size(&mut self, size: u8) {
-    self.tcp_hdr_mut()[12] = size << 4;  
+    self.tcp_hdr_mut()[12] = size << 4;
   }
 
   // Sequence Number Ops

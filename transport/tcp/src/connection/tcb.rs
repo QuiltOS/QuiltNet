@@ -10,6 +10,7 @@ use super::packet_buf::{
   BestPacketBuf,
   PacketBuf,
   // PacketBufIter,
+  get_next_write_seq,
 };
 //use super::manager::recv::RecvMgr;
 //use super::manager::send::SendMgr;
@@ -21,36 +22,23 @@ pub const TCP_RECV_WND_INIT : u16 = TCP_BUF_SIZE;
 
 #[deriving(Show)]
 pub struct TcbState {
-  pub recv_NXT : u32,   // Expected next sequence number received
-  pub recv_WND : u16,   // Recv Window Size
-  //recv_UP  : u32, // Recv Urgent Pointer
-  pub recv_ISN : u32,   // Recv Initial Sequence Number
-
-  // ::State Variables
-  pub send_UNA : u32,   // Oldest unacknowledged sequence number
-  pub send_NXT : u32,   // Next Sequence Number to be Sent
-  pub send_WND : u16,   // Send Window Size
-  //send_UP  : u32, // send urgent pointer
-  pub send_WL1 : u32,   // Seq number for last window update
-  pub send_WL2 : u32,   // Ack number for last window update
-  pub send_ISN : u32,   // Send Initial Sequence Number
+  pub recv_WND: u16,   // Recv Window Size
+  pub send_WND: u16,   // Send Window Size
+  //pub send_UP:  u32, // send urgent pointer
+  pub send_WL1: u32,   // Seq number for last window update
+  pub send_WL2: u32,   // Ack number for last window update
 }
 
-impl TcbState 
+impl TcbState
 {
 
   //TODO: initialize all these variables from handshake!!!
   pub fn new(our_isn: u32, their_isn: u32, their_wnd: u16) -> TcbState {
     TcbState {
-        recv_NXT : their_isn,
-        recv_WND : TCP_RECV_WND_INIT,
-        recv_ISN : their_isn,
-        send_UNA : our_isn,  
-        send_NXT : our_isn,
-        send_WND : their_wnd,       //INIT: get from what they tell us
-        send_WL1 : their_isn,  //they should be acking what we send and vice-versa
-        send_WL2 : our_isn,
-        send_ISN : our_isn
+      recv_WND: TCP_RECV_WND_INIT,
+      send_WND: their_wnd,       //INIT: get from what they tell us
+      send_WL1: their_isn,  //they should be acking what we send and vice-versa
+      send_WL2: our_isn,
     }
   }
 }
@@ -67,13 +55,13 @@ pub struct TCB {
   state:     TcbState,
 }
 
-impl TCB 
+impl TCB
 {
   pub fn new(our_isn: u32, their_isn: u32, their_wnd: u16) -> TCB {
     TCB {
       read  : PacketBuf::new(their_isn),
       write : PacketBuf::new(our_isn),
-      
+
       //recv_mgr : RecvMgr::new(),
       //send_mgr : SendMgr::new(),
       state    : TcbState::new(our_isn, their_isn, their_wnd),
@@ -91,73 +79,78 @@ impl TCB
     let mut can_write = false;
     // Validate (ACK, SEQ in appropriate intervals)
     // Is duplicate? -> trash TODO: quick duplicate detection
-    if self.validate_packet_state(&packet) { 
+    if self.validate_packet_state(&packet) {
 
       debug!("Valid state for packet SEQ:{}, LEN:{}", packet.get_seq_num(), packet.get_body_len());
       let seg_SEQ = packet.get_seq_num();
       let seg_WND = packet.get_window_size();
 
       // If ACK
-      match packet.get_ack_num() {
-        None => (),
-        Some(seg_ACK) => {
-          debug!("is ACK packet");
-          // If ACKing new data
-          // FIXME: is this covered in validate_packet_state()?
-          if seg_ACK > self.state.send_UNA {
-            debug!("ACKing new data");
+      if let Some(seg_ACK) = packet.get_ack_num() {
+        debug!("is ACK packet");
+        // If ACKing new data
+        // FIXME: is this covered in validate_packet_state()?
 
-            // How many bytes just got ACKed?
-            let ack_delta = seg_ACK - self.state.send_UNA;
+        if mod_in_interval(self.write.get_next_consume_seq(),
+                           get_next_write_seq(&self.write),
+                           seg_ACK)
+        {
+          debug!("ACKing new data");
 
-            // Update our UNA pointer
-            self.state.send_UNA = seg_ACK;
+          let una = self.write.get_next_consume_seq();
 
-            // Fast-forward our retransmission queue up to the ACK
-            // FIXME: Is this the right way to drop the first N bytes?
-            self.write.consume_iter().take(ack_delta as uint).last();
+          // Fast-forward our retransmission queue up to the ACK
+          self.write.consume_iter()
+            .zip(::std::iter::count(una, 1))
+            .take_while(|&(_, n)| n <= seg_ACK);
 
-            //    -> if (send_WL1 < SEG.SEQ) or (send_WL1 == SEG.SEQ && send_WL2 <= SEG.ACK)
-            if (self.state.send_WL1 < seg_SEQ) ||
-              (self.state.send_WL1 == seg_SEQ && self.mod_leq(self.state.send_WL2, seg_ACK))
-            {
-              self.state.send_WND = seg_WND;
-              self.state.send_WL1 = seg_SEQ;
-              self.state.send_WL2 = seg_ACK;
-            } else {
-              debug!("valid packet with shrinking ACK?");
-              //    -> else
-              //      -> don't care
-            }
-            // We have more space to write into now
-            can_write = true;
-              //    | OR start timer to buffer ACKS to only annouce the highest ACK instead of notifying X
-              //    times
+          //    -> if (send_WL1 < SEG.SEQ) or (send_WL1 == SEG.SEQ && send_WL2 <= SEG.ACK)
+          if (self.state.send_WL1 < seg_SEQ) ||
+            (self.state.send_WL1 == seg_SEQ && self.mod_leq(self.state.send_WL2, seg_ACK))
+          {
+            self.state.send_WND = seg_WND;
+            self.state.send_WL1 = seg_SEQ;
+            self.state.send_WL2 = seg_ACK;
+          } else {
+            debug!("valid packet with shrinking ACK?");
+            //    -> else
+            //      -> don't care
           }
+          // We have more space to write into now
+          can_write = true;
+          //    | OR start timer to buffer ACKS to only annouce the highest ACK instead of notifying X
+          //    times
         }
-      };
-
-      let contains_nxt = self.contains_recv_nxt(&packet);
-      // Handle data now
-      debug!("packet contains RCV.NXT: {}, SEQ:{}, LEN:{}", contains_nxt, packet.get_seq_num(), packet.get_body_len());
-      
-      self.read.add_slice(packet.get_seq_num(), packet.get_payload());
-      debug!("read buf is now {}", self.read);
-
-      if contains_nxt {
-        //  -> update RCV.WND = (2^16-1) - (recv_NXT - usr_NXT) [unconsumed space in buf]
-        //  TODO: ACTUALLY FAST FORWARD RECV.NXT
-        self.state.recv_NXT += packet.get_body_len();
-
-        // Got more data, try to read again
-        can_read = true;
       }
-      //  ->TODO Will require method in RecvMgr that can iterate over first contiguous block from RCV.NXT
-      //  -  and do things at each packet (copy to buf), optionally deleting from queue once consumed
 
-      // -> Send ACK TODO: efficient way of ACKing - single ACK value at any time, should just update
-      // ACK number in timer
-    } else {
+      {
+        let old_recv_next = get_next_write_seq(&self.read);
+
+        // add packet to buffer
+        {
+          // need to let, because packet will be moved
+          let seq    = packet.get_seq_num();
+          let offset = packet.get_hdr_size() as uint * 4;
+          self.read.add_vec(seq, packet.to_vec(), offset);
+        }
+
+        let recv_next = get_next_write_seq(&self.read);
+        debug!("read buf head changed from {} to {}", old_recv_next, recv_next);
+
+        if old_recv_next < recv_next
+        {
+          can_read = true;
+        }
+
+        //  ->TODO Will require method in RecvMgr that can iterate over first contiguous block from RCV.NXT
+        //  -  and do things at each packet (copy to buf), optionally deleting from queue once consumed
+
+        // -> Send ACK TODO: efficient way of ACKing - single ACK value at any time, should just update
+        // ACK number in timer
+      }
+    }
+    else
+    {
       debug!("Invalid Packet ::State: TCB: {}, SEG:<ACK:{}, SEQ:{}>", self.state,
              packet.get_ack_num(),
              packet.get_seq_num());
@@ -176,11 +169,6 @@ impl TCB
   /*fn get_rcv_window(&self) -> u16 {
     self.recv_mgr.size - (self.state.recv_NXT - self.recv_mgr.usr_NXT) as u16
   }*/
-
-  #[inline]
-  fn contains_recv_nxt(&self, packet: &TcpPacket) -> bool {
-    mod_in_interval(packet.get_seq_num(), packet.get_seq_num() + packet.get_body_len(), self.state.recv_NXT)
-  }
 
   /// Send logic for TCP Packets
 
@@ -223,23 +211,22 @@ impl TCB
   /// Returning the number of bytes we were able to successfully write
   /// NOTE: this is less than n when
   ///               n > (SND.UNA + SND.WND ) - SND.NXT
-  pub fn send<A: RoutingTable>(&mut self, buf:    &[u8],
-                         state:  &::State<A>,
-                         us:     ::ConAddr,
-                         them:   ::ConAddr) -> uint {
-
+  pub fn send<A>(&mut self, buf:    &[u8],
+                 state:  &::State<A>,
+                 us:     ::ConAddr,
+                 them:   ::ConAddr) -> uint
+    where A: RoutingTable
+  {
     debug!("TCB state: {}", self.state);
     debug!("User on <{}<{}> send data: {}", us, them, buf);
 
-    let bytes_written = self.write.add_slice(self.state.send_NXT, buf);
+    let send_nxt = get_next_write_seq(&self.write);
+
+    let bytes_written = self.write.add_slice(send_nxt, buf);
 
     //TODO: will this SEQ num state get moved into PacketBuf?
     debug!("SendBuf: {}", self.write);
     debug!("{} bytes written", bytes_written);
-
-    // Update SND.NXT
-    self.state.send_NXT += bytes_written as u32;
-    debug!("SND.NXT: from {} -> {}", self.state.send_NXT - bytes_written as u32, self.state.send_NXT);
 
     self.flush_transmit_queue(state, us, them);
 
@@ -247,25 +234,28 @@ impl TCB
   }
 
   //Iterate through bytes to be sent, packaging them into packets and sending them off
-  pub fn flush_transmit_queue<A: RoutingTable>(&mut self, 
-                              state:  &::State<A>,
-                              us:     ::ConAddr,
-                              them:   ::ConAddr) -> send::Result<()> {
-
+  pub fn flush_transmit_queue<A>(&mut self,
+                                               state:  &::State<A>,
+                                               us:     ::ConAddr,
+                                               them:   ::ConAddr) -> send::Result<()>
+    where A: RoutingTable
+  {
     debug!("<{},{}> Flushing Transmission Queue", us, them);
 
-    // Send all the bytes we have up to the current send window 
+    // Send all the bytes we have up to the current send window
     let mut bytes_to_send = self.write.iter().take(self.state.send_WND as uint).peekable();
 
-    let mut ctr = self.state.send_UNA;
+    let cur_recv_nxt = get_next_write_seq(&self.read);
+
+    let mut ctr = get_next_write_seq(&self.write);
     // Until we run out of bytes
     while !bytes_to_send.is_empty() {
-      
+
       // Make a packet builder
       let builder: for<'p> |&'p mut TcpPacket| -> send::Result<()> = |packet| {
 
-        // Set Packet Header Params 
-        packet.set_ack_num(self.state.recv_NXT);
+        // Set Packet Header Params
+        packet.set_ack_num(cur_recv_nxt);
         packet.set_seq_num(ctr);
         packet.set_window_size(self.state.recv_WND);
 
@@ -292,16 +282,16 @@ impl TCB
       };
 
       try!(send::send(&*state.ip,
-                      Some(us.0),   
-                      us.1,       
-                      them,     
+                      Some(us.0),
+                      us.1,
+                      them,
                       Some(TCP_MSS),
                       |x| x,
                       builder));
     }
     Ok(())
   }
-  
+
   fn mod_leq(&self, n: u32, m: u32) -> bool {
     n <= m || (n - m > (1 << 16))
   }
