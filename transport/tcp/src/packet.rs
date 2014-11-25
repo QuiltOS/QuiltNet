@@ -179,6 +179,10 @@ impl TcpPacket {
   pub fn get_hdr_size(&self) -> u8 {
     (self.tcp_hdr()[12] >> 4) as u8
   }
+  // FIXME: way to ensure this always gets called
+  pub fn set_hdr_size(&mut self, size: u8) {
+    self.tcp_hdr_mut()[12] = size << 4;  
+  }
 
   // Sequence Number Ops
   pub fn get_seq_num(&self) -> u32 {
