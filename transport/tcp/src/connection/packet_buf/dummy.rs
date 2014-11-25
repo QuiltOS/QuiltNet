@@ -32,8 +32,8 @@ type ConsumeC<'a> = Map<'a, &'a u8, u8, Items<'a, u8>>;
 //impl<'a> super::PacketBufIter<'a> for DummyPacketBuf
 impl<'a> DummyPacketBuf
 {
-  type View    = ViewC<'a>;
-  type Consume = ConsumeC<'a>;
+  //type View    = ViewC<'a>;
+  //type Consume = ConsumeC<'a>;
 
   pub fn iter(&'a self) -> ViewC<'a> {
     self.dumb.iter().map(|x| *x)

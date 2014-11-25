@@ -70,8 +70,8 @@ type ConsumeC<'a> = Scan<'a, u8, u8, ring_buf::Consume<'a>, &'a mut u32>;
 //impl<'a> PacketBufIter<'a> for RingPacketBuf
 impl<'a>  RingPacketBuf
 {
-  type View    = ViewC<'a>;
-  type Consume = ConsumeC<'a>;
+  //type View    = ViewC<'a>;
+  //type Consume = ConsumeC<'a>;
 
   #[inline]
   pub fn iter(&'a self) -> ViewC<'a> {
