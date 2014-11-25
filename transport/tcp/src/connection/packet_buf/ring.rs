@@ -4,28 +4,24 @@ use std::iter::{Map, Scan};
 
 use ring_buf::{mod, RingBuf};
 
-use super::{
-  PacketBuf,
-  //PacketBufIter,
-};
-
 
 #[deriving(Show)]
-pub struct RingPacketBuf {
-  nxt_seq: u32,
+pub struct PacketBuf {
+  tail_seq: u32,
   ring:    RingBuf,
 }
 
 
-impl PacketBuf for RingPacketBuf
+impl super::PacketBuf for PacketBuf
 {
-  fn new(init_seq_num: u32) -> RingPacketBuf {
-    RingPacketBuf {
-      nxt_seq: init_seq_num,
-      ring:    RingBuf::new(1 << 6),
-//      ring: RingBuf::new(0b_1_00_0000_0000_0000), //2 ^ 14
+  fn new(init_seq_num: u32) -> PacketBuf {
+    PacketBuf {
+      tail_seq: init_seq_num,
+      ring:     RingBuf::new(1 << 6), // used to be 2^14
     }
   }
+
+  fn get_next_consume_seq(&self) -> u32 { self.tail_seq }
 
   fn add_vec(&mut self, seq_num: u32, vec: Vec<u8>, start_off: uint) -> u32 {
     self.add_slice(seq_num, vec.as_slice()[start_off..])
@@ -35,7 +31,7 @@ impl PacketBuf for RingPacketBuf
   {
     let delta: i64 =
       (seq_num as i64) -
-      ((self.nxt_seq + self.ring.readable_len() as u32) as i64);
+      ((self.tail_seq + self.ring.readable_len() as u32) as i64);
     debug!("delta: {}", delta);
 
     if     // tacks on perfectly
@@ -58,8 +54,6 @@ impl PacketBuf for RingPacketBuf
     else // out of order or redundant/contained
     { debug!("not writing anything"); 0 }
   }
-
-  fn get_next_consume_seq(&self) -> u32 { self.nxt_seq }
 }
 
 
@@ -67,8 +61,8 @@ type ViewC<'a>    = ring_buf::View<'a>;
 type ConsumeC<'a> = Scan<'a, u8, u8, ring_buf::Consume<'a>, &'a mut u32>;
 
 
-//impl<'a> PacketBufIter<'a> for RingPacketBuf
-impl<'a>  RingPacketBuf
+//impl<'a> PacketBufIter<'a> for PacketBuf
+impl<'a>  PacketBuf
 {
   //type View    = ViewC<'a>;
   //type Consume = ConsumeC<'a>;
@@ -88,6 +82,6 @@ impl<'a>  RingPacketBuf
     };
 
     self.ring.consume_iter()
-      .scan(&mut self.nxt_seq, inc)
+      .scan(&mut self.tail_seq, inc)
   }
 }

@@ -1,21 +1,16 @@
 use std::slice::Items;
 use std::iter::Map;
 
-use super::{
-  PacketBuf,
-  //PacketBufIter,
-};
 
-
-pub struct DummyPacketBuf {
+pub struct PacketBuf {
   dumb: [u8, ..2],
 }
 
 
-impl PacketBuf for DummyPacketBuf
+impl super::PacketBuf for PacketBuf
 {
-  fn new(_init_seq_num: u32) -> DummyPacketBuf {
-    DummyPacketBuf { dumb: [0, 0] }
+  fn new(_init_seq_num: u32) -> PacketBuf {
+    PacketBuf { dumb: [0, 0] }
   }
 
   fn add_vec(&mut self, _seq_num: u32, _vec: Vec<u8>, _start_off: uint) -> u32 { 0 }
@@ -29,8 +24,8 @@ type ViewC<'a>    = Map<'a, &'a u8, u8, Items<'a, u8>>;
 type ConsumeC<'a> = Map<'a, &'a u8, u8, Items<'a, u8>>;
 
 
-//impl<'a> super::PacketBufIter<'a> for DummyPacketBuf
-impl<'a> DummyPacketBuf
+//impl<'a> super::PacketBufIter<'a> for PacketBuf
+impl<'a> PacketBuf
 {
   //type View    = ViewC<'a>;
   //type Consume = ConsumeC<'a>;

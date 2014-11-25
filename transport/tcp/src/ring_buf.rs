@@ -23,6 +23,7 @@ impl RingBuf
     }
   }
 
+  #[inline]
   fn check_invariants(&self) {
     // always at least one byte in ring buf
     assert!(self.data.len() > 0);
@@ -34,14 +35,18 @@ impl RingBuf
     assert!(self.readable_len() < self.data.len());
   }
 
-  pub fn writable_len(&self) -> uint {
+
+  #[inline]
+  pub fn writable_len(&self) -> uint
+  {
     self.check_invariants();
     self.data.len() - self.readable_len() - 1
   }
 
   /// The number of readable/valid bytes
-  pub fn readable_len(&self) -> uint {
-
+  #[inline]
+  pub fn readable_len(&self) -> uint
+  {
     if self.tail <= self.head {
       self.head - self.tail
     } else {
@@ -126,7 +131,10 @@ impl RingBuf
     self.check_invariants();
     n
   }
+}
 
+impl<'a> RingBuf
+{
   #[inline]
   pub fn iter<'a>(&'a self) -> View<'a>
   {
