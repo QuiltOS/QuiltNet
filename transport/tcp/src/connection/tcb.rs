@@ -228,7 +228,7 @@ impl TCB
 
     //TODO: will this SEQ num state get moved into PacketBuf?
     debug!("Adding slice: {} bytes", self.write.add_slice(self.state.send_NXT, buf));
-    debug!("SendBuf: {}", self.write);
+    //debug!("SendBuf: {}", self.write);
 
     // Calculate how much we put in based on window size
     let bytes_written = cmp::min(buf.len(), self.state.send_WND as uint);
