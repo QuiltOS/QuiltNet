@@ -22,8 +22,8 @@ impl PacketBuf for RingPacketBuf
   fn new(init_seq_num: u32) -> RingPacketBuf {
     RingPacketBuf {
       nxt_seq: init_seq_num,
-      ring:    RingBuf::new(1 << 6),
-//      ring: RingBuf::new(0b_1_00_0000_0000_0000), //2 ^ 14
+      //ring:    RingBuf::new(1 << 6),
+      ring: RingBuf::new(0b_1_00_0000_0000_0000), //2 ^ 14
     }
   }
 

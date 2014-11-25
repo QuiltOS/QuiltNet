@@ -16,7 +16,7 @@ use super::packet_buf::{
 //use super::manager::send::SendMgr;
 
 
-pub const TCP_MSS           : u16 = 53616;
+pub const TCP_MSS           : u16 = 536u16;
 pub const TCP_BUF_SIZE      : u16 = ((1u32 << 16u) - 1u32) as u16;
 pub const TCP_RECV_WND_INIT : u16 = TCP_BUF_SIZE;
 
