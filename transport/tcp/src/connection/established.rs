@@ -59,6 +59,7 @@ impl Established
     assert_eq!(self.us,   us);
     assert_eq!(self.them, them);
 
+    debug!("TCB bout to recv!");
     let (r, w) = self.tcb.recv(packet);
 
     let self2 = if r {

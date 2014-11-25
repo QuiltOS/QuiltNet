@@ -259,7 +259,6 @@ impl TCB
         packet.set_ack_num(self.state.recv_NXT);
         packet.set_seq_num(self.state.send_NXT);
         packet.set_window_size(self.state.recv_WND);
-        packet.set_hdr_size(packet::TCP_HDR_LEN as u8);
 
         // Counter for bytes added to payload
         let mut ctr = 0u;

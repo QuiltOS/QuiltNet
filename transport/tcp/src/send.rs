@@ -51,6 +51,7 @@ pub fn send
 
     packet.set_src_port(src_port);
     packet.set_dst_port(dst.1);
+    packet.set_hdr_size((packet::TCP_HDR_LEN / 4) as u8); // # 32-bit words in header
 
     builder(packet)
   };

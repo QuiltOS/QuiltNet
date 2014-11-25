@@ -155,6 +155,7 @@ impl Handshaking
     {
       let builder: for<'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet|
       {
+        //TODO: add generated ISN
         if brag {
           debug!("{} will SYN {}", us, them);
           packet.flags_mut().insert(packet::SYN);

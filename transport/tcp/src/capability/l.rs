@@ -67,6 +67,7 @@ impl<A> L<A>
   }
 
   pub fn accept(&self) -> C<A> {
+    debug!("Accept called on capability {}", self.us);
     let (us, them, reply) = self.requests.recv();
 
     let (handler, rd_rx, wt_rx) = c::make_con_handler();
