@@ -39,16 +39,17 @@ pub struct TcbState {
 impl TcbState 
 {
 
-  pub fn new(our_isn: u32, their_isn: u32) -> TcbState {
+  //TODO: initialize all these variables from handshake!!!
+  pub fn new(our_isn: u32, their_isn: u32, their_wnd: u16) -> TcbState {
     TcbState {
-        recv_NXT : 0u32,
+        recv_NXT : their_isn,
         recv_WND : TCP_RECV_WND_INIT,
         recv_ISN : their_isn,
-        send_UNA : 0u32,
-        send_NXT : 0u32,
-        send_WND : 0u16,
-        send_WL1 : 0u32,
-        send_WL2 : 0u32,
+        send_UNA : our_isn,  
+        send_NXT : our_isn,
+        send_WND : their_wnd,       //INIT: get from what they tell us
+        send_WL1 : their_isn,  //they should be acking what we send and vice-versa
+        send_WL2 : our_isn,
         send_ISN : our_isn
     }
   }
@@ -68,14 +69,14 @@ pub struct TCB {
 
 impl TCB 
 {
-  pub fn new(our_isn: u32, their_isn: u32) -> TCB {
+  pub fn new(our_isn: u32, their_isn: u32, their_wnd: u16) -> TCB {
     TCB {
       read  : PacketBuf::new(their_isn),
       write : PacketBuf::new(our_isn),
       
       recv_mgr : RecvMgr::new(),
       send_mgr : SendMgr::new(),
-      state    : TcbState::new(our_isn, their_isn),
+      state    : TcbState::new(our_isn, their_isn, their_wnd),
     }
   }
 
@@ -222,16 +223,21 @@ impl TCB
                          us:     ::ConAddr,
                          them:   ::ConAddr) -> uint {
 
-
+    debug!("TCB state: {}", self.state);
     debug!("User on <{}<{}> send data: {}", us, them, buf);
+
     //TODO: will this SEQ num state get moved into PacketBuf?
-    self.write.add_slice(self.state.send_NXT, buf);
+    debug!("Adding slice: {} bytes", self.write.add_slice(self.state.send_NXT, buf));
+    debug!("SendBuf: {}", self.write);
 
     // Calculate how much we put in based on window size
     let bytes_written = cmp::min(buf.len(), self.state.send_WND as uint);
-    
+ 
+    debug!("{} bytes written", bytes_written);
+
     // Update SND.NXT
     self.state.send_NXT += bytes_written as u32;
+    debug!("SND.NXT: from {} -> {}", self.state.send_NXT - bytes_written as u32, self.state.send_NXT);
 
     self.flush_transmit_queue(state, us, them);
 

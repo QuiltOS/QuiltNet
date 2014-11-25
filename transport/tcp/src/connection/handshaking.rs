@@ -28,6 +28,7 @@ pub struct Handshaking {
   owe:            bool, // ought we to send them an ACK, if the situation arises?
   our_number:     u32,
   their_number:   Option<u32>,
+  their_wnd:      Option<u16>,
   future_handler: established::Handler,
 }
 
@@ -70,11 +71,14 @@ impl Handshaking
 
     if packet.flags().contains(packet::ACK) {
       self.want = false;
+      //FIXME: should we verify the ACK# accompanying this?
+      self.their_wnd = Some(packet.get_window_size());
     }
 
     if packet.flags().contains(packet::SYN) {
       self.owe = true;
       self.their_number = Some(packet.get_seq_num()); // TODO: should check this
+      self.their_wnd = Some(packet.get_window_size());
     }
 
     debug!("{} to {} post packet: want {}, owe {}", them, us, self.want, self.owe);
@@ -89,6 +93,7 @@ impl Handshaking
                        self.them,
                        self.our_number,
                        self.their_number.unwrap(),
+                       self.their_wnd.unwrap(),
                        self.future_handler)
     } else {
       debug!("{} to {} not free", them, us);
@@ -104,6 +109,7 @@ impl Handshaking
                 want:           bool,
                 owe:            bool,
                 their_number:   Option<u32>,
+                their_wnd:      Option<u16>,
                 future_handler: established::Handler)
                 -> send::Result<Weak<RWLock<Connection>>>
     where A: RoutingTable
@@ -127,6 +133,7 @@ impl Handshaking
         owe:            owe,
         our_number:     Handshaking::generate_isn(),
         their_number:   their_number,
+        their_wnd:      their_wnd,
         future_handler: future_handler,
       };
 

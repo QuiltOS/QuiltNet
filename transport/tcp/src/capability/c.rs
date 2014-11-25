@@ -50,7 +50,7 @@ impl<A> C<A>
 
     let con = try!(connection::handshaking::Handshaking::new(
       &**state, us, None, them,
-      false, false, None, handler));
+      false, false, None, None, handler));
 
     Ok(new(state, con, rd_rx, wt_rx))
   }

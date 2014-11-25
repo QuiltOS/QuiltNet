@@ -122,6 +122,7 @@ impl Established
              them:      ::ConAddr,
              our_isn:   u32,
              their_isn: u32,
+             their_wnd: u16,
              handler:   Handler)
     -> Connection
   {
@@ -130,7 +131,7 @@ impl Established
       us:      us,
       them:    them,
       handler: handler,
-      tcb:     TCB::new(our_isn, their_isn)
+      tcb:     TCB::new(our_isn, their_isn, their_wnd)
     };
     // first CanRead let's them know connection was made
     est.invoke_handler(Situation::CanRead)
