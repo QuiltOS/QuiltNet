@@ -17,7 +17,7 @@ pub fn register<A>(state: &Arc<::State<A>>)
     {
       let state = state.clone();
       box move | packet: ipv4::packet::V | {
-        log_trace(&TcpPacket::new(packet), true);
+//        log_trace(&TcpPacket::new(packet), true);
       }
     })
 }
@@ -31,5 +31,8 @@ pub fn log_trace(tcp_packet: &TcpPacket, is_recv: bool) {
            tcp_packet.get_ack_num(),
            tcp_packet.get_body_len(),
            tcp_packet.flags(),
-           unsafe { ::std::str::from_utf8_unchecked(tcp_packet.get_payload()) });
+           match  ::std::str::from_utf8(tcp_packet.get_payload()) {
+            None => "binary data, probz too big",
+            Some(s) => s
+           });
 }

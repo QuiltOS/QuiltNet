@@ -17,7 +17,7 @@ impl super::PacketBuf for PacketBuf
   fn new(init_seq_num: u32) -> PacketBuf {
     PacketBuf {
       tail_seq: init_seq_num,
-      ring:     RingBuf::new(1 << 6), // used to be 2^14
+      ring:     RingBuf::new(1 << 14), // used to be 2^14
     }
   }
 
@@ -38,7 +38,6 @@ impl super::PacketBuf for PacketBuf
       (delta == 0)
       //&& (delta as uint + buf.len()) < self.ring.writable_len()
     {
-      debug!("perfect fit: {}, {}:{}", self, seq_num, buf);
       let bytes_fit = cmp::min(self.ring.writable_len(), buf.len());
 
       self.ring.write(buf[..bytes_fit]) as u32
