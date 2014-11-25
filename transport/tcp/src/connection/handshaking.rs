@@ -10,6 +10,7 @@ use network::ipv4::strategy::RoutingTable;
 
 use packet::{mod, TcpPacket};
 use send::{mod, Error,};
+use super::tcb::{mod};
 
 use super::Connection;
 use super::established::{
@@ -177,6 +178,9 @@ impl Handshaking
           None => (),
           Some(ack_num) => packet.set_ack_num(self.their_number.unwrap()),
         };
+
+        // Set Window Size
+        packet.set_window_size(tcb::TCP_RECV_WND_INIT);
 
         Ok(())
       };
