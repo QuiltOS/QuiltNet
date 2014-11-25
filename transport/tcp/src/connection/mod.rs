@@ -89,6 +89,6 @@ pub fn close<A>(e: &mut Connection) where A: RoutingTable
   *e = match blank {
     Connection::Closed         => Connection::Closed,
     Connection::Handshaking(c) => c.close(),
-    Connection::Established(_) => blank, //c.close(),
+    Connection::Established(c) => c.close(),
   }
 }

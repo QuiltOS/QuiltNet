@@ -158,4 +158,10 @@ impl Established
     debug!("trying to do a non-blocking write");
     self.tcb.send(buf, state, self.us, self.them)
   }
+
+  pub fn close(self) -> Connection
+  {
+    debug!("TODO: close for established");
+    Connection::Established(self)
+  }
 }
