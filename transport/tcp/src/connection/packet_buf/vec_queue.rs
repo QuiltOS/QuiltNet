@@ -67,7 +67,6 @@ impl Tagged
 #[deriving(Show)]
 pub struct PacketBuf {
   tail_seq: u32,
-  ind:      uint,
   data:     Vec<Tagged>,
 }
 
@@ -77,7 +76,6 @@ impl super::PacketBuf for PacketBuf
   fn new(init_seq_num: u32) -> PacketBuf {
     PacketBuf {
       tail_seq: init_seq_num,
-      ind:      0,
       data:     vec!(),
     }
   }
@@ -241,14 +239,23 @@ impl<'a>  PacketBuf
   #[inline]
   fn iter(&'a self) -> View<'a>
   {
-    let iter = cyclic_corse_iter(&self.data, self.ind);
-    fine_iter(finite_iter(double_iter(iter)))
+    let u32_max: u32 = Int::max_value();
+    let seq_64 = self.tail_seq as u64;
+
+    let mut iter = finite_iter(double_iter(cyclic_corse_iter(&self.data, 0)));
+
+    for (cur, next) in iter {
+      let normal = cur.head() < seq_64 && cur.tail()                  > seq_64;
+      let wrap   = cur.head() < seq_64 && cur.tail() + u32_max as u64 > seq_64;
+      if normal || wrap { break };
+    }
+
+    fine_iter(iter)
   }
 
   #[inline]
-  fn consume_iter(&'a mut self) -> View<'a>
+  fn consume_iter(&'a mut self) -> Consume<'a>
   {
-    let iter = cyclic_corse_iter(&self.data, self.ind);
-    fine_iter(finite_iter(double_iter(iter)))
+    self.iter()
   }
 }
