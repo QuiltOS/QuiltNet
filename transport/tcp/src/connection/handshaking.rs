@@ -170,6 +170,8 @@ impl Handshaking
       // message was sent;
       *lock = super::Connection::Handshaking(potential);
     }
+    // make sure this is after letting go of locks
+    super::timer::start_timer(state, &conn);
     Ok(conn.downgrade())
   }
 

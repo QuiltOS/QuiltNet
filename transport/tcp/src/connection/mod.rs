@@ -15,10 +15,13 @@ use std::time::duration::Duration;
 
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
+
 use Table;
 use packet::TcpPacket;
 
 pub mod packet_buf;
+pub mod timer;
+
 pub mod handshaking;
 pub mod established;
 
