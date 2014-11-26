@@ -157,7 +157,7 @@ fn no_gap(sm: &Tagged, lg: &Tagged) -> bool
   let u32_max: u32 = Int::max_value();
 
   let normal = sm.head() >= lg.tail();
-  let wrap   = sm.head() >= (lg.tail() + u32_max as u64);
+  let wrap   = sm.head() >= (lg.tail() + u32_max as u64) && (sm.head() < sm.tail());
   normal || wrap
 }
 
@@ -172,8 +172,8 @@ fn no_subsumption(sm: &Tagged, lg: &Tagged) -> bool
   let u32_max: u32 = Int::max_value();
 
   let normal = sm.head() <= lg.head();
-  let wrap   = sm.head() <= (lg.head() + u32_max as u64);
-  ! (normal || wrap)
+  let wrap   = sm.head() <= (lg.head() + u32_max as u64) && (sm.head() < sm.tail());
+  normal || wrap
 }
 
 
@@ -212,7 +212,7 @@ fn finite_iter<'a, I>(iter: I) -> Finite<'a, I>
 }
 
 
-pub type Fine<'a, I> = FlatMap<'a, (&'a Tagged, &'a Tagged), I, Items<'a, u8> >;
+pub type Fine<'a, I> = FlatMap<'a, Pair<'a>, I, Map<'a, &'a u8, u8, Items<'a, u8> >>;
 #[inline]
 fn fine_iter<'a, I>(iter: I) -> Fine<'a, I>
   where I: Iterator<Pair<'a>>
@@ -225,7 +225,7 @@ fn fine_iter<'a, I>(iter: I) -> Fine<'a, I>
       (u32_max as u64 + next.seq as u64 - cur.seq as u64) as uint
     };
 
-    cur.as_slice()[..to].iter()
+    cur.as_slice()[..to].iter().map(|x| *x)
   })
 }
 
@@ -257,5 +257,53 @@ impl<'a>  PacketBuf
   fn consume_iter(&'a mut self) -> Consume<'a>
   {
     self.iter()
+  }
+}
+
+#[cfg(test)]
+mod test
+{
+  use super::super::PacketBuf as PacketBuf_T;
+  //use super::PacketBuf;
+  use super::*;
+
+  #[test]
+  fn iter_empty() {
+    let vb: PacketBuf = PacketBuf_T::new(0);
+    let mut iter = vb.iter();
+    assert_eq!(iter.next(), None);
+  }
+
+  #[test]
+  fn one_buf() {
+    let mut vb: PacketBuf = PacketBuf_T::new(0);
+
+    vb.add_slice(0, [1,5,4,3].as_slice());
+
+    let mut iter = vb.iter();
+
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), Some(5));
+    assert_eq!(iter.next(), Some(4));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), None);
+  }
+
+  #[test]
+  fn many_buf() {
+    let mut vb: PacketBuf = PacketBuf_T::new(0);
+
+    vb.add_slice(0, [1].as_slice());
+    vb.add_slice(1, [3,2].as_slice());
+    vb.add_slice(3, [6,5].as_slice());
+
+    let mut iter = vb.iter();
+
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), Some(2));
+    assert_eq!(iter.next(), Some(6));
+    assert_eq!(iter.next(), Some(5));
+    assert_eq!(iter.next(), None);
   }
 }
