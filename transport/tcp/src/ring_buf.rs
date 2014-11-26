@@ -19,7 +19,7 @@ impl RingBuf
     RingBuf {
       tail: 0,
       head: 0,
-      data: Vec::from_fn(size + 1, |n| 0),
+      data: Vec::from_fn(size + 1, |_| 0),
     }
   }
 
@@ -168,8 +168,6 @@ fn raw_make_iter<'a>(data: &'a Vec<u8>,
                      head: uint,
                      tail: uint) -> View<'a>
 {
-  let len = data.len();
-
   if head < tail
   {
     // we need to wrap around
