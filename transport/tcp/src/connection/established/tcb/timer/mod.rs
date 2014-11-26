@@ -116,7 +116,7 @@ fn now_millis() -> i64 {
 }
 
 pub fn start_timer<A>(state: &Weak<::State<A>>,
-                      weak:  &Weak<RWLock<Connection>>)
+                      weak:  &Weak<RWLock<&Connection>>)
   where A: RoutingTable
 {
   let state_weak = state.clone();
@@ -131,8 +131,8 @@ pub fn start_timer<A>(state: &Weak<::State<A>>,
 
       let mut lock = con.write();
       
-      let mut est = match &mut *lock {
-        &Connection::Established(ref mut est) => est,
+      let mut est = match lock.deref() {
+        &Connection::Established(est) => est,
         _                                     => break,
       };
       
@@ -140,6 +140,7 @@ pub fn start_timer<A>(state: &Weak<::State<A>>,
       let interval = Duration::milliseconds(tcb.transmit_data.get_rtt_estimate() as i64);
       let oneshot  = timer.oneshot(interval);
       oneshot.recv();
+      debug!("Timer firing");
       match tcb.flush_transmit_queue(&*state, est.us, est.them) {
         Ok(_)  => (),
         Err(_) => debug!("failure during timeout action, ok"),

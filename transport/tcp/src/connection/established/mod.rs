@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::io::net::ip::Port;
-use std::sync::RWLock;
+use std::sync::{Arc,RWLock, Weak};
 
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
@@ -11,6 +11,7 @@ use send::{mod, Error,};
 
 use super::Connection;
 use self::tcb::TCB;
+use self::tcb::timer;
 
 
 pub mod tcb;
@@ -122,7 +123,7 @@ impl Established
     con
   }
 
-  pub fn new(//state:     &::State<A>,
+  pub fn new<A>(state:     &::State<A>,
              us:        ::ConAddr,
              them:      ::ConAddr,
              our_isn:   u32,
@@ -130,6 +131,7 @@ impl Established
              their_wnd: u16,
              handler:   Handler)
     -> Connection
+    where A: RoutingTable
   {
     debug!("Established connection on our addr {} to server {}", us, them);
     let est = Established {
@@ -138,8 +140,15 @@ impl Established
       handler: handler,
       tcb:     TCB::new(our_isn, their_isn, their_wnd)
     };
+    
+    let con = est.invoke_handler(Situation::CanRead);
     // first CanRead let's them know connection was made
-    est.invoke_handler(Situation::CanRead)
+    {
+      let s = Arc::new(*state).downgrade();
+      let c = Arc::new(RWLock::new(&con)).downgrade();
+      timer::start_timer(&s, &c);
+    }
+    con
   }
 
   /// non-blocking, returns how much was written to caller's buffer

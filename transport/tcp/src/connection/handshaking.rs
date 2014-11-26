@@ -91,7 +91,8 @@ impl Handshaking
     Ok(if (self.want || self.owe) == false {
       debug!("{} to {} free!!!!", them, us);
       // Become established
-      Established::new((self.our_ip.unwrap(), self.us),
+      Established::new(state, 
+                       (self.our_ip.unwrap(), self.us),
                        self.them,
                        self.our_number,
                        self.their_number.unwrap(),

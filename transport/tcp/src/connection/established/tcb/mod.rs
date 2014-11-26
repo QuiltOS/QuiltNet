@@ -18,7 +18,7 @@ use self::timer::RetransmitData;
 //use super::manager::send::SendMgr;
 
 
-mod timer;
+pub mod timer;
 
 
 pub const TCP_MSS           : u16  = 536u16;
