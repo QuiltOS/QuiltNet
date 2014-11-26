@@ -145,20 +145,18 @@ impl TcpPacket {
   }
   pub fn get_src_port(&self) -> u16 {
     BufReader::new(self.tcp_hdr()[0..2]).read_be_u16().unwrap()
-    //Int::from_be(get_multibyte(self.tcp_hdr(), 0, 2) as u16)
   }
   pub fn set_src_port(&mut self, port: u16) {
-    BufWriter::new(self.tcp_hdr_mut()[mut 0..2]).write_be_u16(port);
+    BufWriter::new(self.tcp_hdr_mut()[mut 0..2]).write_be_u16(port).unwrap();
   }
   pub fn get_dst_addr(&self) -> Addr {
     self.ip.borrow().get_destination()
   }
   pub fn get_dst_port(&self) -> u16 {
     BufReader::new(self.tcp_hdr()[2..4]).read_be_u16().unwrap()
-    //Int::from_be(get_multibyte(self.tcp_hdr(), 2, 2) as u16)
   }
   pub fn set_dst_port(&mut self, port: u16) {
-    BufWriter::new(self.tcp_hdr_mut()[mut 2..4]).write_be_u16(port);
+    BufWriter::new(self.tcp_hdr_mut()[mut 2..4]).write_be_u16(port).unwrap();
   }
 
   // Control Flags
@@ -174,10 +172,10 @@ impl TcpPacket {
   // Recv Window size
   pub fn get_window_size(&self) -> u16 {
     BufReader::new(self.tcp_hdr()[14..16]).read_be_u16().unwrap()
-    //Int::from_be(get_multibyte(self.tcp_hdr(), 14, 2)) as u16
   }
   pub fn set_window_size(&mut self, window_size: u16) {
-    BufWriter::new(self.tcp_hdr_mut()[mut 14..16]).write_be_u16(window_size);
+    BufWriter::new(self.tcp_hdr_mut()[mut 14..16]).write_be_u16(window_size)
+      .unwrap();
   }
 
   // AKA data offset: 4 bytes
@@ -193,10 +191,10 @@ impl TcpPacket {
   pub fn get_seq_num(&self) -> u32 {
     // assert!(self.is_seq())
     BufReader::new(self.tcp_hdr()[4..8]).read_be_u32().unwrap()
-    //Int::from_be(get_multibyte(self.tcp_hdr(), 4, 4)) as u32
   }
   pub fn set_seq_num(&mut self, seq_num: u32) {
-    BufWriter::new(self.tcp_hdr_mut()[mut 4..8]).write_be_u32(seq_num);
+    BufWriter::new(self.tcp_hdr_mut()[mut 4..8]).write_be_u32(seq_num)
+      .unwrap();
   }
 
   // Acknowledgement Number Ops
@@ -209,7 +207,8 @@ impl TcpPacket {
   }
   pub fn set_ack_num(&mut self, ack_num: u32) {
     self.flags_mut().insert(ACK);
-    BufWriter::new(self.tcp_hdr_mut()[mut 8..12]).write_be_u32(ack_num);
+    BufWriter::new(self.tcp_hdr_mut()[mut 8..12]).write_be_u32(ack_num)
+      .unwrap();
   }
 
   // Checksum Ops
@@ -217,7 +216,8 @@ impl TcpPacket {
     BufReader::new(self.tcp_hdr()[16..18]).read_be_u16().unwrap()
   }
   pub fn set_checksum(&mut self, checksum: u16) {
-    BufWriter::new(self.tcp_hdr_mut()[mut 16..18]).write_be_u16(checksum);
+    BufWriter::new(self.tcp_hdr_mut()[mut 16..18]).write_be_u16(checksum)
+      .unwrap();
   }
 
   /// Returns TCP payload as slice
@@ -246,7 +246,6 @@ impl TcpPacket {
     // +--------+--------+--------+--------+
 
     let len_tcp_bytes = self.get_tcp().len();
-    let len_tcp_words = len_tcp_bytes / 2;
 
     // the WHOLE IP PACKET
     let bytes: &[u8]  = self.ip.borrow().as_slice();
@@ -321,20 +320,6 @@ impl fmt::Show for TcpPacket {
            self.get_checksum(),
            self.get_payload())
   }
-}
-
-
-// Reads int in BE order
-// TODO: make sure endianness is alright: I'm calling Int::from_be on result
-// to read multibyte fields from packet headers
-fn get_multibyte(buf: &[u8], start_ix: uint, len: uint) -> int {
-  let mut res = 0i;
-
-  // Iterate over bytes in reverse order, increasing significance
-  for (ix, v) in  buf[start_ix..start_ix + len].iter().rev().enumerate() {
-     res |= ((*v) as int << (8 * ix));
-  }
-  res
 }
 
 
