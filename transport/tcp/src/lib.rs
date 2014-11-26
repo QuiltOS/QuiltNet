@@ -44,8 +44,8 @@ mod ring_buf;
 mod send;
 mod receive;
 
-mod listener;
-mod connection;
+pub mod listener;
+pub mod connection;
 pub mod drivers;
 
 pub mod capability;

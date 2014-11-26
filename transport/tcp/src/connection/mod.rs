@@ -19,8 +19,8 @@ use network::ipv4::strategy::RoutingTable;
 use Table;
 use packet::TcpPacket;
 
-pub mod packet_buf;
-pub mod timer;
+mod packet_buf;
+mod timer;
 
 pub mod handshaking;
 pub mod established;

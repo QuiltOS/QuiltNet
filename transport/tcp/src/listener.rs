@@ -28,7 +28,7 @@ pub type ConnectionAttemptMessage = (::ConAddr, // us
                                      ConnectionFun);
 
 pub type OnConnectionAttempt = Box<
-  FnMut<ConnectionAttemptMessage, ()>
+  FnMut<ConnectionAttemptMessage, bool>
   + Send + Sync + 'static>;
 
 
@@ -42,6 +42,7 @@ impl Listener
   fn handle<A>(&mut self,
                state:  &Arc<::State<A>>,
                packet: TcpPacket)
+               -> bool
     where A: RoutingTable
   {
     let us   = (packet.get_dst_addr(), packet.get_dst_port());
@@ -53,12 +54,12 @@ impl Listener
     {
       debug!("Listener on {} got non-syn or ack packet from {}. This is not how you make an introduction....",
              us.1, them);
-      return;
+      return true;
     };
 
     if packet.get_payload().len() != 0 {
       debug!("Listener on {} got non-empty packet from {}. Slow down, we just met....", us.1, them);
-      return;
+      return true;
     };
 
     debug!("Done with 1/3 handshake with {} on our port {}", them, us.1);
@@ -76,7 +77,7 @@ impl Listener
                          false, true, Some(seq_num), Some(wnd), handler)
       }
     };
-    self.handler.call_mut((us, them, con_maker));
+    self.handler.call_mut((us, them, con_maker))
   }
 }
 
@@ -85,14 +86,28 @@ pub fn trans<A>(listener: &mut Option<Listener>,
                 packet:   TcpPacket)
   where A: RoutingTable
 {
-  match listener {
-    &None    => debug!("Sorry, no listener to receive this packet"),
-    &Some(ref mut l) => {
+  use std::mem::swap;
+
+  let mut blank: Option<Listener>= None;
+
+  swap(listener, &mut blank);
+
+  *listener = match blank {
+    None    => {
+      debug!("Sorry, no l to receive this packet");
+      None
+    },
+    Some(mut l) => {
       debug!("Listener found!");
-      l.handle(state, packet)
+      if l.handle(state, packet) {
+        Some(l)
+      } else {
+        None
+      }
     }
   }
 }
+
 
 pub fn passive_new<A>(state:      &::State<A>,
                       handler:    OnConnectionAttempt,

@@ -45,6 +45,7 @@ impl<A> L<A>
       box move |&mut: us: ::ConAddr, them: ::ConAddr, call | {
         debug!("in L-Capability Handler");
         request.lock().send((us, them, call));
+        true // keep on listening
       }
     };
 
