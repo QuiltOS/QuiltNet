@@ -67,6 +67,7 @@ impl super::State for Handshaking
                 -> (Connection, bool)
   {
     debug!("TODO: checkup for handshaking");
+    // false == don't kill timer thread
     (Connection::Handshaking(self), false)
   }
 }

@@ -8,6 +8,7 @@ use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
 
 use connection::Connection;
+use connection::established::Established;
 use connection::established::tcb::{TCB,TCP_MAX_RETRIES};
 
 pub const TCP_RTT_INIT : uint = 2_000u; // 2 seconds
@@ -115,44 +116,17 @@ fn now_millis() -> i64 {
   ts.sec * 1000 + (ts.nsec / 1000) as i64
 }
 
-/*
-pub fn start_timer<A>(state: &Arc<::State<A>>,
-                      weak:  &Arc<RWLock<Connection>>)
+pub fn on_timeout<A>(est: &mut Established,
+                     state: &::State<A>,
+                     interval: &mut Duration)
   where A: RoutingTable
 {
-  let state_weak = state.clone().downgrade();
-  let con_weak  = weak.clone().downgrade();
+  let mut tcb = &mut est.tcb;
 
-  let mut interval = Duration::milliseconds(0)
+  *interval = Duration::milliseconds(tcb.transmit_data.get_rtt_estimate() as i64);
 
-  spawn(proc(){
-    let mut timer = Timer::new().unwrap();
-    loop {
-      let oneshot  = timer.oneshot(interval);
-      oneshot.recv();
-      debug!("Timer firing");
-
-      let (mut state, mut con) = match (state_weak.upgrade(), con_weak.upgrade()) {
-        (Some(state), Some(arc)) => (state, arc),
-        _                        => break,
-      };
-
-      let mut lock = con.write();
-
-      let mut est = match &mut *lock {
-        &Connection::Established(ref mut est) => est,
-        _                                     => break,
-      };
-
-      let mut tcb = &mut est.tcb;
-
-      interval = Duration::milliseconds(tcb.transmit_data.get_rtt_estimate() as i64);
-
-      match tcb.flush_transmit_queue(&*state, est.us, est.them) {
-        Ok(_)  => (),
-        Err(_) => debug!("failure during timeout action, ok"),
-      };
-    }
-  });
+  match tcb.flush_transmit_queue(state, est.us, est.them) {
+    Ok(_)  => (),
+    Err(_) => debug!("failure during timeout action, ok"),
+  };
 }
-*/

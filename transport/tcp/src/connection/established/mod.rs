@@ -51,17 +51,23 @@ impl super::State for Established
   }
 
   fn close<A>(self, _state: &::State<A>) -> Connection
+    where A: RoutingTable
   {
     debug!("TODO: close for established");
     Connection::Established(self)
   }
 
-  fn checkup<A>(self,
-                    state: &::State<A>,
-                    interval: &mut Duration)
-                    -> (Connection, bool)
+  fn checkup<A>(mut self,
+                state: &::State<A>,
+                interval: &mut Duration)
+                -> (Connection, bool)
+    where A: RoutingTable
   {
     debug!("TODO: checkup for established");
+
+    tcb::timer::on_timeout(&mut self, state, interval);
+    
+    // false == don't kill timer thread
     (Connection::Established(self), false)
   }
 }
