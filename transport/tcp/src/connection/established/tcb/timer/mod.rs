@@ -33,7 +33,7 @@ pub struct RetransmitData {
 
   // Queue of (seq#, #tries, timestamp of 1st transmission) triples
   transmission_intervals: RingBuf<TransmissionEntry>,
-} 
+}
 
 impl RetransmitData {
   pub fn new() -> RetransmitData {
@@ -90,7 +90,7 @@ impl RetransmitData {
       // if there is more than 1 interval around, is the ACK necessarily for this interval?
       if self.transmission_intervals.len() > 1 {
         if ack_num > self.transmission_intervals[1].seq_num {
-          update = true; 
+          update = true;
         }
       // ACK must be for this interval
       } else {
@@ -115,32 +115,39 @@ fn now_millis() -> i64 {
   ts.sec * 1000 + (ts.nsec / 1000) as i64
 }
 
-pub fn start_timer<A>(state: &Weak<::State<A>>,
-                      weak:  &Weak<RWLock<&Connection>>)
+/*
+pub fn start_timer<A>(state: &Arc<::State<A>>,
+                      weak:  &Arc<RWLock<Connection>>)
   where A: RoutingTable
 {
-  let state_weak = state.clone();
-  let con_weak  = weak.clone();
+  let state_weak = state.clone().downgrade();
+  let con_weak  = weak.clone().downgrade();
+
+  let mut interval = Duration::milliseconds(0)
+
   spawn(proc(){
     let mut timer = Timer::new().unwrap();
     loop {
+      let oneshot  = timer.oneshot(interval);
+      oneshot.recv();
+      debug!("Timer firing");
+
       let (mut state, mut con) = match (state_weak.upgrade(), con_weak.upgrade()) {
         (Some(state), Some(arc)) => (state, arc),
         _                        => break,
       };
 
       let mut lock = con.write();
-      
-      let mut est = match lock.deref() {
-        &Connection::Established(est) => est,
+
+      let mut est = match &mut *lock {
+        &Connection::Established(ref mut est) => est,
         _                                     => break,
       };
-      
+
       let mut tcb = &mut est.tcb;
-      let interval = Duration::milliseconds(tcb.transmit_data.get_rtt_estimate() as i64);
-      let oneshot  = timer.oneshot(interval);
-      oneshot.recv();
-      debug!("Timer firing");
+
+      interval = Duration::milliseconds(tcb.transmit_data.get_rtt_estimate() as i64);
+
       match tcb.flush_transmit_queue(&*state, est.us, est.them) {
         Ok(_)  => (),
         Err(_) => debug!("failure during timeout action, ok"),
@@ -148,3 +155,4 @@ pub fn start_timer<A>(state: &Weak<::State<A>>,
     }
   });
 }
+*/

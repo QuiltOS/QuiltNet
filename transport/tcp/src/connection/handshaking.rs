@@ -4,6 +4,7 @@ use std::default::Default;
 use std::io::net::ip::Port;
 use std::sync::{RWLock, Weak};
 use std::rand::{task_rng, Rng};
+use std::time::duration::Duration;
 
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
@@ -49,6 +50,25 @@ impl super::State for Handshaking
       Err(_)  => Connection::Closed,
     }
   }
+
+  fn close<A>(self, _state: &::State<A>) -> Connection
+  {
+    if self.ackd_before {
+      debug!("TODO: goto fin wait 1");
+      Connection::Handshaking(self)
+    } else { // can close immediately
+      Connection::Closed
+    }
+  }
+
+  fn checkup<A>(self,
+                state: &::State<A>,
+                interval: &mut Duration)
+                -> (Connection, bool)
+  {
+    debug!("TODO: checkup for handshaking");
+    (Connection::Handshaking(self), false)
+  }
 }
 
 
@@ -91,7 +111,7 @@ impl Handshaking
     Ok(if (self.want || self.owe) == false {
       debug!("{} to {} free!!!!", them, us);
       // Become established
-      Established::new(state, 
+      Established::new(state,
                        (self.our_ip.unwrap(), self.us),
                        self.them,
                        self.our_number,
@@ -215,15 +235,5 @@ impl Handshaking
   fn generate_isn() -> u32 {
     let mut rng = task_rng();
     rng.gen::<u32>()
-  }
-
-  pub fn close(self) -> Connection
-  {
-    if self.ackd_before {
-      debug!("TODO: goto fin wait 1");
-      Connection::Handshaking(self)
-    } else { // can close immediately
-      Connection::Closed
-    }
   }
 }

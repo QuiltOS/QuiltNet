@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::io::net::ip::Port;
 use std::sync::{Arc,RWLock, Weak};
+use std::time::duration::Duration;
 
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
@@ -47,6 +48,21 @@ impl super::State for Established
       Ok(con) => con,
       Err(_)  => Connection::Closed,
     }
+  }
+
+  fn close<A>(self, _state: &::State<A>) -> Connection
+  {
+    debug!("TODO: close for established");
+    Connection::Established(self)
+  }
+
+  fn checkup<A>(self,
+                    state: &::State<A>,
+                    interval: &mut Duration)
+                    -> (Connection, bool)
+  {
+    debug!("TODO: checkup for established");
+    (Connection::Established(self), false)
   }
 }
 
@@ -124,13 +140,13 @@ impl Established
   }
 
   pub fn new<A>(state:     &::State<A>,
-             us:        ::ConAddr,
-             them:      ::ConAddr,
-             our_isn:   u32,
-             their_isn: u32,
-             their_wnd: u16,
-             handler:   Handler)
-    -> Connection
+                us:        ::ConAddr,
+                them:      ::ConAddr,
+                our_isn:   u32,
+                their_isn: u32,
+                their_wnd: u16,
+                handler:   Handler)
+                -> Connection
     where A: RoutingTable
   {
     debug!("Established connection on our addr {} to server {}", us, them);
@@ -140,15 +156,9 @@ impl Established
       handler: handler,
       tcb:     TCB::new(our_isn, their_isn, their_wnd)
     };
-    
-    let con = est.invoke_handler(Situation::CanRead);
+
     // first CanRead let's them know connection was made
-    {
-      let s = Arc::new(*state).downgrade();
-      let c = Arc::new(RWLock::new(&con)).downgrade();
-      timer::start_timer(&s, &c);
-    }
-    con
+    est.invoke_handler(Situation::CanRead)
   }
 
   /// non-blocking, returns how much was written to caller's buffer
@@ -171,11 +181,5 @@ impl Established
   {
     debug!("trying to do a non-blocking write");
     self.tcb.send(buf, state, self.us, self.them)
-  }
-
-  pub fn close(self) -> Connection
-  {
-    debug!("TODO: close for established");
-    Connection::Established(self)
   }
 }
