@@ -34,9 +34,7 @@ impl super::PacketBuf for PacketBuf
       ((self.tail_seq + self.ring.readable_len() as u32) as i64);
     debug!("delta: {}", delta);
 
-    if     // tacks on perfectly
-      (delta == 0)
-      //&& (delta as uint + buf.len()) < self.ring.writable_len()
+    if delta == 0
     {
       let bytes_fit = cmp::min(self.ring.writable_len(), buf.len());
 

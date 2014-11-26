@@ -67,7 +67,6 @@ impl Tagged
 #[deriving(Show)]
 pub struct PacketBuf {
   tail_seq: u32,
-  ind:      uint,
   data:     Vec<Tagged>,
 }
 
@@ -77,7 +76,6 @@ impl super::PacketBuf for PacketBuf
   fn new(init_seq_num: u32) -> PacketBuf {
     PacketBuf {
       tail_seq: init_seq_num,
-      ind:      0,
       data:     vec!(),
     }
   }
@@ -91,14 +89,14 @@ impl super::PacketBuf for PacketBuf
 
   fn add_vec(&mut self, seq_num: u32, vec: Vec<u8>, start_off: uint) -> u32
   {
-    let U32_MAX: u32 = Int::max_value();
+    let u32_max: u32 = Int::max_value();
 
     let node = Tagged {
       seq:    seq_num,
       offset: start_off,
       buf:    vec,
     };
-    assert!(node.len() < U32_MAX as uint);
+    assert!(node.len() < u32_max as uint);
 
 
     let ind = self.find_index(&node);
@@ -156,10 +154,10 @@ fn verify_adjacent(sm: &Tagged, lg: &Tagged)
 /// Stops when there is a discontinuity
 fn no_gap(sm: &Tagged, lg: &Tagged) -> bool
 {
-  let U32_MAX: u32 = Int::max_value();
+  let u32_max: u32 = Int::max_value();
 
   let normal = sm.head() >= lg.tail();
-  let wrap   = sm.head() >= (lg.tail() + U32_MAX as u64);
+  let wrap   = sm.head() >= (lg.tail() + u32_max as u64);
   normal || wrap
 }
 
@@ -171,10 +169,10 @@ fn no_gap(sm: &Tagged, lg: &Tagged) -> bool
 /// Returns false when `lg` is wholly redundant. Expects no gap.
 fn no_subsumption(sm: &Tagged, lg: &Tagged) -> bool
 {
-  let U32_MAX: u32 = Int::max_value();
+  let u32_max: u32 = Int::max_value();
 
   let normal = sm.head() <= lg.head();
-  let wrap   = sm.head() <= (lg.head() + U32_MAX as u64);
+  let wrap   = sm.head() <= (lg.head() + u32_max as u64);
   ! (normal || wrap)
 }
 
@@ -223,8 +221,8 @@ fn fine_iter<'a, I>(iter: I) -> Fine<'a, I>
     let to = if cur.seq < next.seq {
       (next.seq - cur.seq) as uint
     } else {
-      let U32_MAX: u32 = Int::max_value();
-      (U32_MAX as u64 + next.seq as u64 - cur.seq as u64) as uint
+      let u32_max: u32 = Int::max_value();
+      (u32_max as u64 + next.seq as u64 - cur.seq as u64) as uint
     };
 
     cur.as_slice()[..to].iter()
@@ -241,14 +239,23 @@ impl<'a>  PacketBuf
   #[inline]
   fn iter(&'a self) -> View<'a>
   {
-    let iter = cyclic_corse_iter(&self.data, self.ind);
-    fine_iter(finite_iter(double_iter(iter)))
+    let u32_max: u32 = Int::max_value();
+    let seq_64 = self.tail_seq as u64;
+
+    let mut iter = finite_iter(double_iter(cyclic_corse_iter(&self.data, 0)));
+
+    for (cur, next) in iter {
+      let normal = cur.head() < seq_64 && cur.tail()                  > seq_64;
+      let wrap   = cur.head() < seq_64 && cur.tail() + u32_max as u64 > seq_64;
+      if normal || wrap { break };
+    }
+
+    fine_iter(iter)
   }
 
   #[inline]
-  fn consume_iter(&'a mut self) -> View<'a>
+  fn consume_iter(&'a mut self) -> Consume<'a>
   {
-    let iter = cyclic_corse_iter(&self.data, self.ind);
-    fine_iter(finite_iter(double_iter(iter)))
+    self.iter()
   }
 }
