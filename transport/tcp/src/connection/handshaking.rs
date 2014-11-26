@@ -166,33 +166,30 @@ impl Handshaking
     {
       let builder: for<'p> |&'p mut packet::TcpPacket| -> send::Result<()> = |packet|
       {
-        if ! self.synd_before { // gotta SYN them at least once for double handshake
+        // Set SEQ to our ISN
+        packet.set_seq_num(self.our_number);
+        // Set Window Size
+        packet.set_window_size(tcb::TCP_RECV_WND_INIT);
+        // gotta SYN them at least once for double handshake
+        if ! self.synd_before {
           debug!("{} will SYN {}", us, them);
           packet.flags_mut().insert(packet::SYN);
 
           self.want = true;
           self.synd_before = true;
         }
+        // if we owe them an ACK
         if self.owe {
           debug!("{} will ACK {}", us, them);
 
-          packet.flags_mut().insert(packet::ACK);
+          // will also set ACK flag
+          packet.set_ack_num(
+            self.their_number
+              .expect("Should have number to ACK if they want us to ACK"));
+
           self.owe = false;
           self.ackd_before = true;
         }
-
-        // Set SEQ to our ISN
-        packet.set_seq_num(self.our_number);
-
-        // Set ACK to their SEQ if we need
-        match self.their_number {
-          None => (),
-          Some(ack_num) => packet.set_ack_num(self.their_number.unwrap()),
-        };
-
-        // Set Window Size
-        packet.set_window_size(tcb::TCP_RECV_WND_INIT);
-
         Ok(())
       };
 
