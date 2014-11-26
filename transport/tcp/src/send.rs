@@ -9,7 +9,7 @@ use network::ipv4::{
 };
 
 use packet;
-use drivers::trace;
+use trace;
 
 #[deriving(PartialEq, Eq, Clone, Show)]
 pub enum Error {

@@ -13,7 +13,7 @@ use network::ipv4::strategy::RoutingTable;
 
 use super::packet::TcpPacket;
 
-
+use trace;
 
 fn handle<A>(state:  &Arc<::State<A>>,
              packet: ipv4::packet::V)
@@ -27,6 +27,7 @@ fn handle<A>(state:  &Arc<::State<A>>,
     },
   };
 
+  trace::log_trace(&packet, true);
   debug!("Got TCP Packet: {}", &packet);
 
   let dst_port = packet.get_dst_port();

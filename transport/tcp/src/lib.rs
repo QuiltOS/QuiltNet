@@ -44,9 +44,10 @@ mod ring_buf;
 mod send;
 mod receive;
 
+mod trace;
+
 pub mod listener;
 pub mod connection;
-pub mod drivers;
 
 pub mod capability;
 
@@ -98,7 +99,6 @@ impl<A> State<A> where A: RoutingTable
       tcp: ConcurrentHashMap::new(),
     });
     receive::register(&ptr);
-    drivers::trace::register(&ptr);
     ptr
   }
 
@@ -112,13 +112,13 @@ pub type SubTable = ConcurrentHashMap<ConAddr, RWLock<Connection>>;
 
 impl fmt::Show for RWLock<Connection> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "RW<{}>", self.read().deref()) 
+    write!(f, "RW<{}>", self.read().deref())
   }
 }
 
 impl fmt::Show for RWLock<Option<Listener>> {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "RW<{}>", self.read().deref()) 
+    write!(f, "RW<{}>", self.read().deref())
   }
 }
 
