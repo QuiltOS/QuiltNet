@@ -72,7 +72,7 @@ impl Listener
           None    => return Err(Error::BadHandshake), // I suppose IP dissapearing is a bad handshake?
           Some(s) => s,
         };
-        Handshaking::new(&*state, us.1, Some(us.0), them,
+        Handshaking::new(&state, us.1, Some(us.0), them,
                          false, true, Some(seq_num), Some(wnd), handler)
       }
     };

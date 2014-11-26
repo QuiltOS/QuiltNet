@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::default::Default;
 use std::io::net::ip::Port;
-use std::sync::{RWLock, Weak};
+use std::sync::{Arc, Weak, RWLock};
 use std::rand::{task_rng, Rng};
 use std::time::duration::Duration;
 
@@ -124,7 +124,9 @@ impl Handshaking
     })
   }
 
-  pub fn new<A>(state:          &::State<A>,
+  // Only takes State arc because we are temporarily doing one timeout
+  // thread / connection Do not propigate this arc further
+  pub fn new<A>(state:          &Arc<::State<A>>,
                 us:             Port,
                 our_ip:         Option<ipv4::Addr>,
                 them:           ::ConAddr,
@@ -162,7 +164,7 @@ impl Handshaking
         future_handler: future_handler,
       };
 
-      try!(potential.send(state, us, them));
+      try!(potential.send(&**state, us, them));
 
       // don't bother really reserving port until at least the first
       // message was sent;
