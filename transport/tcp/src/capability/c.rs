@@ -74,6 +74,11 @@ impl<A> C<A>
     };
     Ok(est.read(&*self.state, buf))
   }
+
+  // Returns (send, receive) window sizes for this connection
+  pub fn get_window(&self) -> ((u32, u16), (u32, u16)) {
+    self.con.upgrade().unwrap().read().deref().get_window()
+  }
 }
 
 const EOF: IoError = IoError {
@@ -153,6 +158,7 @@ impl<A> Writer for C<A>
     }
   }
 }
+
 
 pub fn new<A>(state:   &Arc<::State<A>>,
               con:     Weak<RWLock<::connection::Connection>>,

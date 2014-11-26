@@ -75,6 +75,11 @@ impl TCB
 
   // ******** TCP Module API ***********************************//
 
+  // Returns the socket's (send, receive) windows
+  pub fn get_window(&self) -> ((u32, u16), (u32, u16)) {
+    ((self.write.get_next_consume_seq(), self.state.send_WND), (self.read.get_next_consume_seq(), self.state.recv_WND))
+  }
+
   /// Receive logic for TCP packet
   pub fn recv(&mut self, packet: TcpPacket) -> (bool, bool)
   {

@@ -40,6 +40,14 @@ impl Connection {
     per_port.connections.get_or_init(them,
                                      || RWLock::new(Default::default()))
   }
+
+  pub fn get_window(&self) -> ((u32, u16), (u32, u16)) {
+    match self {
+      &Connection::Closed => ((0, 0), (0, 0)),
+      &Connection::Handshaking(_) => ((0,0), (0, 0)),
+      &Connection::Established(ref est) => est.get_window()
+    }
+  }
 }
 
 impl fmt::Show for Connection {

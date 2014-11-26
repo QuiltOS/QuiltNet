@@ -169,4 +169,8 @@ impl Established
     debug!("TODO: close for established");
     Connection::Established(self)
   }
+
+  pub fn get_window(&self) -> ((u32, u16), (u32, u16)) {
+    self.tcb.get_window()
+  }
 }
