@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::io::net::ip::Port;
-use std::sync::RWLock;
+use std::sync::{Arc,RWLock, Weak};
+use std::time::duration::Duration;
 
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
@@ -11,6 +12,7 @@ use send::{mod, Error,};
 
 use super::Connection;
 use self::tcb::TCB;
+use self::tcb::timer;
 
 
 pub mod tcb;
@@ -46,6 +48,21 @@ impl super::State for Established
       Ok(con) => con,
       Err(_)  => Connection::Closed,
     }
+  }
+
+  fn close<A>(self, _state: &::State<A>) -> Connection
+  {
+    debug!("TODO: close for established");
+    Connection::Established(self)
+  }
+
+  fn checkup<A>(self,
+                    state: &::State<A>,
+                    interval: &mut Duration)
+                    -> (Connection, bool)
+  {
+    debug!("TODO: checkup for established");
+    (Connection::Established(self), false)
   }
 }
 
@@ -122,14 +139,15 @@ impl Established
     con
   }
 
-  pub fn new(//state:     &::State<A>,
-             us:        ::ConAddr,
-             them:      ::ConAddr,
-             our_isn:   u32,
-             their_isn: u32,
-             their_wnd: u16,
-             handler:   Handler)
-    -> Connection
+  pub fn new<A>(state:     &::State<A>,
+                us:        ::ConAddr,
+                them:      ::ConAddr,
+                our_isn:   u32,
+                their_isn: u32,
+                their_wnd: u16,
+                handler:   Handler)
+                -> Connection
+    where A: RoutingTable
   {
     debug!("Established connection on our addr {} to server {}", us, them);
     let est = Established {
@@ -138,6 +156,7 @@ impl Established
       handler: handler,
       tcb:     TCB::new(our_isn, their_isn, their_wnd)
     };
+
     // first CanRead let's them know connection was made
     est.invoke_handler(Situation::CanRead)
   }
@@ -162,12 +181,6 @@ impl Established
   {
     debug!("trying to do a non-blocking write");
     self.tcb.send(buf, state, self.us, self.them)
-  }
-
-  pub fn close(self) -> Connection
-  {
-    debug!("TODO: close for established");
-    Connection::Established(self)
   }
 
   pub fn get_window(&self) -> ((u32, u16), (u32, u16)) {

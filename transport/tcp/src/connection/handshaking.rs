@@ -2,8 +2,9 @@ use std::collections::HashMap;
 use std::collections::hash_map::{Occupied, Vacant};
 use std::default::Default;
 use std::io::net::ip::Port;
-use std::sync::{RWLock, Weak};
+use std::sync::{Arc, Weak, RWLock};
 use std::rand::{task_rng, Rng};
+use std::time::duration::Duration;
 
 use network::ipv4;
 use network::ipv4::strategy::RoutingTable;
@@ -49,6 +50,25 @@ impl super::State for Handshaking
       Err(_)  => Connection::Closed,
     }
   }
+
+  fn close<A>(self, _state: &::State<A>) -> Connection
+  {
+    if self.ackd_before {
+      debug!("TODO: goto fin wait 1");
+      Connection::Handshaking(self)
+    } else { // can close immediately
+      Connection::Closed
+    }
+  }
+
+  fn checkup<A>(self,
+                state: &::State<A>,
+                interval: &mut Duration)
+                -> (Connection, bool)
+  {
+    debug!("TODO: checkup for handshaking");
+    (Connection::Handshaking(self), false)
+  }
 }
 
 
@@ -91,7 +111,8 @@ impl Handshaking
     Ok(if (self.want || self.owe) == false {
       debug!("{} to {} free!!!!", them, us);
       // Become established
-      Established::new((self.our_ip.unwrap(), self.us),
+      Established::new(state,
+                       (self.our_ip.unwrap(), self.us),
                        self.them,
                        self.our_number,
                        self.their_number.unwrap(),
@@ -103,7 +124,9 @@ impl Handshaking
     })
   }
 
-  pub fn new<A>(state:          &::State<A>,
+  // Only takes State arc because we are temporarily doing one timeout
+  // thread / connection Do not propigate this arc further
+  pub fn new<A>(state:          &Arc<::State<A>>,
                 us:             Port,
                 our_ip:         Option<ipv4::Addr>,
                 them:           ::ConAddr,
@@ -141,7 +164,7 @@ impl Handshaking
         future_handler: future_handler,
       };
 
-      try!(potential.send(state, us, them));
+      try!(potential.send(&**state, us, them));
 
       // don't bother really reserving port until at least the first
       // message was sent;
@@ -214,15 +237,5 @@ impl Handshaking
   fn generate_isn() -> u32 {
     let mut rng = task_rng();
     rng.gen::<u32>()
-  }
-
-  pub fn close(self) -> Connection
-  {
-    if self.ackd_before {
-      debug!("TODO: goto fin wait 1");
-      Connection::Handshaking(self)
-    } else { // can close immediately
-      Connection::Closed
-    }
   }
 }
