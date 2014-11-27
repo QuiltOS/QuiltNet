@@ -1,0 +1,11 @@
+[package]
+
+name = "cyclic-order"
+version = "0.0.1"
+authors = [ "John Ericson <Ericson2314@Yahoo.com>" ]
+
+[lib]
+name = "cyclic_order"
+
+[dev-dependencies.quickcheck_macros]
+git = "https://github.com/BurntSushi/quickcheck"
