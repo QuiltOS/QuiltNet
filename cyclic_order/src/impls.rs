@@ -9,6 +9,7 @@ use super::CyclicOrdering::{
 
 impl<N> PartialCyclicOrder for N where N: UnsignedInt + Ord
 {
+  #[inline]
   fn is_clockwise(&self, them: &N, other: &N) -> bool
   {
     self.cyclic_cmp(them, other) == Clockwise
