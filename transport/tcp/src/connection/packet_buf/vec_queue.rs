@@ -1,9 +1,13 @@
-use std::slice::Items;
+extern crate cyclic_order;
+
 use std::cmp;
+use std::collections::dlist;
+use std::collections::DList;
+use std::slice;
 use std::iter::{
   mod,
-
   Chain,
+  Counter,
   Filter,
   FilterMap,
   FlatMap,
@@ -11,13 +15,15 @@ use std::iter::{
   Rev,
   Scan,
   Skip,
+  SkipWhile,
   TakeWhile,
   Zip,
 };
 use std::num::Int;
 
-use ring_buf::{mod, RingBuf};
-
+use self::cyclic_order::{CyclicOrd, PartialCyclicOrd};
+use self::cyclic_order::CyclicOrdering::*;
+use self::cyclic_order::linked_list::{mod, CutQueue};
 
 #[deriving(PartialEq, Eq, Show)]
 struct Tagged {
@@ -26,12 +32,20 @@ struct Tagged {
   buf:    Vec<u8>,
 }
 
+impl PartialCyclicOrd for Tagged {
+  fn is_clockwise(&self, them: &Tagged, other: &Tagged) -> bool {
+    self.cyclic_cmp(them, other) == Clockwise
+  }
+}
 
-impl PartialOrd for Tagged {
-  fn partial_cmp(&self, other: &Tagged) -> Option<Ordering> {
-    // backwards on purpose!
-    // that way vec.pop() works
-    other.seq.partial_cmp(&self.seq)
+
+impl CyclicOrd for Tagged
+{
+  fn cyclic_cmp(&self, them: &Tagged, other: &Tagged) -> cyclic_order::CyclicOrdering {
+    match self.tail().cyclic_cmp(&them.tail(), &other.tail()) {
+      Degenerate => self.head().cyclic_cmp(&them.head(), &other.head()),
+      otherwise  => otherwise
+    }
   }
 }
 
@@ -39,21 +53,38 @@ impl PartialOrd for Tagged {
 impl Tagged
 {
   #[inline]
+  fn new(seq_num: u32, vec: Vec<u8>, start_off: uint) -> Tagged
+  {
+    let u32_max: u32 = Int::max_value();
+
+    let node = Tagged {
+      seq:    seq_num,
+      offset: start_off,
+      buf:    vec,
+    };
+
+    assert!(start_off < node.len());
+    assert!((node.len() - start_off) < u32_max as uint);
+
+    node
+  }
+
+  #[inline]
   fn len(&self) -> uint
   {
     self.buf.len() - self.offset
   }
 
   #[inline]
-  fn head(&self) -> u64
+  fn head(&self) -> u32
   {
-    self.seq as u64 + self.len() as u64
+    self.seq + (self.len() - self.offset) as u32
   }
 
   #[inline]
-  fn tail(&self) -> u64
+  fn tail(&self) -> u32
   {
-    self.seq as u64
+    self.seq
   }
 
   #[inline]
@@ -63,11 +94,60 @@ impl Tagged
   }
 }
 
+mod tagged_test {
+  /*
+  use super::cylic_order::{partial_axioms, total_axioms};
+
+  #[quickcheck]
+  fn partial_cyclicity(a: Tagged, b: Tagged, c: Tagged) -> bool {
+    partial_axioms::cyclicity(&a, &b, &c)
+  }
+
+  #[quickcheck]
+  fn partial_antisymmetry(a: Tagged, b: Tagged, c: Tagged) -> bool {
+    partial_axioms::antisymmetry(&a, &b, &c)
+  }
+
+  #[quickcheck]
+  fn partial_transitivity(a: Tagged, b: Tagged, c: Tagged, d: Tagged) -> bool {
+    partial_axioms::transitivity(&a, &b, &c, &d)
+  }
+
+
+  #[quickcheck]
+  fn total_cyclicity(a: Tagged, b: Tagged, c: Tagged) -> bool {
+    total_axioms::cyclicity(&a, &b, &c)
+  }
+
+  #[quickcheck]
+  fn total_antisymmetry(a: Tagged, b: Tagged, c: Tagged) -> bool {
+    total_axioms::antisymmetry(&a, &b, &c)
+  }
+
+  #[quickcheck]
+  fn total_transitivity(a: Tagged, b: Tagged, c: Tagged, d: Tagged) -> bool {
+    total_axioms::transitivity(&a, &b, &c, &d)
+  }
+
+  #[quickcheck]
+  fn total_totality(a: Tagged, b: Tagged, c: Tagged) -> bool {
+    total_axioms::totality(&a, &b, &c)
+  }
+
+  #[quickcheck]
+  fn super_trait_cohesion(a: Tagged, b: Tagged, c: Tagged) -> bool {
+    total_axioms::super_trait_cohesion(&a, &b, &c)
+  }
+  */
+}
+
+
+
 
 #[deriving(Show)]
 pub struct PacketBuf {
   tail_seq: u32,
-  data:     Vec<Tagged>,
+  data:     DList<Tagged>,
 }
 
 
@@ -76,7 +156,7 @@ impl super::PacketBuf for PacketBuf
   fn new(init_seq_num: u32) -> PacketBuf {
     PacketBuf {
       tail_seq: init_seq_num,
-      data:     vec!(),
+      data:     DList::new(),
     }
   }
 
@@ -89,56 +169,14 @@ impl super::PacketBuf for PacketBuf
 
   fn add_vec(&mut self, seq_num: u32, vec: Vec<u8>, start_off: uint) -> u32
   {
-    let u32_max: u32 = Int::max_value();
-
-    let node = Tagged {
-      seq:    seq_num,
-      offset: start_off,
-      buf:    vec,
-    };
-    assert!(node.len() < u32_max as uint);
-
-
-    let ind = self.find_index(&node);
-
-    // will make room
-    self.data.insert(ind, node);
-
-    // verify again after insert
-    self.verify_index(ind);
-
-    (self.data.len() - start_off) as u32 // always accept everything!
+    let node = Tagged::new(seq_num, vec, start_off);
+    let ret = node.head() - node.tail(); // always accept everything!
+    self.data.insert_cyclic(node);
+    ret
   }
 }
 
-
-impl PacketBuf
-{
-  #[inline]
-  fn find_index(&self, node: &Tagged) -> uint
-  {
-    use std::slice::{Found, NotFound};
-
-    let ind = self.data.binary_search(|prob| prob.partial_cmp(node).unwrap());
-    let i = match ind { Found(i) => i, NotFound(i) => i, };
-
-    self.verify_index(i);
-
-    i
-  }
-
-  fn verify_index(&self, i: uint)
-  {
-    if let (Some(sm), Some(lg)) = (self.data.get(i + 1), self.data.get(i)) {
-      verify_adjacent(sm, lg);
-    }
-    if let (Some(sm), Some(lg)) = (self.data.get(i), self.data.get(i - 1)) {
-      verify_adjacent(sm, lg);
-    }
-  }
-}
-
-
+/*
 #[inline]
 fn verify_adjacent(sm: &Tagged, lg: &Tagged)
 {
@@ -210,49 +248,53 @@ fn finite_iter<'a, I>(iter: I) -> Finite<'a, I>
     .take_while(|&(cur, next)| no_gap(cur, next))
     .filter(|&(cur, next)| no_subsumption(cur, next))
 }
+*/
 
+//pub type Concat<'a, I> = FlatMap<'a, Pair<'a>, I, Map<'a, &'a u8, u8, Items<'a, u8> >>;
 
-pub type Fine<'a, I> = FlatMap<'a, Pair<'a>, I, Map<'a, &'a u8, u8, Items<'a, u8> >>;
+pub type Concat<'a, I, A> = Scan<'a, (A, u32), A, I, u32>;
 #[inline]
-fn fine_iter<'a, I>(iter: I) -> Fine<'a, I>
-  where I: Iterator<Pair<'a>>
+fn concat<'a, I, A>(first_seq: u32, iter: I) -> Concat<'a, I, A>
+  where I: Iterator<(A, u32)>
 {
-  iter.flat_map(|(cur, next)| {
-    let to = if cur.seq < next.seq {
-      (next.seq - cur.seq) as uint
+  iter.scan(first_seq, move |expected_seq, (byte, cur_seq)| {
+    if *expected_seq == cur_seq {
+      *expected_seq += 1;
+      Some(byte)
     } else {
-      let u32_max: u32 = Int::max_value();
-      (u32_max as u64 + next.seq as u64 - cur.seq as u64) as uint
-    };
-
-    cur.as_slice()[..to].iter().map(|x| *x)
+      None
+    }
   })
 }
 
+pub type Immut<'a> = FlatMap<'a,
+                             &'a Tagged,
+                             dlist::Items<'a, Tagged>,
+                             Zip<Map<'a, &'a u8, u8, slice::Items<'a, u8>>,
+                             Counter<u32>>>;
 
-pub type View      <'a> = Fine<'a, Finite<'a, Double<'a, Cycle<'a>>>>;
-pub type Consume   <'a> = View<'a>;
-
+pub type View   <'a> = Concat<'a, Immut<'a>, u8>;
+pub type Consume<'a> = View<'a>;
 
 impl<'a>  PacketBuf
 {
+  // TODO: make it not iterator through all the vecs every time
   #[inline]
   fn iter(&'a self) -> View<'a>
   {
-    let u32_max: u32 = Int::max_value();
-    let seq_64 = self.tail_seq as u64;
+    let chunks = self.data.iter();
 
-    let mut iter = finite_iter(double_iter(cyclic_corse_iter(&self.data, 0)));
+    let numbered = chunks.flat_map(|node| {
+      let slice = node.as_slice();
+      slice.iter()
+        .map(|x| *x)
+        .zip(::std::iter::count(node.tail(), 1))
+    });
 
-    for (cur, next) in iter {
-      let normal = cur.head() < seq_64 && cur.tail()                  > seq_64;
-      let wrap   = cur.head() < seq_64 && cur.tail() + u32_max as u64 > seq_64;
-      if normal || wrap { break };
-    }
-
-    fine_iter(iter)
+    concat(self.tail_seq, numbered)
   }
 
+  // TODO: make it not iterator through all the vecs every time
   #[inline]
   fn consume_iter(&'a mut self) -> Consume<'a>
   {

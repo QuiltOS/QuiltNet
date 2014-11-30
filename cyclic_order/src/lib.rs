@@ -26,7 +26,7 @@ pub enum CyclicOrdering {
 ///  - Cyclicity:    If [a, b, c] then [b, c, a]
 ///  - Asymmetry:    If [a, b, c] then not [c, b, a]
 ///  - Transitivity: If [a, b, c] and [a, c, d] then [a, b, d]
-pub trait PartialCyclicOrder:
+pub trait PartialCyclicOrd
 {
   fn is_clockwise(&self, them: &Self, other: &Self) -> bool;
 }
@@ -36,15 +36,15 @@ pub mod partial_axioms {
 
   use super::*;
 
-  pub fn cyclicity<T>(a: &T, b: &T, c: &T) -> bool where T: PartialCyclicOrder {
+  pub fn cyclicity<T>(a: &T, b: &T, c: &T) -> bool where T: PartialCyclicOrd {
     a.is_clockwise(b, c) == b.is_clockwise(c, a)
   }
 
-  pub fn antisymmetry<T>(a: &T, b: &T, c: &T) -> bool where T: PartialCyclicOrder {
+  pub fn antisymmetry<T>(a: &T, b: &T, c: &T) -> bool where T: PartialCyclicOrd {
     !( a.is_clockwise(b, c) && c.is_clockwise(b, a) )
   }
 
-  pub fn transitivity<T>(a: &T, b: &T, c: &T, d: &T) -> bool where T: PartialCyclicOrder {
+  pub fn transitivity<T>(a: &T, b: &T, c: &T, d: &T) -> bool where T: PartialCyclicOrd {
     match (a.is_clockwise(b, c), a.is_clockwise(c, d), a.is_clockwise(b, d)) {
       (true,        true,        trans) => trans,
       _                                 => true,
@@ -61,7 +61,7 @@ pub mod partial_axioms {
 ///     - Transitivity: If [a, b, c] and [a, c, d] then [a, b, d]
 ///
 ///  - Totality:     If a, b, and c are distinct, then either [a, b, c] or [c, b, a]
-pub trait CyclicOrder: PartialEq + PartialCyclicOrder {
+pub trait CyclicOrd: PartialEq + PartialCyclicOrd {
   fn cyclic_cmp(&self, them: &Self, other: &Self) -> CyclicOrdering;
 }
 
@@ -71,11 +71,11 @@ pub mod total_axioms {
   use super::*;
   use super::CyclicOrdering::*;
 
-  pub fn cyclicity<T>(a: &T, b: &T, c: &T) -> bool where T: CyclicOrder {
+  pub fn cyclicity<T>(a: &T, b: &T, c: &T) -> bool where T: CyclicOrd {
     a.cyclic_cmp(b, c) == b.cyclic_cmp(c, a)
   }
 
-  pub fn antisymmetry<T>(a: &T, b: &T, c: &T) -> bool where T: CyclicOrder {
+  pub fn antisymmetry<T>(a: &T, b: &T, c: &T) -> bool where T: CyclicOrd {
     match (a.cyclic_cmp(b, c), c.cyclic_cmp(b, a)) {
       (Clockwise,        Clockwise)        => false,
       (CounterClockwise, CounterClockwise) => false,
@@ -83,7 +83,7 @@ pub mod total_axioms {
     }
   }
 
-  pub fn transitivity<T>(a: &T, b: &T, c: &T, d: &T) -> bool where T: CyclicOrder {
+  pub fn transitivity<T>(a: &T, b: &T, c: &T, d: &T) -> bool where T: CyclicOrd {
     match (a.cyclic_cmp(b, c), a.cyclic_cmp(c, d), a.cyclic_cmp(b, d)) {
       (Clockwise,        Clockwise,        trans) => trans == Clockwise,
       (CounterClockwise, CounterClockwise, trans) => trans == CounterClockwise,
@@ -91,12 +91,20 @@ pub mod total_axioms {
     }
   }
 
-  pub fn totality<T>(a: &T, b: &T, c: &T) -> bool where T: CyclicOrder {
+  pub fn totality<T>(a: &T, b: &T, c: &T) -> bool where T: CyclicOrd {
     match (a.cyclic_cmp(b, c), c.cyclic_cmp(b, a)) {
       (Clockwise,        CounterClockwise) => true,
       (CounterClockwise, Clockwise)        => true,
       (Degenerate,       Degenerate)       => a == b || b == c || c == a,
       _                                    => false,
+    }
+  }
+
+  pub fn super_trait_cohesion<T>(a: &T, b: &T, c: &T) -> bool where T: CyclicOrd {
+    match (a.cyclic_cmp(b, c), a.is_clockwise(b, c)) {
+      (Clockwise, true)  => true,
+      (_,         false) => true,
+      _                  => false,
     }
   }
 }

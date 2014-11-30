@@ -16,3 +16,10 @@ path = "../../misc"
 
 [dependencies.rust-net-network]
 path = "../../network"
+
+[dependencies.cyclic-order]
+path = "../../cyclic_order"
+
+
+[dev-dependencies.quickcheck_macros]
+git = "https://github.com/BurntSushi/quickcheck"

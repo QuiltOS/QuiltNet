@@ -6,13 +6,13 @@ use std::collections::dlist::{
 
 // A priority queue to store cuts of a cycle
 // Currently basically extension methods on DList
-trait CutQueue<T> where T: ::CyclicOrder
+pub trait CutQueue<T> where T: ::CyclicOrd
 {
   fn insert_cyclic(&mut self, T);
 }
 
 // Does not rotate link list
-impl<T> CutQueue<T> for DList<T> where T: ::CyclicOrder
+impl<T> CutQueue<T> for DList<T> where T: ::CyclicOrd
 {
   fn insert_cyclic(&mut self, elt: T)
   {
@@ -41,7 +41,7 @@ impl<T> CutQueue<T> for DList<T> where T: ::CyclicOrder
 #[cfg(test)]
 mod test
 {
-  use CyclicOrder;
+  use CyclicOrd;
   use CyclicOrdering::*;
 
   use super::CutQueue;

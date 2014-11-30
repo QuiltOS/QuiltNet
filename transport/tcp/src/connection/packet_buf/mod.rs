@@ -8,11 +8,15 @@ pub trait PacketBuf
 {
   fn new(init_seq_num: u32) -> Self;
 
-  /// returns delta for the front
+  /// Returns the number of bytes from the payload that now exist in
+  /// the buffer
+  ///
+  /// In particular, the bytes could have been added as a result of
+  /// this call, or they could have already existed in the buffer
   #[inline]
   fn add_vec  (&mut self, seq_num: u32, vec: Vec<u8>, start_off: uint) -> u32;
 
-  /// returns delta for the front
+  /// Return value as the same semantics as `add_vec`
   #[inline]
   fn add_slice(&mut self, seq_num: u32, buf: &[u8]) -> u32;
 

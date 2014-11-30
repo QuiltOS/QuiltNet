@@ -7,7 +7,7 @@ use super::CyclicOrdering::{
   Degenerate
 };
 
-impl<N> PartialCyclicOrder for N where N: UnsignedInt + Ord
+impl<N> PartialCyclicOrd for N where N: UnsignedInt + Ord
 {
   #[inline]
   fn is_clockwise(&self, them: &N, other: &N) -> bool
@@ -16,7 +16,7 @@ impl<N> PartialCyclicOrder for N where N: UnsignedInt + Ord
   }
 }
 
-impl<N> CyclicOrder for N where N: UnsignedInt + Ord
+impl<N> CyclicOrd for N where N: UnsignedInt + Ord
 {
   #[inline]
   fn cyclic_cmp(&self, them: &N, other: &N) -> CyclicOrdering
@@ -89,4 +89,10 @@ mod total_test {
   #[quickcheck] fn u32_totality(a: u32, b: u32, c: u32) -> bool { totality(&a, &b, &c) }
   #[quickcheck] fn u64_totality(a: u64, b: u64, c: u64) -> bool { totality(&a, &b, &c) }
   #[quickcheck] fn uint_totality(a: uint, b: uint, c: uint) -> bool { totality(&a, &b, &c) }
+
+  #[quickcheck] fn u8_super_trait_cohesion(a: u8, b: u8, c: u8) -> bool { super_trait_cohesion(&a, &b, &c) }
+  #[quickcheck] fn u16_super_trait_cohesion(a: u16, b: u16, c: u16) -> bool { super_trait_cohesion(&a, &b, &c) }
+  #[quickcheck] fn u32_super_trait_cohesion(a: u32, b: u32, c: u32) -> bool { super_trait_cohesion(&a, &b, &c) }
+  #[quickcheck] fn u64_super_trait_cohesion(a: u64, b: u64, c: u64) -> bool { super_trait_cohesion(&a, &b, &c) }
+  #[quickcheck] fn uint_super_trait_cohesion(a: uint, b: uint, c: uint) -> bool { super_trait_cohesion(&a, &b, &c) }
 }
