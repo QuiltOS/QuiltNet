@@ -181,6 +181,7 @@ impl super::PacketBuf for PacketBuf
 }
 
 
+// TODO: reuse code between the two iterators
 
 pub struct ViewIter<'a> {
   expected_seq: u32,
@@ -253,7 +254,7 @@ impl<'a> PacketBuf
 {
   // TODO: make it not iterator through all the vecs every time
   #[inline]
-  fn iter(&'a self) -> ViewIter<'a>
+  pub fn iter(&'a self) -> ViewIter<'a>
   {
     ViewIter {
       expected_seq: self.tail_seq,
@@ -263,7 +264,7 @@ impl<'a> PacketBuf
 
   // TODO: make it not iterator through all the vecs every time
   #[inline]
-  fn consume_iter(&'a mut self) -> ConsumeIter<'a>
+  pub fn consume_iter(&'a mut self) -> ConsumeIter<'a>
   {
     ConsumeIter(self)
   }

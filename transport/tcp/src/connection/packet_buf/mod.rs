@@ -2,7 +2,7 @@ pub mod dummy;
 pub mod ring;
 pub mod vec_queue;
 
-pub type BestPacketBuf = ring::PacketBuf;
+pub type BestPacketBuf = vec_queue::PacketBuf;
 
 pub trait PacketBuf
 {
