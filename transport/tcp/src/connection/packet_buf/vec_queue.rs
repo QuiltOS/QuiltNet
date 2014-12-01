@@ -16,6 +16,7 @@ use std::iter::{
   Scan,
   Skip,
   SkipWhile,
+  Peekable,
   TakeWhile,
   Zip,
 };
@@ -86,7 +87,10 @@ impl Tagged
   {
     self.seq
   }
+}
 
+impl ::std::slice::AsSlice<u8> for Tagged
+{
   #[inline]
   fn as_slice<'a>(&'a self) -> &'a [u8]
   {
@@ -176,135 +180,100 @@ impl super::PacketBuf for PacketBuf
   }
 }
 
-/*
-#[inline]
-fn verify_adjacent(sm: &Tagged, lg: &Tagged)
-{
-  // correct order
-  assert!(sm.seq < lg.seq);
 
-  // nobody contains the other
-  //assert!(! ( sm.head() > lg.head() ) );
+
+pub struct ViewIter<'a> {
+  expected_seq: u32,
+  tagged_iter:  Peekable<&'a Tagged, dlist::Items<'a, Tagged>>,
 }
 
-
-#[inline]
-/// Stops when there is a discontinuity
-fn no_gap(sm: &Tagged, lg: &Tagged) -> bool
+impl<'a> Iterator<u8> for ViewIter<'a>
 {
-  let u32_max: u32 = Int::max_value();
+  #[inline]
+  fn next(&mut self) -> Option<u8>
+  {
+    loop {
+      {
+        let next = match self.tagged_iter.peek() {
+          None    => return None,
+          Some(s) => s,
+        };
 
-  let normal = sm.head() >= lg.tail();
-  let wrap   = sm.head() >= (lg.tail() + u32_max as u64) && (sm.head() < sm.tail());
-  normal || wrap
-}
+        if
+          self.expected_seq == next.tail() ||
+          next.tail().is_clockwise(&self.expected_seq, &next.head())
+        {
+          let tagged = next;
 
+          let ret = Some(tagged.as_slice()[(self.expected_seq - tagged.tail()) as uint]);
+          self.expected_seq += 1;
 
-// TODO eventually we might want to prevent this from occuring in the first
-// place. Easy enough in the normal case, harder to prevent in the wrapping case
+          return ret;
+        }
+      };
 
-#[inline]
-/// Returns false when `lg` is wholly redundant. Expects no gap.
-fn no_subsumption(sm: &Tagged, lg: &Tagged) -> bool
-{
-  let u32_max: u32 = Int::max_value();
-
-  let normal = sm.head() <= lg.head();
-  let wrap   = sm.head() <= (lg.head() + u32_max as u64) && (sm.head() < sm.tail());
-  normal || wrap
-}
-
-
-
-
-// Can't take self for borrowing purposes
-
-pub type Cycle<'a> = Skip<iter::Cycle<Rev<Items<'a, Tagged>>>>;
-/// returns an infinite stream of slices
-#[inline]
-fn cyclic_corse_iter<'a>(v: &'a Vec<Tagged>, ind: uint) -> Cycle<'a>
-{
-  v.iter().rev().cycle().skip(ind)
-}
-
-pub type Double<'a, I> = Zip<I, I>;
-#[inline]
-fn double_iter<'a, I, T>(iter: I) -> Double<'a, I>
-  where I: Clone + Iterator<T>
-{
-  let mut iter2 = iter.clone();
-  iter2.next();
-
-  iter.zip(iter2)
-}
-
-pub type Pair<'a> = (&'a Tagged, &'a Tagged);
-pub type Finite<'a, I> = Filter<'a, Pair<'a>, TakeWhile<'a, Pair<'a>, I>>;
-#[inline]
-fn finite_iter<'a, I>(iter: I) -> Finite<'a, I>
-  where I: Iterator<Pair<'a>>
-{
-  iter
-    .take_while(|&(cur, next)| no_gap(cur, next))
-    .filter(|&(cur, next)| no_subsumption(cur, next))
-}
-*/
-
-//pub type Concat<'a, I> = FlatMap<'a, Pair<'a>, I, Map<'a, &'a u8, u8, Items<'a, u8> >>;
-
-pub type Concat<'a, I, A> = Scan<'a, (A, u32), A, I, u32>;
-#[inline]
-fn concat<'a, I, A>(first_seq: u32, iter: I) -> Concat<'a, I, A>
-  where I: Iterator<(A, u32)>
-{
-  iter.scan(first_seq, move |expected_seq, (byte, cur_seq)| {
-    if *expected_seq == cur_seq {
-      *expected_seq += 1;
-      Some(byte)
-    } else {
-      None
+      let _ = self.tagged_iter.next();
     }
-  })
+  }
 }
 
-pub type Immut<'a> = FlatMap<'a,
-                             &'a Tagged,
-                             dlist::Items<'a, Tagged>,
-                             Zip<Map<'a, &'a u8, u8, slice::Items<'a, u8>>,
-                             Counter<u32>>>;
+pub struct ConsumeIter<'a>(&'a mut PacketBuf);
 
-pub type View   <'a> = Concat<'a, Immut<'a>, u8>;
-pub type Consume<'a> = View<'a>;
+impl<'a> Iterator<u8> for ConsumeIter<'a>
+{
+  #[inline]
+  fn next(&mut self) -> Option<u8>
+  {
+    loop {
+      {
+        let next = match self.0.data.front() {
+          None    => return None,
+          Some(s) => s,
+        };
 
-impl<'a>  PacketBuf
+        if
+          self.0.tail_seq == next.tail() ||
+          next.tail().is_clockwise(&self.0.tail_seq, &next.head())
+        {
+          let tagged = next;
+
+          let ret = Some(tagged.as_slice()[(self.0.tail_seq - tagged.tail()) as uint]);
+          self.0.tail_seq += 1;
+
+          return ret;
+        }
+      };
+
+      let _ = self.0.data.pop_front();
+    }
+  }
+}
+
+impl<'a> PacketBuf
 {
   // TODO: make it not iterator through all the vecs every time
   #[inline]
-  fn iter(&'a self) -> View<'a>
+  fn iter(&'a self) -> ViewIter<'a>
   {
-    let chunks = self.data.iter();
-
-    let numbered = chunks.flat_map(|node| {
-      let slice = node.as_slice();
-      slice.iter()
-        .map(|x| *x)
-        .zip(::std::iter::count(node.tail(), 1))
-    });
-
-    concat(self.tail_seq, numbered)
+    ViewIter {
+      expected_seq: self.tail_seq,
+      tagged_iter:  self.data.iter().peekable(),
+    }
   }
 
   // TODO: make it not iterator through all the vecs every time
   #[inline]
-  fn consume_iter(&'a mut self) -> Consume<'a>
+  fn consume_iter(&'a mut self) -> ConsumeIter<'a>
   {
-    self.iter()
+    ConsumeIter(self)
   }
 }
 
 #[cfg(test)]
 mod test
 {
+  use std::num::Int;
+
   use super::super::PacketBuf as PacketBuf_T;
   //use super::PacketBuf;
   use super::*;
@@ -347,5 +316,77 @@ mod test
     assert_eq!(iter.next(), Some(6));
     assert_eq!(iter.next(), Some(5));
     assert_eq!(iter.next(), None);
+  }
+
+  #[test]
+  fn overlapping_buf() {
+    let mut vb: PacketBuf = PacketBuf_T::new(0);
+
+    vb.add_slice(0, [1,3,2,4].as_slice());
+    vb.add_slice(2, [2,4,3,5].as_slice());
+    vb.add_slice(4, [3,5,4,6].as_slice());
+
+    let mut iter = vb.iter();
+
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), Some(2));
+    assert_eq!(iter.next(), Some(4));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), Some(5));
+    assert_eq!(iter.next(), Some(4));
+    assert_eq!(iter.next(), Some(6));
+    assert_eq!(iter.next(), None);
+  }
+
+  #[test]
+  fn wrapping_buf() {
+    let u32_max: u32 = Int::max_value();
+
+    let mut vb: PacketBuf = PacketBuf_T::new(u32_max - 3);
+
+    vb.add_slice(u32_max - 3, [1,3,2,4].as_slice());
+    vb.add_slice(u32_max - 1, [2,4,3,5].as_slice());
+    vb.add_slice(u32_max + 1, [3,5,4,6].as_slice());
+
+    let mut iter = vb.iter();
+
+    assert_eq!(iter.next(), Some(1));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), Some(2));
+    assert_eq!(iter.next(), Some(4));
+    assert_eq!(iter.next(), Some(3));
+    assert_eq!(iter.next(), Some(5));
+    assert_eq!(iter.next(), Some(4));
+    assert_eq!(iter.next(), Some(6));
+    assert_eq!(iter.next(), None);
+  }
+
+  #[test]
+  fn mut_iter() {
+    let u32_max: u32 = Int::max_value();
+
+    let mut vb: PacketBuf = PacketBuf_T::new(u32_max - 3);
+
+    vb.add_slice(u32_max - 3, [1,3,2,4].as_slice());
+    vb.add_slice(u32_max - 1, [2,4,3,5].as_slice());
+    vb.add_slice(u32_max + 1, [3,5,4,6].as_slice());
+
+    {
+      let mut iter = vb.consume_iter();
+
+      assert_eq!(iter.next(), Some(1));
+      assert_eq!(iter.next(), Some(3));
+      assert_eq!(iter.next(), Some(2));
+      assert_eq!(iter.next(), Some(4));
+    }
+    {
+      let mut iter = vb.consume_iter();
+      assert_eq!(iter.next(), Some(3));
+      assert_eq!(iter.next(), Some(5));
+      assert_eq!(iter.next(), Some(4));
+      assert_eq!(iter.next(), Some(6));
+      assert_eq!(iter.next(), None);
+    }
   }
 }
