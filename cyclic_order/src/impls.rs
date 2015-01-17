@@ -47,19 +47,19 @@ mod partial_test {
   #[quickcheck] fn u16_cyclicity(a: u16, b: u16, c: u16) -> bool { cyclicity(&a, &b, &c) }
   #[quickcheck] fn u32_cyclicity(a: u32, b: u32, c: u32) -> bool { cyclicity(&a, &b, &c) }
   #[quickcheck] fn u64_cyclicity(a: u64, b: u64, c: u64) -> bool { cyclicity(&a, &b, &c) }
-  #[quickcheck] fn uint_cyclicity(a: uint, b: uint, c: uint) -> bool { cyclicity(&a, &b, &c) }
+  #[quickcheck] fn usize_cyclicity(a: usize, b: usize, c: usize) -> bool { cyclicity(&a, &b, &c) }
 
   #[quickcheck] fn u8_antisymmetry(a: u8, b: u8, c: u8) -> bool { antisymmetry(&a, &b, &c) }
   #[quickcheck] fn u16_antisymmetry(a: u16, b: u16, c: u16) -> bool { antisymmetry(&a, &b, &c) }
   #[quickcheck] fn u32_antisymmetry(a: u32, b: u32, c: u32) -> bool { antisymmetry(&a, &b, &c) }
   #[quickcheck] fn u64_antisymmetry(a: u64, b: u64, c: u64) -> bool { antisymmetry(&a, &b, &c) }
-  #[quickcheck] fn uint_antisymmetry(a: uint, b: uint, c: uint) -> bool { antisymmetry(&a, &b, &c) }
+  #[quickcheck] fn usize_antisymmetry(a: usize, b: usize, c: usize) -> bool { antisymmetry(&a, &b, &c) }
 
   #[quickcheck] fn u8_transitivity(a: u8, b: u8, c: u8, d: u8) -> bool { transitivity(&a, &b, &c, &d) }
   #[quickcheck] fn u16_transitivity(a: u16, b: u16, c: u16, d: u16) -> bool { transitivity(&a, &b, &c, &d) }
   #[quickcheck] fn u32_transitivity(a: u32, b: u32, c: u32, d: u32) -> bool { transitivity(&a, &b, &c, &d) }
   #[quickcheck] fn u64_transitivity(a: u64, b: u64, c: u64, d: u64) -> bool { transitivity(&a, &b, &c, &d) }
-  #[quickcheck] fn uint_transitivity(a: uint, b: uint, c: uint, d: uint) -> bool { transitivity(&a, &b, &c, &d) }
+  #[quickcheck] fn usize_transitivity(a: usize, b: usize, c: usize, d: usize) -> bool { transitivity(&a, &b, &c, &d) }
 }
 
 #[cfg(test)]
@@ -70,29 +70,29 @@ mod total_test {
   #[quickcheck] fn u16_cyclicity(a: u16, b: u16, c: u16) -> bool { cyclicity(&a, &b, &c) }
   #[quickcheck] fn u32_cyclicity(a: u32, b: u32, c: u32) -> bool { cyclicity(&a, &b, &c) }
   #[quickcheck] fn u64_cyclicity(a: u64, b: u64, c: u64) -> bool { cyclicity(&a, &b, &c) }
-  #[quickcheck] fn uint_cyclicity(a: uint, b: uint, c: uint) -> bool { cyclicity(&a, &b, &c) }
+  #[quickcheck] fn usize_cyclicity(a: usize, b: usize, c: usize) -> bool { cyclicity(&a, &b, &c) }
 
   #[quickcheck] fn u8_antisymmetry(a: u8, b: u8, c: u8) -> bool { antisymmetry(&a, &b, &c) }
   #[quickcheck] fn u16_antisymmetry(a: u16, b: u16, c: u16) -> bool { antisymmetry(&a, &b, &c) }
   #[quickcheck] fn u32_antisymmetry(a: u32, b: u32, c: u32) -> bool { antisymmetry(&a, &b, &c) }
   #[quickcheck] fn u64_antisymmetry(a: u64, b: u64, c: u64) -> bool { antisymmetry(&a, &b, &c) }
-  #[quickcheck] fn uint_antisymmetry(a: uint, b: uint, c: uint) -> bool { antisymmetry(&a, &b, &c) }
+  #[quickcheck] fn usize_antisymmetry(a: usize, b: usize, c: usize) -> bool { antisymmetry(&a, &b, &c) }
 
   #[quickcheck] fn u8_transitivity(a: u8, b: u8, c: u8, d: u8) -> bool { transitivity(&a, &b, &c, &d) }
   #[quickcheck] fn u16_transitivity(a: u16, b: u16, c: u16, d: u16) -> bool { transitivity(&a, &b, &c, &d) }
   #[quickcheck] fn u32_transitivity(a: u32, b: u32, c: u32, d: u32) -> bool { transitivity(&a, &b, &c, &d) }
   #[quickcheck] fn u64_transitivity(a: u64, b: u64, c: u64, d: u64) -> bool { transitivity(&a, &b, &c, &d) }
-  #[quickcheck] fn uint_transitivity(a: uint, b: uint, c: uint, d: uint) -> bool { transitivity(&a, &b, &c, &d) }
+  #[quickcheck] fn usize_transitivity(a: usize, b: usize, c: usize, d: usize) -> bool { transitivity(&a, &b, &c, &d) }
 
   #[quickcheck] fn u8_totality(a: u8, b: u8, c: u8) -> bool { totality(&a, &b, &c) }
   #[quickcheck] fn u16_totality(a: u16, b: u16, c: u16) -> bool { totality(&a, &b, &c) }
   #[quickcheck] fn u32_totality(a: u32, b: u32, c: u32) -> bool { totality(&a, &b, &c) }
   #[quickcheck] fn u64_totality(a: u64, b: u64, c: u64) -> bool { totality(&a, &b, &c) }
-  #[quickcheck] fn uint_totality(a: uint, b: uint, c: uint) -> bool { totality(&a, &b, &c) }
+  #[quickcheck] fn usize_totality(a: usize, b: usize, c: usize) -> bool { totality(&a, &b, &c) }
 
   #[quickcheck] fn u8_super_trait_cohesion(a: u8, b: u8, c: u8) -> bool { super_trait_cohesion(&a, &b, &c) }
   #[quickcheck] fn u16_super_trait_cohesion(a: u16, b: u16, c: u16) -> bool { super_trait_cohesion(&a, &b, &c) }
   #[quickcheck] fn u32_super_trait_cohesion(a: u32, b: u32, c: u32) -> bool { super_trait_cohesion(&a, &b, &c) }
   #[quickcheck] fn u64_super_trait_cohesion(a: u64, b: u64, c: u64) -> bool { super_trait_cohesion(&a, &b, &c) }
-  #[quickcheck] fn uint_super_trait_cohesion(a: uint, b: uint, c: uint) -> bool { super_trait_cohesion(&a, &b, &c) }
+  #[quickcheck] fn usize_super_trait_cohesion(a: usize, b: usize, c: usize) -> bool { super_trait_cohesion(&a, &b, &c) }
 }

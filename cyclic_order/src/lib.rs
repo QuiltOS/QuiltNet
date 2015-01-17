@@ -1,10 +1,9 @@
 //! See http://en.wikipedia.org/wiki/Cyclic_order
 
-#![feature(globs)]
-#![feature(phase)]
+#![allow(unstable)]
 
 #[cfg(test)]
-#[phase(plugin)]
+#[macro_use]
 extern crate quickcheck_macros;
 #[cfg(test)]
 extern crate quickcheck;
@@ -14,7 +13,8 @@ pub mod linked_list;
 
 mod impls;
 
-#[deriving(PartialEq, Eq, PartialOrd, Ord, Show)]
+#[derive(PartialEq, PartialOrd, Eq, Ord,
+         Copy, Clone, Hash, Show)]
 pub enum CyclicOrdering {
   Clockwise,
   CounterClockwise,
