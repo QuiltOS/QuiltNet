@@ -9,7 +9,7 @@ use super::{
 use data_link::interface as dl;
 
 
-#[deriving(PartialEq, Eq, Clone, Show)]
+#[derive(PartialEq, Eq, Clone, Show)]
 pub enum Error {
   NoRoute,
   BadPacket(packet::BadPacket),
@@ -26,20 +26,22 @@ pub type Result<T> = ::std::result::Result<T, self::Error>;
 
 
 pub fn send
-  <'st, 'clos, A, E>
+  <'st, A, E, F, G>
   (state:              &'st super::State<A>,
    dst:                super::Addr,
    protocol:           u8,
    expected_body_size: Option<u16>,
-   builder:            for<'a> |&'a mut packet::V|:'clos -> result::Result<(), E>,
-   // TODO: make this take a &'a mut packet::A someday
-   awkward:            for<'a> |&'a mut packet::V|:'clos -> result::Result<(), E>)
+   builder:            F,
+   // TODO: make this take a &'st mut packet::A someday
+   awkward:            G)
    -> result::Result<(), E>
   where A: strategy::RoutingTable,
         E: FromError<self::Error>,
+        F: for<'b> FnOnce(&'b mut packet::V) -> result::Result<(), E> + 'st,
+        G: for<'b> FnOnce(&'b mut packet::V) -> result::Result<(), E> + 'st,
 {
-  let closure: for<'p> |&'p mut packet::V| -> result::Result<&'st super::InterfaceRow, E>
-    = |packet| {
+  let closure //: for<'p> |&'p mut packet::V| ->
+    = move |: packet: &mut packet::V| -> result::Result<&'st super::InterfaceRow, E> {
       try!(builder(packet));
       debug!("client built packet: {}", packet);
 
@@ -53,7 +55,7 @@ pub fn send
       Ok(row)
     };
 
-  let (row, packet) = try!(packet::V::new_with_builder(
+  let (row, packet) = try!(packet::V::new_with_builder::<E, &'st super::InterfaceRow, _>(
     dst,
     protocol,
     expected_body_size,
@@ -95,7 +97,7 @@ pub fn send_manual(
   let &super::InterfaceRow { ref interface, .. } = row;
   // need to let here because send consumes packet
   let dst = packet.borrow().get_destination();
-  try!(interface.write().send(packet.to_vec()));
+  try!(interface.write().unwrap().send(packet.to_vec()));
   debug!("sent packet to {}", dst);
   Ok(())
 }

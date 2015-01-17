@@ -1,7 +1,7 @@
 use std::collections::hash_map::HashMap;
 use std::fmt;
 use std::str::FromStr;
-use std::sync::{Arc, RWLock};
+use std::sync::{Arc, RwLock};
 
 use data_link::interface as dl;
 
@@ -14,11 +14,13 @@ pub mod receive;
 pub mod strategy;
 
 
-#[deriving(PartialEq, PartialOrd, Eq, Ord,
-           Clone, Hash)]
+#[derive(PartialEq, PartialOrd, Eq, Ord,
+         Clone, Hash, Show)]
 pub struct Addr(pub u8, pub u8, pub u8, pub u8);
 
-impl fmt::Show for Addr {
+impl Copy for Addr { }
+
+impl fmt::String for Addr {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f, "{}.{}.{}.{}", self.0, self.1, self.2, self.3)
   }
@@ -26,8 +28,8 @@ impl fmt::Show for Addr {
 
 impl FromStr for Addr {
   fn from_str(s: &str) -> Option<Addr> {
-    let mut quad: [Option<u8>, ..4] = [None, None, None, None];
-    let iter = s.trim().split('.').map(|x| from_str(x));
+    let mut quad: [Option<u8>; 4] = [None, None, None, None];
+    let iter = s.trim().split('.').map(|x| FromStr::from_str(x));
     
     for (mut ptr, val) in quad.iter_mut().zip(iter)
     {
@@ -42,7 +44,7 @@ impl FromStr for Addr {
 
 
 #[inline]
-pub fn parse_addr(&[a, b, c, d]: &[u8, ..4]) -> Addr {
+pub fn parse_addr(&[a, b, c, d]: &[u8; 4]) -> Addr {
   Addr(a, b, c, d)
 }
 
@@ -52,7 +54,7 @@ pub fn parse_addr_unsafe(b: &[u8]) -> Addr {
 }
 
 #[inline]
-pub fn write_addr(Addr(a, b, c, d): Addr) -> [u8, ..4] {
+pub fn write_addr(Addr(a, b, c, d): Addr) -> [u8; 4] {
   [a, b, c, d]
 }
 
@@ -60,11 +62,11 @@ pub fn write_addr(Addr(a, b, c, d): Addr) -> [u8, ..4] {
 
 // key:    adjacent ip (next hop)
 // value:  index to InterfaceRow (see below)
-pub type InterfaceTable = HashMap<Addr, uint>;
+pub type InterfaceTable = HashMap<Addr, usize>;
 
 pub struct InterfaceRow {
   pub local_ip:  Addr,
-  pub interface: RWLock<Box<dl::Interface + Send + Sync + 'static>>,
+  pub interface: RwLock<Box<dl::Interface + Send + Sync + 'static>>,
 }
 
 // TODO: use Box<[u8]> instead of Vec<u8>
@@ -78,7 +80,7 @@ pub struct State<A> where A: RoutingTable {
   pub interfaces:        Vec<InterfaceRow>,
   pub neighbors:         InterfaceTable,
   pub routes:            A,
-  pub protocol_handlers: RWLock<ProtocolTable>,
+  pub protocol_handlers: RwLock<ProtocolTable>,
   // Identification counter? increased with each packet sent out,
   // used in Identification header for fragmentation purposes
 }
@@ -87,14 +89,14 @@ impl<RT> State<RT> where RT: RoutingTable
 {
   pub fn new(interfaces: Vec<InterfaceRow>, neighbors: InterfaceTable) -> Arc<State<RT>>
   {
-    let routes: RT = strategy::init_hack::<RT, _>(neighbors.keys().map(|x| *x));
+    let routes: RT = RoutingTable::init(neighbors.keys().map(|&: x| *x));
 
     let state: Arc<State<RT>> = Arc::new(State {
       routes:            routes,
       neighbors:         neighbors,
       interfaces:        interfaces,
       // handlers are not clonable, so the nice ways of doing this do not work
-      protocol_handlers: RWLock::new(vec!(
+      protocol_handlers: RwLock::new(vec!(
         vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
         vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
         vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
@@ -139,17 +141,17 @@ impl<RT> State<RT> where RT: RoutingTable
 
     for &InterfaceRow { ref interface, .. } in state.interfaces.iter() {
       use self::receive::make_receive_callback;
-      (*interface.write())
+      interface.write().unwrap()
         .update_recv_handler(make_receive_callback::<RT>(state.clone()));
     }
 
-    strategy::monitor_hack::<RT>(state.clone());
+    RoutingTable::monitor(state.clone());
 
     state
   }
 
   /// Returns dl::Interface struct for the requested interface
-  pub fn get_interface<'a> (&'a self, interface_ix: uint) -> Option<&'a InterfaceRow>
+  pub fn get_interface<'a> (&'a self, interface_ix: usize) -> Option<&'a InterfaceRow>
   {
     self.interfaces.as_slice().get(interface_ix)
   }

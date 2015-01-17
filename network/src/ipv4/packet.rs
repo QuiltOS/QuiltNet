@@ -7,10 +7,10 @@ use super::Addr;
 use super::parse_addr_unsafe;
 use super::write_addr;
 
-#[deriving(PartialEq, PartialOrd, Eq, Ord,
-           Clone, Show)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Clone, Show)]
 pub struct V { buf: Vec<u8> }
 
+#[derive(PartialEq, PartialOrd, Eq, Ord)]//, Show)]
 pub struct A { buf:    [u8] }
 
 
@@ -24,9 +24,9 @@ impl V {
                      protocol:           u8,
                      expected_body_size: Option<u16>) -> V
   {
-    let mut buf: Vec<u8> = Vec::with_capacity(MIN_HDR_LEN_8S as uint
-                                              + expected_body_size.unwrap_or(0) as uint);
-    unsafe { buf.set_len(MIN_HDR_LEN_8S as uint); }
+    let mut buf: Vec<u8> = Vec::with_capacity(MIN_HDR_LEN_8S as usize
+                                              + expected_body_size.unwrap_or(0) as usize);
+    unsafe { buf.set_len(MIN_HDR_LEN_8S as usize); }
     let mut packet = V::new(buf);
     {
       let s = packet.borrow_mut();
@@ -57,12 +57,13 @@ impl V {
   }
 
   pub fn new_with_builder
-    <Err, Accum>
+    <Err, Accum, F>
     (ip:                 Addr,
      protocol:           u8,
      expected_body_size: Option<u16>,
-     builder:            |&mut V| -> Result<Accum, Err>)
+     builder:            F)
      -> Result<(Accum, V), Err>
+    where F: for<'a> FnOnce(&'a mut V) -> Result<Accum, Err>
   {
     let mut packet = V::new_with_header(ip, protocol, expected_body_size);
 
@@ -134,6 +135,8 @@ pub struct Header {
   pub destination_address:   u32,  // Destination Address
 }
 
+impl Copy for Header { }
+
 #[repr(u8)]
 pub enum Precedence {
   NetworkControl      = 0b_111_00000,
@@ -145,6 +148,8 @@ pub enum Precedence {
   Priority            = 0b_001_00000,
   Routine             = 0b_000_00000,
 }
+
+impl Copy for Precedence { }
 
 bitflags! {
   flags ServiceFlags: u8 {
@@ -212,7 +217,7 @@ impl A {
     self.buf[0] |= hl;
   }
 
-  pub fn hdr_bytes(&self) -> uint { self.get_header_length() as uint * 4 }
+  pub fn hdr_bytes(&self) -> usize { self.get_header_length() as usize * 4 }
 
   pub fn get_total_length(&    self) -> u16 { Int::from_be(self.cast_h()    .total_length) }
   pub fn set_total_length(&mut self, v: u16)             { self.cast_h_mut().total_length = v.to_be(); }
@@ -254,7 +259,7 @@ impl A {
   pub fn get_header_checksum(&    self) -> u16 { Int::from_be(self.cast_h()    .header_checksum) }
   pub fn set_header_checksum(&mut self, v: u16)             { self.cast_h_mut().header_checksum = v.to_be(); }
 
-  pub fn get_source(&self) -> Addr { parse_addr_unsafe(self.buf[12..16]) }
+  pub fn get_source(&self) -> Addr { parse_addr_unsafe(&self.buf[12..16]) }
   pub fn set_source(&mut self, a: Addr) {
     // TODO: report assign slices lack of doing anything
     let [a, b, c, d] = write_addr(a);
@@ -264,7 +269,7 @@ impl A {
     self.buf[15] = d;
   }
 
-  pub fn get_destination(&self) -> Addr { parse_addr_unsafe(self.buf[16..20]) }
+  pub fn get_destination(&self) -> Addr { parse_addr_unsafe(&self.buf[16..20]) }
   pub fn set_destination(&mut self, a: Addr) {
     let [a, b, c, d] = write_addr(a);
     self.buf[16] = a;
@@ -277,29 +282,29 @@ impl A {
   //pub fn options(&self) -> ... {  }
 
   pub fn get_payload(&self) -> &[u8] {
-    if self.get_total_length() as uint > self.buf.len() {
-      self.buf[self.hdr_bytes() as uint..]
+    if self.get_total_length() as usize > self.buf.len() {
+      &self.buf[self.hdr_bytes() as usize..]
     } else {
-      self.buf[self.hdr_bytes() as uint..self.get_total_length() as uint]
+      &self.buf[self.hdr_bytes() as usize..self.get_total_length() as usize]
     }
   }
 
   pub fn get_payload_mut(&mut self) -> &mut [u8] {
-    let start = self.hdr_bytes() as uint;
-    if self.get_total_length() as uint > self.buf.len() {
-      self.buf[mut start..]
+    let start = self.hdr_bytes() as usize;
+    if self.get_total_length() as usize > self.buf.len() {
+      &mut self.buf[start..]
     } else {
-      let end = self.get_total_length() as uint;
-      self.buf[mut start..end]
+      let end = self.get_total_length() as usize;
+      &mut self.buf[start..end]
     }
   }
 
   /// returns native endian
   pub fn make_header_checksum(&self) -> u16 {
-    let u16s: &[u16] = unsafe { cast_slice(self.as_slice()[..self.as_slice().len() & !1]) };
+    let u16s: &[u16] = unsafe { cast_slice(&self.as_slice()[..self.as_slice().len() & !1]) };
 
     // TODO: Factor out singleton iterator
-    let temp: [u16, ..1] = [0]; // for checkum field itself
+    let temp: [u16; 1] = [0]; // for checkum field itself
 
     // [..12] to make sure body is excluded,
     // and also because length might be incorrect from transmute
@@ -316,7 +321,7 @@ impl A {
   }
 }
 
-impl fmt::Show for A {
+impl fmt::String for A {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f,
            "Ip  | ver {} | {} | Tos {} | Len {}  |\n    | FId {}    |   off {} |\n    | ttl {} | proto {} | sum {} |\n    | Src {}   | Dst {} |",
@@ -326,7 +331,7 @@ impl fmt::Show for A {
            self.get_total_length(),
 
            self.get_identification(),
-           self.get_flags_fragment_offset().val1(),
+           self.get_flags_fragment_offset().1,
 
            self.get_time_to_live(),
            self.get_protocol(),
@@ -337,22 +342,29 @@ impl fmt::Show for A {
   }
 }
 
+impl fmt::String for V {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    self.borrow().fmt(f)
+  }
+}
 
-#[deriving(PartialEq, PartialOrd, Eq, Ord,
-           Clone, Show)]
+#[derive(PartialEq, PartialOrd, Eq, Ord,
+         Clone, Show)]
 /// Where there are two fields: expected, then got.
 pub enum BadPacket {
-  TooShort(uint),              // header cannot fit
+  TooShort(usize),             // header cannot fit
 
   BadVersion(u8),              // isn't 4
-  BadPacketLength(uint, u16),  // not what it really is
+  BadPacketLength(usize, u16), // not what it really is
 
-  HeaderTooLong(uint, uint),   // header declared shorter than min or longer than body
-  HeaderTooShort(uint),        // header declared shorter than min or longer than body
+  HeaderTooLong(usize, usize), // header declared shorter than min or longer than body
+  HeaderTooShort(usize),       // header declared shorter than min or longer than body
 
   BadChecksum(u16, u16),
   BadOptions,
 }
+
+impl Copy for BadPacket { }
 
 pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
 {
@@ -369,7 +381,7 @@ pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
   };
 
   // then this so other header indexing doesn't panic
-  if packet.as_slice().len() != packet.get_total_length() as uint {
+  if packet.as_slice().len() != packet.get_total_length() as usize {
     return Err(BadPacket::BadPacketLength(packet.as_slice().len(),
                                           packet.get_total_length()))
   };
@@ -380,7 +392,7 @@ pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
     return Err(BadPacket::HeaderTooLong(packet.hdr_bytes(),
                                         packet.as_slice().len()))
   };
-  if packet.hdr_bytes() < MIN_HDR_LEN_8S as uint
+  if packet.hdr_bytes() < MIN_HDR_LEN_8S as usize
   {
     return Err(BadPacket::HeaderTooShort(packet.hdr_bytes()))
   };
@@ -399,7 +411,7 @@ pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
 
 /// assumes and returns native byte order
 pub fn make_checksum<I>(iter: I) -> u16
-  where I: Iterator<u16>
+  where I: Iterator<Item=u16>
 {
   let mut sum = iter
     .map(|x| x as u32)

@@ -8,6 +8,8 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 [lib]
 name = "network"
 
+[dependencies.log_ng]
+git = "https://github.com/sfackler/log-ng.git"
 
 [dependencies.rust-net-misc]
 path = "../misc"

@@ -19,7 +19,7 @@ fn receive<A>(state: &super::State<A>, buf: Vec<u8>)
   let packet = match packet::validate(buf.as_slice()) {
     Ok(_)  => packet::V::new(buf),
     Err(e) => {
-      debug!("dropping incomming packet because {}", e);
+      debug!("dropping incomming packet because {:?}", e);
       return;
     },
   };
@@ -29,21 +29,17 @@ fn receive<A>(state: &super::State<A>, buf: Vec<u8>)
   if is_packet_dst_local(state, &packet) {
     debug!("Packet is local! {}", packet);
     // local handling
-    let handlers = &(*state.protocol_handlers.read())
-      [packet.borrow().get_protocol() as uint];
+    let handlers = &state.protocol_handlers.read().unwrap()
+      [packet.borrow().get_protocol() as usize];
     // If there are no handlers (vector is empty), the packet is just dropped
     // TODO: factor out this clone-until-last-time pattern
     let mut iter = handlers.iter().peekable();
-    loop {
-      let handler = match iter.next() {
-        None    => break,
-        Some(h) => h
-      };
+    while let Some(ref handler) = iter.next() {
       if iter.is_empty() {
-        (&**handler).call((packet,));
+        handler(packet);
         break;
       } else {
-        (&**handler).call((packet.clone(),));
+        handler(packet.clone());
       }
     }
     /*
@@ -68,7 +64,7 @@ fn receive<A>(state: &super::State<A>, buf: Vec<u8>)
     // handle errors just for logging purposes
     match forward(state, packet) {
       Ok(_) => (),
-      Err(e) => debug!("packet could not be fowarded because {}", e),
+      Err(e) => debug!("packet could not be fowarded because {:?}", e),
     };
   }
 }

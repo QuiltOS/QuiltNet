@@ -1,17 +1,19 @@
+#![allow(unstable)]
+
 #![feature(unboxed_closures)]
-#![feature(slicing_syntax)]
-#![feature(tuple_indexing)]
+#![feature(box_syntax)]
 
-// for tests
-//#![feature(globs)]
+#[macro_use] #[no_link]
+extern crate log_ng;
 
-#![feature(phase)]
+//#[cfg(any(log_level = "error",
+//          log_level = "warn",
+//          log_level = "info",
+//          log_level = "debug",
+//          log_level = "trace"))]
+extern crate log_ng;
 
-#[cfg(not(ndebug))]
-#[phase(plugin, link)]
-extern crate log;
-
-#[phase(plugin, link)]
+#[macro_use]
 extern crate misc;
 
 mod data_link {
