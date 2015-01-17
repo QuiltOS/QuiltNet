@@ -120,6 +120,8 @@ pub const MIN_HDR_LEN_32S: u8  = 5;
 
 #[repr(packed)]
 #[unstable]
+#[derive(PartialEq, PartialOrd, Eq, Ord,
+         Copy, Clone, Hash, Show)]
 pub struct Header {
   pub version_ihl:           u8,   // IP version (= 4)
   /////////////////////////////////// Internet header length
@@ -135,9 +137,10 @@ pub struct Header {
   pub destination_address:   u32,  // Destination Address
 }
 
-impl Copy for Header { }
 
 #[repr(u8)]
+#[derive(PartialEq, PartialOrd, Eq, Ord,
+         Copy, Clone, Hash, Show)]
 pub enum Precedence {
   NetworkControl      = 0b_111_00000,
   InternetworkControl = 0b_110_00000,
@@ -149,7 +152,6 @@ pub enum Precedence {
   Routine             = 0b_000_00000,
 }
 
-impl Copy for Precedence { }
 
 bitflags! {
   flags ServiceFlags: u8 {
@@ -349,7 +351,7 @@ impl fmt::String for V {
 }
 
 #[derive(PartialEq, PartialOrd, Eq, Ord,
-         Clone, Show)]
+         Copy, Clone, Hash, Show)]
 /// Where there are two fields: expected, then got.
 pub enum BadPacket {
   TooShort(usize),             // header cannot fit
@@ -364,7 +366,6 @@ pub enum BadPacket {
   BadOptions,
 }
 
-impl Copy for BadPacket { }
 
 pub fn validate(buf: &[u8]) -> Result<(), BadPacket>
 {

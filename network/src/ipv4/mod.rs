@@ -15,10 +15,9 @@ pub mod strategy;
 
 
 #[derive(PartialEq, PartialOrd, Eq, Ord,
-         Clone, Hash, Show)]
+         Copy, Clone, Hash, Show)]
 pub struct Addr(pub u8, pub u8, pub u8, pub u8);
 
-impl Copy for Addr { }
 
 impl fmt::String for Addr {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
