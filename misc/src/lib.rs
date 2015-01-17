@@ -1,14 +1,17 @@
-#![feature(macro_rules)]
-#![feature(phase)]
+#![allow(unstable)]
 
-#[cfg(not(ndebug))]
-#[phase(plugin, link)]
-extern crate log;
+#![feature(unboxed_closures)]
 
+#[macro_use] #[no_link]
+extern crate log_ng;
 
-#[cfg(ndebug)]
-#[macro_escape]
-pub mod mock_debug;
+//#[cfg(any(log_level = "error",
+//          log_level = "warn",
+//          log_level = "info",
+//          log_level = "debug",
+//          log_level = "trace"))]
+extern crate log_ng;
+
 
 pub mod interface;
 pub mod state_machine;

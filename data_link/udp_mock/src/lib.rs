@@ -1,39 +1,43 @@
-//#![feature(unboxed_closures)]
+#![allow(unstable)]
+
+#![feature(box_syntax)]
+#![feature(unboxed_closures)]
 #![feature(slicing_syntax)]
-#![feature(phase)]
 
-// for tests
-#![feature(globs)]
 
-#[cfg(not(ndebug))]
-#[phase(plugin, link)]
-extern crate log;
+#[macro_use] #[no_link]
+extern crate log_ng;
 
-#[phase(plugin, link)]
+//#[cfg(any(log_level = "error",
+//          log_level = "warn",
+//          log_level = "info",
+//          log_level = "debug",
+//          log_level = "trace"))]
+extern crate log_ng;
+
+#[macro_use]
 extern crate misc;
-extern crate interface;
+extern crate "interface" as dl;
 
-use std::collections::hash_map::{HashMap, Occupied, Vacant};
-
+use std::collections::HashMap;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::io::IoResult;
 use std::io::net::udp::UdpSocket;
 use std::io::net::ip::{SocketAddr};
 
 use std::sync::Arc;
-use std::sync::RWLock;
+use std::sync::RwLock;
 
-use std::task::spawn;
+use std::thread::Thread;
 
 use misc::interface as root;
-
-use interface as dl;
 
 #[cfg(test)]
 mod test;
 
-const RECV_BUF_SIZE: uint = 64 * 1024;
+const RECV_BUF_SIZE: usize = 64 * 1024;
 
-type SharedHandlerMap = Arc<RWLock<HashMap<SocketAddr,
+type SharedHandlerMap = Arc<RwLock<HashMap<SocketAddr,
                                            (bool, dl::Handler)>>>;
 
 /// The backing listening socket / read loop for a bunch of UDP-backed mock link
@@ -45,21 +49,20 @@ pub struct Listener {
 
 impl Listener
 {
-  pub fn new(listen_addr: SocketAddr, num_threads: uint) -> IoResult<Listener>
+  pub fn new(listen_addr: SocketAddr, num_threads: usize) -> IoResult<Listener>
   {
     assert!(num_threads > 0);
 
     let socket = try!(UdpSocket::bind(listen_addr));
 
-    let handlers: SharedHandlerMap = Arc::new(RWLock::new(HashMap::new()));
+    let handlers: SharedHandlerMap = Arc::new(RwLock::new(HashMap::new()));
 
 
     for _ in range(0, num_threads) {
       let mut socket   = socket.clone();
       let     handlers = handlers.clone();
-      spawn(proc() {
-        // TODO: shouldn't need to initialize this
-        let mut buf: [u8, ..RECV_BUF_SIZE] = [0, ..RECV_BUF_SIZE];
+      Thread::spawn(move || {
+        let mut buf: [u8; RECV_BUF_SIZE] = unsafe { std::mem::uninitialized() };
         loop {
           // TODO: someway to kill task eventually
           match socket.recv_from(buf.as_mut_slice()) {
@@ -67,7 +70,7 @@ impl Listener
               // maybe it will work next time...
               debug!("OS error when trying to wait for packet: {}", e);
             },
-            Ok((len, src_addr)) => match handlers.read().deref().get(&src_addr) {
+            Ok((len, src_addr)) => match handlers.read().unwrap().get(&src_addr) {
               None          => continue, // drop that packet!
               Some(&(is_enabled, ref on_recv)) => {
                 debug!("Received packet");
@@ -118,7 +121,7 @@ impl Interface {
              remote_addr: SocketAddr,
              on_recv:     dl::Handler) -> Interface
   {
-    listener.handlers.write().deref_mut().insert(remote_addr, (true, on_recv));
+    listener.handlers.write().unwrap().insert(remote_addr, (true, on_recv));
 
     Interface {
       listener:      listener.clone(),
@@ -137,38 +140,36 @@ impl dl::Interface for Interface
   fn send(&self, packet: dl::Packet) -> dl::Result<()> {
 
     if self.cached_status == false {
-      return Err(dl::Disabled);
+      return Err(dl::Error::Disabled);
     }
 
     let mut socket = self.listener.socket.clone();
-    socket.send_to(packet.as_slice(), self.remote_addr).map_err(dl::External)
+    socket.send_to(packet.as_slice(), self.remote_addr).map_err(dl::Error::External)
   }
 
   fn update_recv_handler(&self, on_recv: dl::Handler) {
-    self.listener.handlers.write().deref_mut()
+    self.listener.handlers.write().unwrap()
       .insert(self.remote_addr, (true, on_recv));
   }
 
   fn enable(&mut self) {
-    let mut map = self.listener.handlers.write();
+    let mut map = self.listener.handlers.write().unwrap();
     self.cached_status = true;
-    match map.deref_mut().entry(self.remote_addr) {
+    match map.entry(self.remote_addr) {
       Vacant(_) => panic!("udp mock interface should already have entry in table"),
       Occupied(mut entry) => {
-        let &(ref mut status, _) = entry.get_mut();
-        *status = true;
+        entry.get_mut().0 = true;
       },
     }
   }
 
   fn disable(&mut self) {
-    let mut map = self.listener.handlers.write();
+    let mut map = self.listener.handlers.write().unwrap();
     self.cached_status = false;
-    match map.deref_mut().entry(self.remote_addr) {
+    match map.entry(self.remote_addr) {
       Vacant(_) => panic!("udp mock interface should already have entry in table"),
       Occupied(mut entry) => {
-        let &(ref mut status, _) = entry.get_mut();
-        *status = false;
+        entry.get_mut().0 = false;
       },
     }
   }

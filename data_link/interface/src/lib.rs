@@ -1,4 +1,6 @@
-//#![feature(unboxed_closures)]
+#![allow(unstable)]
+
+#![feature(unboxed_closures)]
 
 extern crate misc;
 
@@ -12,7 +14,7 @@ pub type Packet = Vec<u8>;
 pub type Handler = i::Handler<Packet>;
 
 // TODO: use associated type instead of IoError
-#[deriving(PartialEq, Eq, Clone, Show)]
+#[derive(PartialEq, Eq, Clone, Show)]
 pub enum Error {
   Disabled,
   External(IoError),
@@ -33,8 +35,6 @@ pub trait Interface: i::Interface {
   //fn new(on_receive: |Vec<u8>| -> ()) -> Self;
 
   //fn stock(&mut Self, bufs: Box<[Vec<u8>]>);
-
-  //fn kill(&Self);
 
   fn enable(&mut self);
   fn disable(&mut self);

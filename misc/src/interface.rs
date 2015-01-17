@@ -1,4 +1,5 @@
-use std::comm::Sender;
+
+use std::sync::mpsc::Sender;
 use std::sync::Mutex;
 
 
@@ -14,11 +15,11 @@ pub struct LockedClosure<F> {
   pub closure: Mutex<F>
 }
 
-impl<F, Args, Result> Fn<Args, Result> for LockedClosure<F>
-  where F: FnMut<Args, Result>, F:Send
+impl<F, Args, Res> Fn<Args, Res> for LockedClosure<F>
+  where F: FnMut<Args, Res>, F:Send
 {
-  extern "rust-call" fn call(&self, args: Args) -> Result {
-    self.closure.lock().deref_mut().call_mut(args)
+  extern "rust-call" fn call(&self, args: Args) -> Res {
+    self.closure.lock().unwrap().call_mut(args)
   }
 }
 
@@ -36,6 +37,6 @@ impl<T> Fn<T, ()> for SenderClosure<T> where T: Send
 {
   extern "rust-call" fn call(&self, args: T) -> () {
     debug!("SenderClosure called!");
-    self.sender.send(args);
+    self.sender.send(args).unwrap();
   }
 }
