@@ -1,6 +1,6 @@
 [package]
 
-name = "rust-net-network"
+name = "quilt-net-network"
 version = "0.0.1"
 authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
           , "John Ericson <Ericson2314@Yahoo.com>" ]
@@ -11,8 +11,8 @@ name = "network"
 [dependencies.log_ng]
 git = "https://github.com/sfackler/log-ng.git"
 
-[dependencies.rust-net-misc]
+[dependencies.quilt-net-misc]
 path = "../misc"
 
-[dependencies.rust-net-data-link-interface]
+[dependencies.quilt-net-data-link-interface]
 path = "../data_link/interface"

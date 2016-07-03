@@ -1,6 +1,6 @@
 [package]
 
-name = "rust-net-transport-static-routing"
+name = "quilt-net-transport-static-routing"
 version = "0.0.1"
 authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
           , "John Ericson <Ericson2314@Yahoo.com>" ]
@@ -9,8 +9,8 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 name = "static_routing"
 
 
-[dependencies.rust-net-misc]
+[dependencies.quilt-net-misc]
 path = "../../misc"
 
-[dependencies.rust-net-network]
+[dependencies.quilt-net-network]
 path = "../../network"

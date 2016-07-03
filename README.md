@@ -1,7 +1,7 @@
-Rust-Net
+QuiltNet
 ================================================================================
 
-A network stack in pure Rust.
+A network stack in pure Rust designed from the ground up for both asynchronous and synchronous usage.
 
 Libraries
 --------------------------------------------------------------------------------

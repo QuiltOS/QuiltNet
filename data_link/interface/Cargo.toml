@@ -1,6 +1,6 @@
 [package]
 
-name = "rust-net-data-link-interface"
+name = "quilt-net-data-link-interface"
 version = "0.0.1"
 authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
           , "John Ericson <Ericson2314@Yahoo.com>" ]
@@ -8,5 +8,5 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 [lib]
 name = "interface"
 
-[dependencies.rust-net-misc]
+[dependencies.quilt-net-misc]
 path = "../../misc"

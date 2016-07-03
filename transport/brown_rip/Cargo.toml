@@ -1,6 +1,6 @@
 [package]
 
-name = "rust-net-transport-brown-rip"
+name = "quilt-net-transport-brown-rip"
 version = "0.0.1"
 authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
           , "John Ericson <Ericson2314@Yahoo.com>" ]
@@ -11,8 +11,8 @@ name = "brown_rip"
 [dependencies.time]
 url = "http://github.com/rust-lang/time"
 
-[dependencies.rust-net-misc]
+[dependencies.quilt-net-misc]
 path = "../../misc"
 
-[dependencies.rust-net-network]
+[dependencies.quilt-net-network]
 path = "../../network"

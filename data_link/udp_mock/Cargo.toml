@@ -1,6 +1,6 @@
 [package]
 
-name = "rust-net-data-link-udp-mock"
+name = "quilt-net-data-link-udp-mock"
 version = "0.0.1"
 authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
           , "John Ericson <Ericson2314@Yahoo.com>" ]
@@ -11,8 +11,8 @@ name = "udp_mock"
 [dependencies.log_ng]
 git = "https://github.com/sfackler/log-ng.git"
 
-[dependencies.rust-net-misc]
+[dependencies.quilt-net-misc]
 path = "../../misc"
 
-[dependencies.rust-net-data-link-interface]
+[dependencies.quilt-net-data-link-interface]
 path = "../interface"

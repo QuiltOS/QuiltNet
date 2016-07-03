@@ -1,6 +1,6 @@
 [package]
 
-name = "rust-net-transport-tcp"
+name = "quilt-net-transport-tcp"
 version = "0.0.1"
 authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
           , "John Ericson <Ericson2314@Yahoo.com>" ]
@@ -11,10 +11,10 @@ name = "tcp"
 [dependencies.time]
 url = "http://github.com/rust-lang/time"
 
-[dependencies.rust-net-misc]
+[dependencies.quilt-net-misc]
 path = "../../misc"
 
-[dependencies.rust-net-network]
+[dependencies.quilt-net-network]
 path = "../../network"
 
 [dependencies.cyclic-order]
