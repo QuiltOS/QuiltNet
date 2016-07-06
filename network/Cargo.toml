@@ -8,11 +8,15 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 [lib]
 name = "network"
 
-[dependencies.log_ng]
-git = "https://github.com/sfackler/log-ng.git"
+[dependencies]
+bitflags = "0.7"
+log = { version = "0.3.6", default-features = false }
 
 [dependencies.quilt-net-misc]
 path = "../misc"
 
 [dependencies.quilt-net-data-link-interface]
 path = "../data_link/interface"
+
+[dev-dependencies]
+env_logger = "0.3.1"

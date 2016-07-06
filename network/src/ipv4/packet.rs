@@ -1,16 +1,16 @@
 use std::fmt;
 use std::mem::transmute;
-use std::num::Int;
+//use std::num::Int;
 use std::vec::Vec;
 
 use super::Addr;
 use super::parse_addr_unsafe;
 use super::write_addr;
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Clone, Show)]
+#[derive(PartialEq, PartialOrd, Eq, Ord, Clone, Debug)]
 pub struct V { buf: Vec<u8> }
 
-#[derive(PartialEq, PartialOrd, Eq, Ord)]//, Show)]
+#[derive(PartialEq, PartialOrd, Eq, Ord)]//, Debug)]
 pub struct A { buf:    [u8] }
 
 
@@ -119,9 +119,8 @@ pub const MIN_HDR_LEN_32S: u8  = 5;
 ///   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 #[repr(packed)]
-#[unstable]
 #[derive(PartialEq, PartialOrd, Eq, Ord,
-         Copy, Clone, Hash, Show)]
+         Copy, Clone, Hash, Debug)]
 pub struct Header {
   pub version_ihl:           u8,   // IP version (= 4)
   /////////////////////////////////// Internet header length
@@ -140,7 +139,7 @@ pub struct Header {
 
 #[repr(u8)]
 #[derive(PartialEq, PartialOrd, Eq, Ord,
-         Copy, Clone, Hash, Show)]
+         Copy, Clone, Hash, Debug)]
 pub enum Precedence {
   NetworkControl      = 0b_111_00000,
   InternetworkControl = 0b_110_00000,
@@ -154,7 +153,7 @@ pub enum Precedence {
 
 
 bitflags! {
-  flags ServiceFlags: u8 {
+  pub flags ServiceFlags: u8 {
     const LOW_DELAY       = 0b000_100_00,
     const HIGH_THROUGHPUT = 0b000_010_00,
     const HIGH_RELIABILTY = 0b000_001_00,
@@ -162,7 +161,7 @@ bitflags! {
 }
 
 bitflags! {
-  flags IpFlags: u16 {
+  pub flags IpFlags: u16 {
     const DONT_FRAGMENT  = 0b010_00000_00000000,
     const MORE_FRAGMENTS = 0b001_00000_00000000,
   }
@@ -221,7 +220,7 @@ impl A {
 
   pub fn hdr_bytes(&self) -> usize { self.get_header_length() as usize * 4 }
 
-  pub fn get_total_length(&    self) -> u16 { Int::from_be(self.cast_h()    .total_length) }
+  pub fn get_total_length(&    self) -> u16 { u16::from_be(self.cast_h()    .total_length) }
   pub fn set_total_length(&mut self, v: u16)             { self.cast_h_mut().total_length = v.to_be(); }
 
 
@@ -236,12 +235,12 @@ impl A {
   }
 
 
-  pub fn get_identification(&    self) -> u16 { Int::from_be(self.cast_h()    .identification) }
+  pub fn get_identification(&    self) -> u16 { u16::from_be(self.cast_h()    .identification) }
   pub fn set_identification(&mut self, v: u16)             { self.cast_h_mut().identification = v.to_be(); }
 
 
   pub fn get_flags_fragment_offset(&self) -> (IpFlags, u16) {
-    let ffo = Int::from_be(self.cast_h().flags_fragment_offset);
+    let ffo = u16::from_be(self.cast_h().flags_fragment_offset);
     const MASK: u16 = 0b111_00000_00000000;
     ( unsafe { ::std::mem::transmute(ffo & MASK) },
       ffo & !MASK)
@@ -258,7 +257,7 @@ impl A {
   pub fn get_protocol(&    self) -> u8  { self.cast_h()    .protocol }
   pub fn set_protocol(&mut self, v: u8) { self.cast_h_mut().protocol = v; }
 
-  pub fn get_header_checksum(&    self) -> u16 { Int::from_be(self.cast_h()    .header_checksum) }
+  pub fn get_header_checksum(&    self) -> u16 { u16::from_be(self.cast_h()    .header_checksum) }
   pub fn set_header_checksum(&mut self, v: u16)             { self.cast_h_mut().header_checksum = v.to_be(); }
 
   pub fn get_source(&self) -> Addr { parse_addr_unsafe(&self.buf[12..16]) }
@@ -314,7 +313,7 @@ impl A {
       .chain(temp.iter())
       .chain(u16s[6..(self.hdr_bytes() / 2)].iter());
 
-    make_checksum(iter.map(|x| Int::from_be(*x)))
+    make_checksum(iter.map(|x| u16::from_be(*x)))
   }
 
   pub fn update_checksum(&mut self) {
@@ -323,7 +322,7 @@ impl A {
   }
 }
 
-impl fmt::String for A {
+impl fmt::Display for A {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     write!(f,
            "Ip  | ver {} | {} | Tos {} | Len {}  |\n    | FId {}    |   off {} |\n    | ttl {} | proto {} | sum {} |\n    | Src {}   | Dst {} |",
@@ -344,14 +343,14 @@ impl fmt::String for A {
   }
 }
 
-impl fmt::String for V {
+impl fmt::Display for V {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     self.borrow().fmt(f)
   }
 }
 
 #[derive(PartialEq, PartialOrd, Eq, Ord,
-         Copy, Clone, Hash, Show)]
+         Copy, Clone, Hash, Debug)]
 /// Where there are two fields: expected, then got.
 pub enum BadPacket {
   TooShort(usize),             // header cannot fit
@@ -433,14 +432,11 @@ pub fn make_checksum<I>(iter: I) -> u16
 /// Adjusts len
 pub unsafe fn cast_slice<T, U>(src: &[T]) -> &[U]
 {
-  use std::mem::size_of;
-  use std::raw::Slice;
-  let Slice { data, len } = transmute::<_, Slice<U>>(src);
+  use core::mem::size_of;
+  use core::slice;
+  //let Slice { data, len } = transmute::<_, Slice<U>>(src);
 
-  assert!(len % size_of::<U>() == 0);
+  assert_eq!(0, src.len() % size_of::<U>());
 
-  transmute(Slice {
-    data: data,
-    len:  len / size_of::<U>(),
-  })
+  slice::from_raw_parts(src.as_ptr() as _, src.len() / size_of::<U>())
 }

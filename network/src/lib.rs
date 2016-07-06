@@ -1,23 +1,20 @@
-#![allow(unstable)]
-
 #![feature(unboxed_closures)]
+#![feature(slice_patterns)]
 #![feature(box_syntax)]
+#![feature(question_mark)]
 
-#[macro_use] #[no_link]
-extern crate log_ng;
+extern crate core;
 
-//#[cfg(any(log_level = "error",
-//          log_level = "warn",
-//          log_level = "info",
-//          log_level = "debug",
-//          log_level = "trace"))]
-extern crate log_ng;
+#[macro_use]
+extern crate log;
+#[macro_use]
+extern crate bitflags;
 
 #[macro_use]
 extern crate misc;
 
 mod data_link {
-  extern crate interface;
+  pub extern crate interface;
 }
 
 pub mod ipv4;

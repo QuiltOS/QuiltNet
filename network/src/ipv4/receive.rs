@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use std::sync::Arc;
 
 use super::{
@@ -8,12 +9,12 @@ use super::{
 
 use data_link::interface as dl;
 
-
 /// Called upon receipt of an IP packet:
 /// If packet is destined for this node, deliver it to appropriate handlers
 /// If packet is destined elsewhere, fix packet headers and forward
-fn receive<A>(state: &super::State<A>, buf: Vec<u8>)
-  where A: strategy::RoutingTable
+fn receive<A, E>(state: &super::State<A, E>, buf: Vec<u8>)
+  where A: strategy::RoutingTable,
+        E: Debug
 {
   debug!("Received packet.");
   let packet = match packet::validate(buf.as_slice()) {
@@ -35,7 +36,7 @@ fn receive<A>(state: &super::State<A>, buf: Vec<u8>)
     // TODO: factor out this clone-until-last-time pattern
     let mut iter = handlers.iter().peekable();
     while let Some(ref handler) = iter.next() {
-      if iter.is_empty() {
+      if iter.peek().is_none() {
         handler(packet);
         break;
       } else {
@@ -71,7 +72,7 @@ fn receive<A>(state: &super::State<A>, buf: Vec<u8>)
 
 /// Forwards a packet back into the network after rewriting its headers
 /// Result status is whether packet was able to be forwarded
-fn forward<A>(state: &super::State<A>, mut packet: packet::V) -> send::Result<()>
+fn forward<A, E>(state: &super::State<A, E>, mut packet: packet::V) -> send::Result<(), E>
   where A: strategy::RoutingTable
 {
   { // Decrement TTL
@@ -91,7 +92,7 @@ fn forward<A>(state: &super::State<A>, mut packet: packet::V) -> send::Result<()
 }
 
 /// Determine whether packet is destined for this node
-fn is_packet_dst_local<A>(state: &super::State<A>, packet: &packet::V) -> bool
+fn is_packet_dst_local<A, E>(state: &super::State<A, E>, packet: &packet::V) -> bool
   where A: strategy::RoutingTable
 {
   let dst = packet.borrow().get_destination();
@@ -101,12 +102,13 @@ fn is_packet_dst_local<A>(state: &super::State<A>, packet: &packet::V) -> bool
     .any(|&super::InterfaceRow { local_ip, .. }| local_ip == dst)
 }
 
-
-pub fn make_receive_callback<A>(state: Arc<super::State<A>>) -> dl::Handler
-  where A: strategy::RoutingTable + Send
+// TODO: Generalize 'static
+pub fn make_receive_callback<A, E>(state: Arc<super::State<A, E>>) -> dl::Handler
+  where A: strategy::RoutingTable + Send + 'static,
+        E: Debug + 'static
 {
   let state = state.clone();
-  box move |&: packet: dl::Packet | {
+  box move |packet: dl::Packet | {
     receive(&*state, packet);
   }
 }
