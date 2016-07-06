@@ -67,85 +67,84 @@ pub fn write_addr(Addr(slice): Addr) -> [u8; 4] {
 // value:  index to InterfaceRow (see below)
 pub type InterfaceTable = HashMap<Addr, usize>;
 
-pub struct InterfaceRow<E> {
+pub struct InterfaceRow<'a, E> {
   pub local_ip:  Addr,
-  pub interface: RwLock<Box<dl::Interface<Error=E> + Send + Sync + 'static>>,
+  pub interface: RwLock<Box<dl::Interface<Error=E> + Send + Sync + 'a>>,
 }
 
 // TODO: use Box<[u8]> instead of Vec<u8>
 // TODO: real network card may consolidate multiple packets per interrupt
-pub type Handler = //Handler<Ip>;
-  Box<Fn<(packet::V,), Output=()> + Send + Sync + 'static>;
+pub type Handler<'a> = super::misc::interface::Handler<'a, packet::V>;
 
-pub type ProtocolTable = Vec<Vec<Handler>>;
+pub type ProtocolTable<'a> = Vec<Vec<Handler<'a>>>;
 
-pub struct State<A, E> where A: RoutingTable {
-  pub interfaces:        Vec<InterfaceRow<E>>,
+pub struct State<'a, A, E> where A: RoutingTable + 'a
+{
+  pub interfaces:        Vec<InterfaceRow<'a, E>>,
   pub neighbors:         InterfaceTable,
   pub routes:            A,
-  pub protocol_handlers: RwLock<ProtocolTable>,
+  pub protocol_handlers: RwLock<ProtocolTable<'a>>,
   // Identification counter? increased with each packet sent out,
   // used in Identification header for fragmentation purposes
 }
 
-// TODO: relax 'static
-impl<RT, DE> State<RT, DE>
-  where RT: RoutingTable + 'static,
-        DE: fmt::Debug + 'static
+impl<'a, RT, DE> State<'a, RT, DE>
+  where RT: RoutingTable + 'a,
+        DE: fmt::Debug + 'a
 
 {
-  pub fn new(interfaces: Vec<InterfaceRow<DE>>,
+  pub fn new(interfaces: Vec<InterfaceRow<'a, DE>>,
              neighbors: InterfaceTable)
-             -> Arc<State<RT, DE>>
+             -> Arc<State<'a, RT, DE>>
   {
     let routes: RT = RoutingTable::init(neighbors.keys().map(|x| *x));
 
-    let state: Arc<State<RT, DE>> = Arc::new(State {
+    let state: Arc<State<'a, RT, DE>> = Arc::new(State {
       routes:            routes,
       neighbors:         neighbors,
       interfaces:        interfaces,
       // handlers are not clonable, so the nice ways of doing this do not work
-      protocol_handlers: RwLock::new(vec!(
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+      protocol_handlers: RwLock::new(vec![
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
 
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
 
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
 
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
 
 
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
 
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
 
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
 
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!(),
-        vec!(), vec!(), vec!(), vec!(),   vec!(), vec!(), vec!(), vec!())),
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![],
+        vec![], vec![], vec![], vec![],   vec![], vec![], vec![], vec![]]),
     });
 
     for &InterfaceRow { ref interface, .. } in state.interfaces.iter() {
@@ -160,8 +159,8 @@ impl<RT, DE> State<RT, DE>
   }
 
   /// Returns dl::Interface struct for the requested interface
-  pub fn get_interface<'a> (&'a self, interface_ix: usize)
-                           -> Option<&'a InterfaceRow<DE>>
+  pub fn get_interface(&self, interface_ix: usize)
+                      -> Option<&InterfaceRow<'a, DE>>
   {
     self.interfaces.as_slice().get(interface_ix)
   }

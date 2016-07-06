@@ -12,8 +12,8 @@ use data_link::interface as dl;
 /// Called upon receipt of an IP packet:
 /// If packet is destined for this node, deliver it to appropriate handlers
 /// If packet is destined elsewhere, fix packet headers and forward
-fn receive<A, E>(state: &super::State<A, E>, buf: Vec<u8>)
-  where A: strategy::RoutingTable,
+fn receive<'a, A, E>(state: &super::State<'a, A, E>, buf: Vec<u8>)
+  where A: strategy::RoutingTable + 'a,
         E: Debug
 {
   debug!("Received packet.");
@@ -72,8 +72,8 @@ fn receive<A, E>(state: &super::State<A, E>, buf: Vec<u8>)
 
 /// Forwards a packet back into the network after rewriting its headers
 /// Result status is whether packet was able to be forwarded
-fn forward<A, E>(state: &super::State<A, E>, mut packet: packet::V) -> send::Result<(), E>
-  where A: strategy::RoutingTable
+fn forward<'a, A, E>(state: &super::State<'a, A, E>, mut packet: packet::V) -> send::Result<(), E>
+  where A: strategy::RoutingTable + 'a
 {
   { // Decrement TTL
     let ttl = packet.borrow().get_time_to_live() - 1;
@@ -102,10 +102,9 @@ fn is_packet_dst_local<A, E>(state: &super::State<A, E>, packet: &packet::V) -> 
     .any(|&super::InterfaceRow { local_ip, .. }| local_ip == dst)
 }
 
-// TODO: Generalize 'static
-pub fn make_receive_callback<A, E>(state: Arc<super::State<A, E>>) -> dl::Handler
-  where A: strategy::RoutingTable + Send + 'static,
-        E: Debug + 'static
+pub fn make_receive_callback<'a, A, E>(state: Arc<super::State<'a, A, E>>) -> dl::Handler
+  where A: strategy::RoutingTable + Send + 'a,
+        E: Debug + 'a
 {
   let state = state.clone();
   box move |packet: dl::Packet | {

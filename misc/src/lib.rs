@@ -39,7 +39,7 @@ impl<F, Args> Fn<Args> for LockedClosure<F> where F: FnMut<Args> + Send {
   }
 }
 
-// TODO get rid of mutex
+// TODO: get rid of mutex
 pub struct SenderClosure<T> {
   pub sender: Mutex<Sender<T>>
 }

@@ -3,9 +3,10 @@ use super::strategy;
 
 
 /// Enables the given interface
-pub fn up<A, E>(ip_state: &super::State<A, E>, interface: usize) -> Result<(), ()>
-  where A: strategy::RoutingTable + 'static,
-        E: Debug + 'static
+pub fn up<'a, A, E>(ip_state: &super::State<'a, A, E>, interface: usize)
+                   -> Result<(), ()>
+  where A: strategy::RoutingTable + 'a,
+        E: Debug + 'a
 {
   // no UFCS to make this concise
   match ip_state.get_interface(interface) {
@@ -16,9 +17,10 @@ pub fn up<A, E>(ip_state: &super::State<A, E>, interface: usize) -> Result<(), (
 }
 
 /// Disables the given interface
-pub fn down<A, E>(ip_state: &super::State<A, E>, interface: usize) -> Result<(), ()>
-  where A: strategy::RoutingTable + 'static,
-        E: Debug + 'static
+pub fn down<'a, A, E>(ip_state: &super::State<'a, A, E>, interface: usize)
+                     -> Result<(), ()>
+  where A: strategy::RoutingTable + 'a,
+        E: Debug + 'a
 {
   match ip_state.get_interface(interface) {
     None    => return Err(()),
@@ -27,9 +29,9 @@ pub fn down<A, E>(ip_state: &super::State<A, E>, interface: usize) -> Result<(),
   Ok(())
 }
 
-pub fn register_protocol_handler<A, E>(ip_state: &super::State<A, E>,
-                                       proto_number: u8,
-                                       handler: super::Handler)
+pub fn register_protocol_handler<'a, A, E>(ip_state: &super::State<'a, A, E>,
+                                           proto_number: u8,
+                                           handler: super::Handler<'a>)
   where A: strategy::RoutingTable
 {
   ip_state.protocol_handlers.write().unwrap()[proto_number as usize].push(handler);

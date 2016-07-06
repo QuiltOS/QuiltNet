@@ -11,7 +11,7 @@ use misc::interface as i;
 
 // TODO: use Box<[u8]> instead of Vec<u8>
 pub type Packet = Vec<u8>;
-pub type Handler = i::Handler<Packet>;
+pub type Handler<'a> = i::Handler<'a, Packet>;
 
 #[derive(Clone, Copy,
          PartialEq, Eq,
