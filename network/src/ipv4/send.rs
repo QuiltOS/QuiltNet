@@ -35,7 +35,7 @@ pub fn send
    // TODO: make this take a &'st mut packet::A someday
    awkward:            G)
    -> result::Result<(), E>
-  where A:  strategy::RoutingTable + 'a,
+  where A:  strategy::RoutingTable<'a> + 'a,
         DE: 'a,
         E:  From<self::Error<DE>>,
         F:  for<'b> FnOnce(&'b mut packet::V) -> result::Result<(), E> + 'st,
@@ -72,7 +72,7 @@ pub fn send
 pub fn resolve_route<'a, 'st, A, E>(state: &'st super::State<'a, A, E>,
                                    dst:   super::Addr)
                                    -> self::Result<&'st super::InterfaceRow<'a, E>, E>
-  where A: strategy::RoutingTable + 'st,
+  where A: strategy::RoutingTable<'a> + 'a,
         'a: 'st
 {
   match state.routes.lookup(dst) {

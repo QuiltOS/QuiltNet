@@ -5,7 +5,7 @@ use super::strategy;
 /// Enables the given interface
 pub fn up<'a, A, E>(ip_state: &super::State<'a, A, E>, interface: usize)
                    -> Result<(), ()>
-  where A: strategy::RoutingTable + 'a,
+  where A: strategy::RoutingTable<'a> + 'a,
         E: Debug + 'a
 {
   // no UFCS to make this concise
@@ -19,7 +19,7 @@ pub fn up<'a, A, E>(ip_state: &super::State<'a, A, E>, interface: usize)
 /// Disables the given interface
 pub fn down<'a, A, E>(ip_state: &super::State<'a, A, E>, interface: usize)
                      -> Result<(), ()>
-  where A: strategy::RoutingTable + 'a,
+  where A: strategy::RoutingTable<'a> + 'a,
         E: Debug + 'a
 {
   match ip_state.get_interface(interface) {
@@ -32,7 +32,7 @@ pub fn down<'a, A, E>(ip_state: &super::State<'a, A, E>, interface: usize)
 pub fn register_protocol_handler<'a, A, E>(ip_state: &super::State<'a, A, E>,
                                            proto_number: u8,
                                            handler: super::Handler<'a>)
-  where A: strategy::RoutingTable
+  where A: strategy::RoutingTable<'a>
 {
   ip_state.protocol_handlers.write().unwrap()[proto_number as usize].push(handler);
 }

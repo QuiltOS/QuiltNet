@@ -78,7 +78,7 @@ pub type Handler<'a> = super::misc::interface::Handler<'a, packet::V>;
 
 pub type ProtocolTable<'a> = Vec<Vec<Handler<'a>>>;
 
-pub struct State<'a, A, E> where A: RoutingTable + 'a
+pub struct State<'a, A, E> where A: RoutingTable<'a> + 'a
 {
   pub interfaces:        Vec<InterfaceRow<'a, E>>,
   pub neighbors:         InterfaceTable,
@@ -89,7 +89,7 @@ pub struct State<'a, A, E> where A: RoutingTable + 'a
 }
 
 impl<'a, RT, DE> State<'a, RT, DE>
-  where RT: RoutingTable + 'a,
+  where RT: RoutingTable<'a> + 'a,
         DE: fmt::Debug + 'a
 
 {
