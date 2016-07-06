@@ -1,34 +1,26 @@
-#![allow(unstable)]
-
 #![feature(box_syntax)]
 #![feature(unboxed_closures)]
-#![feature(slicing_syntax)]
+#![feature(question_mark)]
 
 
-#[macro_use] #[no_link]
-extern crate log_ng;
-
-//#[cfg(any(log_level = "error",
-//          log_level = "warn",
-//          log_level = "info",
-//          log_level = "debug",
-//          log_level = "trace"))]
-extern crate log_ng;
+#[macro_use]
+extern crate log;
 
 #[macro_use]
 extern crate misc;
-extern crate "interface" as dl;
+extern crate interface as dl;
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::io::IoResult;
-use std::io::net::udp::UdpSocket;
-use std::io::net::ip::{SocketAddr};
-
+use std::io;
+use std::net::{
+  UdpSocket,
+  SocketAddr,
+  ToSocketAddrs,
+};
 use std::sync::Arc;
 use std::sync::RwLock;
-
-use std::thread::Thread;
+use std::thread;
 
 use misc::interface as root;
 
@@ -49,23 +41,23 @@ pub struct Listener {
 
 impl Listener
 {
-  pub fn new(listen_addr: SocketAddr, num_threads: usize) -> IoResult<Listener>
+  pub fn new<A>(listen_addr: A, num_threads: usize) -> io::Result<Listener>
+    where A: ToSocketAddrs
   {
     assert!(num_threads > 0);
 
-    let socket = try!(UdpSocket::bind(listen_addr));
+    let socket = UdpSocket::bind(listen_addr)?;
 
     let handlers: SharedHandlerMap = Arc::new(RwLock::new(HashMap::new()));
 
-
-    for _ in range(0, num_threads) {
-      let mut socket   = socket.clone();
-      let     handlers = handlers.clone();
-      Thread::spawn(move || {
+    for _ in 0..num_threads {
+      let socket   = socket.try_clone()?;
+      let handlers = handlers.clone();
+      thread::spawn(move || {
         let mut buf: [u8; RECV_BUF_SIZE] = unsafe { std::mem::uninitialized() };
         loop {
           // TODO: someway to kill task eventually
-          match socket.recv_from(buf.as_mut_slice()) {
+          match socket.recv_from(&mut buf[..]) {
             Err(e) => {
               // maybe it will work next time...
               debug!("OS error when trying to wait for packet: {}", e);
@@ -77,7 +69,7 @@ impl Listener
                 if is_enabled {
                   debug!("Virtual Interface is enabled");
                   let args = buf[..len].to_vec();
-                  (**on_recv).call((args,));
+                  (**on_recv)(args);
                 } else {
                   debug!("Virtual Interface is not enabled, dropping packet");
                 }
@@ -94,15 +86,12 @@ impl Listener
       handlers: handlers,
     })
   }
-}
 
-impl Clone for Listener {
-
-  fn clone(&self) -> Listener {
-    Listener {
-      socket:   self.socket  .clone(),
+  pub fn try_clone(&self) -> io::Result<Listener> {
+    Ok(Listener {
+      socket: self.socket.try_clone()?,
       handlers: self.handlers.clone(),
-    }
+    })
   }
 }
 
@@ -116,7 +105,6 @@ pub struct Interface {
 
 
 impl Interface {
-
   pub fn new(listener:    &Listener,
              remote_addr: SocketAddr,
              on_recv:     dl::Handler) -> Interface
@@ -124,7 +112,7 @@ impl Interface {
     listener.handlers.write().unwrap().insert(remote_addr, (true, on_recv));
 
     Interface {
-      listener:      listener.clone(),
+      listener:      listener.try_clone().unwrap(),
       remote_addr:   remote_addr,
       cached_status: true,
     }
@@ -132,19 +120,24 @@ impl Interface {
 }
 
 impl root::Interface for Interface {
-
+  type Error = io::Error;
 }
 
-impl dl::Interface for Interface
-{
-  fn send(&self, packet: dl::Packet) -> dl::Result<()> {
-
+impl dl::Interface for Interface {
+  fn send(&self, packet: dl::Packet) -> dl::Result<(), Self::Error> {
     if self.cached_status == false {
-      return Err(dl::Error::Disabled);
+      Err(dl::Error::Disabled)?;
     }
-
-    let mut socket = self.listener.socket.clone();
-    socket.send_to(packet.as_slice(), self.remote_addr).map_err(dl::Error::External)
+    let sent = self.listener
+      .socket.try_clone()?
+      .send_to(&packet[..], self.remote_addr)?;
+    if sent != packet.len() {
+      return Err(From::from(io::Error::new(
+        io::ErrorKind::WriteZero,
+        "The packet could not be sent in whole")));
+    } else {
+      Ok(())
+    }
   }
 
   fn update_recv_handler(&self, on_recv: dl::Handler) {

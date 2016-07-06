@@ -8,6 +8,6 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 [lib]
 name = "misc"
 
-[dependencies.log_ng]
-git = "https://github.com/sfackler/log-ng.git"
-
+[dependencies.log]
+version = "0.3.6"
+default-features = false
