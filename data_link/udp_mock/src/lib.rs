@@ -16,6 +16,8 @@ use std::io;
 use std::net::{
   UdpSocket,
   SocketAddr,
+  SocketAddrV4,
+  Ipv4Addr,
   ToSocketAddrs,
 };
 use std::sync::Arc;
@@ -85,6 +87,17 @@ impl Listener<'static>
       socket:   socket,
       handlers: handlers,
     })
+  }
+
+  pub fn new_loopback(num_threads: usize) -> io::Result<(Self, SocketAddr)> {
+    // "port 0" is wildcard (port number is dynamically assigned)
+    let mut addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1), 0));
+    let listener = Listener::new(addr, num_threads)?;
+    listener.socket.connect(addr)?;
+    // resolve actual port
+    addr = listener.socket.local_addr()?;
+    debug!("made listener with addr: {}", addr);
+    Ok((listener, addr))
   }
 }
 

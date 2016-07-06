@@ -1,11 +1,6 @@
 extern crate env_logger;
 
 use std::io;
-use std::net::{
-  SocketAddr,
-  SocketAddrV4,
-  Ipv4Addr,
-};
 
 use std::sync::{Arc, Barrier};
 use std::str::from_utf8;
@@ -18,21 +13,11 @@ use dl;
 
 use super::*;
 
-
-fn mk_listener(num_threads: usize) -> io::Result<(Listener<'static>, SocketAddr)> {
-  // "port 0" is wildcard (port number is dynamically assigned)
-  let mut addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1), 0));
-  let listener = Listener::new(addr, num_threads)?;
-  addr = listener.socket.local_addr()?;
-  debug!("made listener with addr: {}", addr);
-  Ok((listener, addr))
-}
-
 fn talk_to_self_channel_helper(num_threads: usize) {
   use std::sync::mpsc::*;
 
-  let (l1, a1) = mk_listener(num_threads).unwrap();
-  let (l2, a2) = mk_listener(num_threads).unwrap();
+  let (l1, a1) = Listener::new_loopback(num_threads).unwrap();
+  let (l2, a2) = Listener::new_loopback(num_threads).unwrap();
 
   let (tx1, rx1) = channel::<(dl::Packet,)>();
   let (tx2, rx2) = channel::<(dl::Packet,)>();
@@ -76,8 +61,8 @@ fn talk_to_self_callback_helper(num_threads: usize) {
 
   let barrier = Arc::new(Barrier::new(3));
 
-  let (l1, a1) = mk_listener(num_threads).unwrap();
-  let (l2, a2) = mk_listener(num_threads).unwrap();
+  let (l1, a1) = Listener::new_loopback(num_threads).unwrap();
+  let (l2, a2) = Listener::new_loopback(num_threads).unwrap();
 
   const M1: &'static str = "Hey Josh!";
   const M2: &'static str = "Hey Cody!";
@@ -105,10 +90,7 @@ fn talk_to_self_callback_parallel() {
 fn disable_then_cant_send() {
 
   fn inner() -> io::Result<()> {
-
-    //let nop = box |&: _packet: Vec<u8>| { };
-
-    let (l, a) = mk_listener(1).unwrap();
+    let (l, a) = Listener::new_loopback(1).unwrap();
     let mut i = Interface::new(&l, a, box |_| {});
 
     dl::Interface::disable(&mut i);
