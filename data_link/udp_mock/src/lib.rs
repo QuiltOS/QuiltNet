@@ -29,19 +29,19 @@ mod test;
 
 const RECV_BUF_SIZE: usize = 64 * 1024;
 
-type SharedHandlerMap = Arc<RwLock<HashMap<SocketAddr,
-                                           (bool, dl::Handler)>>>;
+type SharedHandlerMap<'a> = Arc<RwLock<HashMap<SocketAddr,
+                                               (bool, dl::Handler<'a>)>>>;
 
 /// The backing listening socket / read loop for a bunch of UDP-backed mock link
 /// neighbors
-pub struct Listener {
+pub struct Listener<'a> {
   socket:   UdpSocket,
-  handlers: SharedHandlerMap,
+  handlers: SharedHandlerMap<'a>,
 }
 
-impl Listener
+impl Listener<'static>
 {
-  pub fn new<A>(listen_addr: A, num_threads: usize) -> io::Result<Listener>
+  pub fn new<A>(listen_addr: A, num_threads: usize) -> io::Result<Listener<'static>>
     where A: ToSocketAddrs
   {
     assert!(num_threads > 0);
@@ -86,8 +86,11 @@ impl Listener
       handlers: handlers,
     })
   }
+}
 
-  pub fn try_clone(&self) -> io::Result<Listener> {
+impl<'a> Listener<'a>
+{
+  pub fn try_clone(&self) -> io::Result<Listener<'a>> {
     Ok(Listener {
       socket: self.socket.try_clone()?,
       handlers: self.handlers.clone(),
@@ -97,17 +100,17 @@ impl Listener
 
 
 /// A mock link layer interface made from UDP
-pub struct Interface {
-  listener:    Listener,
+pub struct Interface<'a> {
+  listener:    Listener<'a>,
   remote_addr: SocketAddr,
   cached_status: bool,
 }
 
 
-impl Interface {
-  pub fn new(listener:    &Listener,
-             remote_addr: SocketAddr,
-             on_recv:     dl::Handler) -> Interface
+impl<'a> Interface<'a> {
+  pub fn new(listener:    &Listener<'a>,
+                 remote_addr: SocketAddr,
+                 on_recv:     dl::Handler<'a>) -> Interface<'a>
   {
     listener.handlers.write().unwrap().insert(remote_addr, (true, on_recv));
 
@@ -119,11 +122,11 @@ impl Interface {
   }
 }
 
-impl root::Interface for Interface {
+impl<'a> root::Interface for Interface<'a> {
   type Error = io::Error;
 }
 
-impl dl::Interface for Interface {
+impl<'a> dl::Interface<'a> for Interface<'a> {
   fn send(&self, packet: dl::Packet) -> dl::Result<(), Self::Error> {
     if self.cached_status == false {
       Err(dl::Error::Disabled)?;
@@ -140,7 +143,9 @@ impl dl::Interface for Interface {
     }
   }
 
-  fn update_recv_handler(&self, on_recv: dl::Handler) {
+  fn update_recv_handler<'b>(&'b self, on_recv: dl::Handler<'a>)
+    where 'a: 'b
+  {
     self.listener.handlers.write().unwrap()
       .insert(self.remote_addr, (true, on_recv));
   }

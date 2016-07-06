@@ -30,12 +30,12 @@ impl<E> From<E> for Error<E> {
 
 pub type Result<T, E> = std::result::Result<T, self::Error<E>>;
 
-pub trait Interface: i::Interface {
+pub trait Interface<'a>: i::Interface {
   /// Send packet with specified body
   fn send(&self, packet: Packet) -> self::Result<(), Self::Error>;
 
   /// Update the function called on an arriving packet
-  fn update_recv_handler(&self, on_recv: Handler);
+  fn update_recv_handler<'b>(&'b self, on_recv: Handler<'a>) where 'a: 'b;
 
   //fn new(on_receive: |Vec<u8>| -> ()) -> Self;
 

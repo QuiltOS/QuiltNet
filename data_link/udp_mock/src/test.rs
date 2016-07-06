@@ -19,7 +19,7 @@ use dl;
 use super::*;
 
 
-fn mk_listener(num_threads: usize) -> io::Result<(Listener, SocketAddr)> {
+fn mk_listener(num_threads: usize) -> io::Result<(Listener<'static>, SocketAddr)> {
   // "port 0" is wildcard (port number is dynamically assigned)
   let mut addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127,0,0,1), 0));
   let listener = Listener::new(addr, num_threads)?;

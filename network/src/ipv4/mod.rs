@@ -69,7 +69,7 @@ pub type InterfaceTable = HashMap<Addr, usize>;
 
 pub struct InterfaceRow<'a, E> {
   pub local_ip:  Addr,
-  pub interface: RwLock<Box<dl::Interface<Error=E> + Send + Sync + 'a>>,
+  pub interface: RwLock<Box<dl::Interface<'a, Error=E> + Send + Sync + 'a>>,
 }
 
 // TODO: use Box<[u8]> instead of Vec<u8>

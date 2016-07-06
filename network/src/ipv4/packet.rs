@@ -434,7 +434,6 @@ pub unsafe fn cast_slice<T, U>(src: &[T]) -> &[U]
 {
   use core::mem::size_of;
   use core::slice;
-  //let Slice { data, len } = transmute::<_, Slice<U>>(src);
 
   assert_eq!(0, src.len() % size_of::<U>());
 
