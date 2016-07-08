@@ -3,8 +3,7 @@ data
 tools
 
 Cargo.lock
-/*/target
-/*/*/target
+/target
 
 # vim tempfiles
 *.swp

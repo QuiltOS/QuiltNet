@@ -11,12 +11,12 @@ Libraries
 ├── cyclic_order       -- Generic Code used for keeping track of out-of-order
 │                         packets in TCP. Should be stable enough to move out of
 │                         tree.
-├── data_link
-│   ├── interface      -- Presents the Interface link-layer drivers should
-│   │                     implement to work with the Network Layer.
-│   └── udp_mock       -- A mock link-layer driver built on UDP. (Requires
-│                         libstd.)
 ├── misc               -- Some random crap used by everything else.
+├── data_link
+│   ├── interface      -- Presents the Interface link-layer drivers should
+│   │                     implement to work with the Network Layer.
+│   └── udp_mock       -- A mock link-layer driver built on UDP. (Requires
+│                         libstd.)
 ├── network            -- Currently Just IPv4. Should contain a interface, and
 │                         IPv4 and Ipv6 implementations.
 └── transport

@@ -1,0 +1,19 @@
+[workspace]
+
+members = [
+  # misc prereqs
+  "cyclic_order",
+  "misc",
+
+  # data link layer
+  "data_link/interface",
+  "data_link/udp_mock",
+
+  # network layer
+  "network",
+
+  # transport layer (and ip routing)
+  "transport/brown_rip",
+  "transport/static_routing",
+  "transport/tcp",
+]
