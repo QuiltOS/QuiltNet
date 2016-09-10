@@ -53,7 +53,7 @@ fn talk_to_self_callback_helper(num_threads: usize) {
   fn mk_callback(barrier: Arc<Barrier>, msg: &'static str) -> dl::Handler {
     box move |packet: dl::Packet| {
       debug!("got packet: {}", from_utf8(packet.as_slice()).unwrap());
-      debug!("matching against: {}", from_utf8(msg.as_bytes()).unwrap());
+      debug!("matching against: {}", msg);
       assert_eq!(packet.as_slice(), msg.as_bytes());
       barrier.wait();
     }

@@ -122,8 +122,8 @@ pub struct Interface<'a> {
 
 impl<'a> Interface<'a> {
   pub fn new(listener:    &Listener<'a>,
-                 remote_addr: SocketAddr,
-                 on_recv:     dl::Handler<'a>) -> Interface<'a>
+             remote_addr: SocketAddr,
+             on_recv:     dl::Handler<'a>) -> Interface<'a>
   {
     listener.handlers.write().unwrap().insert(remote_addr, (true, on_recv));
 
