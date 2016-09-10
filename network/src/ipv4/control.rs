@@ -29,10 +29,12 @@ pub fn down<'a, A, E>(ip_state: &super::State<'a, A, E>, interface: usize)
   Ok(())
 }
 
-pub fn register_protocol_handler<'a, A, E>(ip_state: &super::State<'a, A, E>,
-                                           proto_number: u8,
-                                           handler: super::Handler<'a>)
-  where A: strategy::RoutingTable<'a>
+pub fn register_protocol_handler
+  <'a, 'st: 'a, A, E>
+  (ip_state: &'a super::State<'st, A, E>,
+   proto_number: u8,
+   handler: super::Handler<'st>)
+  where A: strategy::RoutingTable<'st>
 {
   ip_state.protocol_handlers.write().unwrap()[proto_number as usize].push(handler);
 }
