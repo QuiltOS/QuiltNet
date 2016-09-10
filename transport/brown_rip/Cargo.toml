@@ -8,6 +8,9 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 [lib]
 name = "brown_rip"
 
+[dependencies.log]
+version = "0.3.6"
+
 [dependencies.time]
 url = "http://github.com/rust-lang/time"
 

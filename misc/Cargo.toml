@@ -8,6 +8,5 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 [lib]
 name = "misc"
 
-[dependencies.log]
-version = "0.3.6"
-default-features = false
+[dependencies]
+log = { version = "0.3.6", default-features = false }

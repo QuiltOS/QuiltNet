@@ -8,18 +8,12 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 [lib]
 name = "tcp"
 
-[dependencies.time]
-url = "http://github.com/rust-lang/time"
+[dependencies]
+time = { url = "http://github.com/rust-lang/time" }
 
-[dependencies.quilt-net-misc]
-path = "../../misc"
+quilt-net-misc = { path = "../../misc" }
+quilt-net-network = { path = "../../network" }
+cyclic-order = { path = "../../cyclic_order" }
 
-[dependencies.quilt-net-network]
-path = "../../network"
-
-[dependencies.cyclic-order]
-path = "../../cyclic_order"
-
-
-[dev-dependencies.quickcheck_macros]
-git = "https://github.com/BurntSushi/quickcheck"
+[dev-dependencies]
+quickcheck_macros = { git = "https://github.com/BurntSushi/quickcheck" }

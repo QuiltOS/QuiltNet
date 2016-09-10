@@ -11,8 +11,5 @@ name = "static_routing"
 [dependencies]
 log = { version = "0.3.6", default-features = false }
 
-[dependencies.quilt-net-misc]
-path = "../../misc"
-
-[dependencies.quilt-net-network]
-path = "../../network"
+quilt-net-misc = { path = "../../misc" }
+quilt-net-network = { path = "../../network" }

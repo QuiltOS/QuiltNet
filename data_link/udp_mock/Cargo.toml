@@ -8,15 +8,11 @@ authors = [ "Anson Rosenthal <anson.rosenthal@gmail.com>"
 [lib]
 name = "udp_mock"
 
-[dependencies.log]
-version = "0.3.6"
-default-features = false
+[dependencies]
+log = { version = "0.3.6", default-features = false }
 
-[dependencies.quilt-net-misc]
-path = "../../misc"
-
-[dependencies.quilt-net-data-link-interface]
-path = "../interface"
+quilt-net-misc = { path = "../../misc" }
+quilt-net-data-link-interface = { path = "../interface" }
 
 [dev-dependencies]
 env_logger = "0.3.1"
