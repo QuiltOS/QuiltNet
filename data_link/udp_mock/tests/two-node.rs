@@ -1,4 +1,12 @@
+#![feature(box_syntax)]
+
+#[macro_use]
+extern crate log;
 extern crate env_logger;
+
+extern crate misc;
+extern crate interface as dl;
+extern crate udp_mock;
 
 use std::io;
 
@@ -8,10 +16,8 @@ use std::string::String;
 use std::str::FromStr;
 
 use misc::SenderClosure;
+use udp_mock::*;
 
-use dl;
-
-use super::*;
 
 fn talk_to_self_channel_helper(num_threads: usize) {
   use std::sync::mpsc::*;

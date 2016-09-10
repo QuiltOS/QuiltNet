@@ -1,12 +1,8 @@
-#![feature(box_syntax)]
-#![feature(unboxed_closures)]
 #![feature(question_mark)]
-
 
 #[macro_use]
 extern crate log;
 
-#[macro_use]
 extern crate misc;
 extern crate interface as dl;
 
@@ -26,8 +22,6 @@ use std::thread;
 
 use misc::interface as root;
 
-#[cfg(test)]
-mod test;
 
 const RECV_BUF_SIZE: usize = 64 * 1024;
 
